@@ -5,7 +5,7 @@ const NotificationSystem = () => {
   const { user, requests, setRequests } = useContext(AppContext);
   const displayName = user?.name || user?.email?.split('@')[0];
 
-  // রিকোয়েস্ট স্ট্যাটাস আপডেট করার ফাংশন (Writer এর জন্য)
+  // রিকোয়েস্ট স্ট্যাটাস আপডেট করার ফাংশন (Writer এর জন্য)
   const updateStatus = (requestId, newStatus) => {
     const updatedRequests = requests.map(req => 
       req.id === requestId ? { ...req, status: newStatus } : req
@@ -14,13 +14,13 @@ const NotificationSystem = () => {
     alert(`Request ${newStatus}!`);
   };
 
-  // লজিক অনুযায়ী নোটিফিকেশন ফিল্টার করা
+  // লজিক অনুযায়ী নোটিফিকেশন ফিল্টার করা
   const myNotifications = requests.filter(req => {
     if (user.role === 'Writer') {
-      // রাইটার দেখবে তার কাছে আসা পেন্ডিং রিকোয়েস্টগুলো
-      return req.writerName === displayName && req.status === 'pending';
+      // রাইটার দেখবে তার কাছে আসা সব রিকোয়েস্ট (পেন্ডিং এবং ডিক্লাইন্ড - হিস্ট্রি হিসেবে থাকবে)
+      return req.writerName === displayName && (req.status === 'pending' || req.status === 'declined' || req.status === 'approved');
     } else if (user.role === 'Director') {
-      // ডিরেক্টর দেখবে তার এপ্রুভ হওয়া রিকোয়েস্টগুলো (হিস্ট্রি হিসেবে থাকবে)
+      // ডিরেক্টর দেখবে তার এপ্রুভ হওয়া রিকোয়েস্টগুলো (হিস্ট্রি হিসেবে থাকবে)
       return req.directorName === displayName && req.status === 'approved';
     }
     return false;
@@ -29,21 +29,29 @@ const NotificationSystem = () => {
   return (
     <div className="notification-list" style={listStyle}>
       {myNotifications.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No new notifications</p>
+        <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No notifications found</p>
       ) : (
-        myNotifications.map(req => (
-          <div key={req.id} style={notifCard}>
+        // লজিক অনুযায়ী সর্ট করে নতুনগুলো উপরে রাখা
+        [...myNotifications].reverse().map(req => (
+          <div key={req.id} style={{
+            ...notifCard, 
+            borderLeft: req.status === 'declined' ? '4px solid #e74c3c' : (req.status === 'approved' ? '4px solid #2ecc71' : '4px solid #2d3436'),
+            opacity: req.status !== 'pending' && user.role === 'Writer' ? 0.8 : 1
+          }}>
             <div style={{ fontSize: '13px', marginBottom: '8px' }}>
               {user.role === 'Writer' ? (
-                <><strong>{req.directorName}</strong> wants to access your story.</>
+                <>
+                  <strong>{req.directorName}</strong> requested access to <strong>{req.requestType === 'synopsis' ? 'Synopsis' : 'Full Story'}</strong>.
+                  <div style={{fontSize: '11px', color: '#888', marginTop: '2px'}}>Status: {req.status}</div>
+                </>
               ) : (
-                <>Your request for <strong>{req.writerName}'s</strong> story was approved!</>
+                <>Your request for <strong>{req.writerName}'s</strong> {req.requestType === 'synopsis' ? 'Synopsis' : 'Full Story'} was approved!</>
               )}
             </div>
             
             {req.note && <p style={noteStyle}>"{req.note}"</p>}
 
-            {user.role === 'Writer' && (
+            {user.role === 'Writer' && req.status === 'pending' && (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
                   onClick={() => updateStatus(req.id, 'approved')} 
@@ -62,14 +70,24 @@ const NotificationSystem = () => {
   );
 };
 
-// --- Styles ---
-const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px' };
+// --- Styles (Fixed for Scrolling) ---
+const listStyle = { 
+  display: 'flex', 
+  flexDirection: 'column', 
+  gap: '10px',
+  maxHeight: '400px', // স্ক্রলিং এর জন্য নির্দিষ্ট হাইট
+  overflowY: 'auto',   // স্ক্রলিং এনাবেল করা হলো
+  paddingRight: '5px'
+};
+
 const notifCard = { 
   padding: '12px', 
   background: '#f9f9f9', 
-  borderRadius: '10px', 
-  borderLeft: '4px solid #2d3436' 
+  borderRadius: '10px',
+  marginBottom: '5px',
+  flexShrink: 0 // স্ক্রল কন্টেইনারে কার্ড যেন চ্যাপ্টা না হয়ে যায়
 };
+
 const noteStyle = { 
   fontSize: '12px', 
   fontStyle: 'italic', 
@@ -79,6 +97,7 @@ const noteStyle = {
   padding: '5px',
   borderRadius: '5px'
 };
+
 const actionBtn = { 
   padding: '5px 12px', 
   border: 'none', 

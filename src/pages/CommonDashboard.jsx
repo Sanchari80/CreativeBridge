@@ -6,8 +6,12 @@ const CommonDashboard = () => {
   const [expandedStory, setExpandedStory] = useState(null);
   const [requestModal, setRequestModal] = useState(null); 
   const [directorNote, setDirectorNote] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
+
+  // ক্যাটাগরি লিস্ট
+  const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi"];
 
   useEffect(() => {
     localStorage.setItem('allRequests', JSON.stringify(requests));
@@ -27,11 +31,18 @@ const CommonDashboard = () => {
     }
   };
 
-  const sendRequest = () => {
+  const sendRequest = (type) => {
     if (!requestModal) return;
     const { story } = requestModal;
-    const alreadySent = requests.find(r => r.storyId === story.id && r.directorName === displayName);
-    if (alreadySent) return alert(`Already sent a request for this story!`);
+    
+    // নির্দিষ্ট টাইপের রিকোয়েস্ট আগে পাঠানো হয়েছে কি না চেক
+    const alreadySent = requests.find(r => 
+      r.storyId === story.id && 
+      r.directorName === displayName && 
+      r.requestType === type
+    );
+    
+    if (alreadySent) return alert(`Already sent a ${type} request for this story!`);
 
     const newRequest = { 
       id: Date.now(), 
@@ -39,27 +50,58 @@ const CommonDashboard = () => {
       writerName: story.writerName, 
       directorName: displayName,
       status: 'pending',
+      requestType: type, // 'synopsis' অথবা 'fullStory'
       note: directorNote 
     };
 
     setRequests([...requests, newRequest]);
     setRequestModal(null);
     setDirectorNote("");
-    alert("Request sent successfully!");
+    alert(`${type === 'synopsis' ? 'Synopsis' : 'Full Story'} request sent successfully!`);
   };
+
+  // ক্যাটাগরি ফিল্টারিং লজিক
+  const filteredStories = selectedCategory === "All" 
+    ? stories 
+    : stories.filter(s => s.genre === selectedCategory);
 
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
       
-      {/* মেইন কন্টেন্ট গ্রিড */}
+      {/* --- CATEGORY TABS --- */}
+      <div style={categoryTabWrapper}>
+        {categories.map(cat => (
+          <button 
+            key={cat} 
+            onClick={() => setSelectedCategory(cat)}
+            style={{
+              ...categoryBtn,
+              background: selectedCategory === cat ? '#2d3436' : '#fff',
+              color: selectedCategory === cat ? '#fff' : '#2d3436'
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       <div className="main-content" style={contentWrapperStyle}>
-        
         <div className="story-grid" style={gridStyle}>
-          {stories.map(s => {
+          {filteredStories.map(s => {
             const isExpanded = expandedStory === s.id;
-            const revealReq = requests.find(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved');
             const isOwner = s.writerName === displayName;
-            const canSeeStory = revealReq || isOwner;
+
+            // আলাদা আলাদা লক চেক
+            const hasSynopsisAccess = requests.find(r => 
+              r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === 'synopsis'
+            );
+            const hasFullStoryAccess = requests.find(r => 
+              r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === 'fullStory'
+            );
+
+            // যদি লক না করা থাকে (public) অথবা এক্সেস থাকে
+            const canSeeSynopsis = !s.isSynopsisLocked || hasSynopsisAccess || isOwner;
+            const canSeeFullStory = !s.isFullStoryLocked || hasFullStoryAccess || isOwner;
 
             return (
               <div key={s.id} style={cardWrapper}>
@@ -70,7 +112,7 @@ const CommonDashboard = () => {
                     </div>
                     <div>
                       <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
-                      <span style={tagStyle}>{s.writerProfession || "Creator"}</span>
+                      <span style={tagStyle}>{s.genre || "Creator"}</span>
                     </div>
                   </div>
                   {isOwner && (
@@ -86,20 +128,37 @@ const CommonDashboard = () => {
 
                 {isExpanded && (
                   <div style={detailsBox}>
-                    {canSeeStory ? (
-                      <div>
-                        <h5 style={labelStyle}>Synopsis</h5>
-                        <p style={{ fontSize: '14px', color: '#444', lineHeight: '1.5' }}>{s.synopsis}</p>
-                        <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a>
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '10px' }}>
-                        <p style={{ fontSize: '13px', color: '#888' }}>🔒 Private Content</p>
-                        {user.role === 'Director' && (
-                          <button onClick={() => setRequestModal({ story: s })} style={reqBtn}>Request Access</button>
-                        )}
-                      </div>
-                    )}
+                    {/* SYNOPSIS SECTION */}
+                    <div style={{ marginBottom: '15px' }}>
+                      <h5 style={labelStyle}>Synopsis</h5>
+                      {canSeeSynopsis ? (
+                        <p style={{ fontSize: '14px', color: '#444', lineHeight: '1.5' }}>{s.synopsis || "No synopsis provided."}</p>
+                      ) : (
+                        <div style={lockedBox}>
+                          <span style={{ fontSize: '12px' }}>🔒 Synopsis is locked</span>
+                          {user.role === 'Director' && (
+                            <button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request Access</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* FULL STORY SECTION */}
+                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                      <h5 style={labelStyle}>Full Story / Script</h5>
+                      {canSeeFullStory ? (
+                        s.fullStoryFile ? (
+                          <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a>
+                        ) : <p style={{ fontSize: '12px', color: '#888' }}>No file uploaded.</p>
+                      ) : (
+                        <div style={lockedBox}>
+                          <span style={{ fontSize: '12px' }}>🔒 Full story is locked</span>
+                          {user.role === 'Director' && (
+                            <button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request Access</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -112,7 +171,7 @@ const CommonDashboard = () => {
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h3 style={{ marginTop: 0, color: '#2d3436' }}>Request Access</h3>
+            <h3 style={{ marginTop: 0, color: '#2d3436' }}>Request {requestModal.type === 'synopsis' ? 'Synopsis' : 'Full Story'}</h3>
             <textarea 
               placeholder="Hi, I'm interested in your story..." 
               value={directorNote}
@@ -121,7 +180,7 @@ const CommonDashboard = () => {
             />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
-              <button onClick={sendRequest} style={confirmBtn}>Send Request</button>
+              <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send Request</button>
             </div>
           </div>
         </div>
@@ -130,7 +189,13 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles ---
+// --- New/Updated Styles ---
+const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
+const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
+const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
+const smallReqBtn = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
+
+// --- Previous Styles (Fixed) ---
 const contentWrapperStyle = { position: 'relative', zIndex: 1 };
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '30px' };
 const cardWrapper = { background: 'rgba(255, 255, 255, 0.95)', padding: '25px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.4)' };
@@ -144,7 +209,6 @@ const viewBtn = { width: '100%', padding: '12px', background: '#2d3436', color: 
 const detailsBox = { marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #eee' };
 const labelStyle = { margin: '0 0 8px 0', fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '1px' };
 const downloadLink = { display: 'inline-block', marginTop: '15px', color: '#4834d4', fontWeight: 'bold', textDecoration: 'none', fontSize: '14px' };
-const reqBtn = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', cursor: 'pointer', marginTop: '10px', width: '100%', fontWeight: '600' };
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' };
 const modalContent = { background: '#fff', padding: '30px', borderRadius: '24px', width: '90%', maxWidth: '450px' };
 const textareaStyle = { width: '100%', height: '120px', padding: '15px', borderRadius: '12px', border: '1px solid #ddd', marginBottom: '20px', resize: 'none', fontSize: '14px', outline: 'none' };
