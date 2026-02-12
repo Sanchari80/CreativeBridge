@@ -13,7 +13,7 @@ const PostForm = ({ closeForm }) => {
     contactInfo: '', 
     isSynopsisLocked: false, 
     isFullStoryLocked: true,
-    isContactLocked: true // নতুন লক ফিল্ড
+    isContactLocked: true 
   });
 
   const handleFile = (e) => {
@@ -25,8 +25,14 @@ const PostForm = ({ closeForm }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validation: Logline, Genre এবং Contact Info অবশ্যই দিতে হবে
     if (!formData.logline || !formData.genre) {
       return alert("Logline and Genre are required!");
+    }
+    
+    if (!formData.contactInfo.trim()) {
+      return alert("Please provide at least an Email or Phone number in Contact Info!");
     }
 
     const newStory = {
@@ -52,13 +58,13 @@ const PostForm = ({ closeForm }) => {
         </div>
         
         <form onSubmit={handleSubmit}>
-          <label style={labelStyle}>Select Genre:</label>
+          <label style={labelStyle}>Select Genre *:</label>
           <select value={formData.genre} onChange={e => setFormData({...formData, genre: e.target.value})} style={inputStyle}>
             <option>Action</option><option>Thriller</option><option>Romance</option><option>Drama</option>
             <option>Comedy</option><option>Sci-Fi</option><option>Horror</option><option>Documentary</option>
           </select>
 
-          <label style={labelStyle}>Logline (Required):</label>
+          <label style={labelStyle}>Logline (Required) *:</label>
           <input 
             placeholder="A short one-line summary..." 
             value={formData.logline} 
@@ -66,7 +72,6 @@ const PostForm = ({ closeForm }) => {
             style={inputStyle} 
           />
 
-          {/* Synopsis Section */}
           <div style={sectionBox}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label style={labelStyle}>Synopsis (Optional):</label>
@@ -87,7 +92,6 @@ const PostForm = ({ closeForm }) => {
             />
           </div>
 
-          {/* PDF Section */}
           <div style={sectionBox}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label style={labelStyle}>📄 Full Story File (Optional):</label>
@@ -104,7 +108,6 @@ const PostForm = ({ closeForm }) => {
             {formData.fileName && <p style={{fontSize: '11px', color: '#20c997', margin: '5px 0'}}>{formData.fileName}</p>}
           </div>
 
-          {/* Contact Info Section with Lock */}
           <div style={sectionBox}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label style={labelStyle}>Portfolio & Contact Info:</label>
@@ -117,12 +120,16 @@ const PostForm = ({ closeForm }) => {
                 {formData.isContactLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
+            
+            <label style={{fontSize: '10px', color: '#888'}}>Portfolio / CV (Optional):</label>
             <input 
-              placeholder="Portfolio URL or drive link..." 
+              placeholder="URL or drive link..." 
               value={formData.portfolio} 
               onChange={e => setFormData({...formData, portfolio: e.target.value})} 
               style={inputStyle} 
             />
+            
+            <label style={{fontSize: '10px', color: '#888'}}>Contact Email/Phone (Required) *:</label>
             <input 
               placeholder="Email or Phone..." 
               value={formData.contactInfo} 
