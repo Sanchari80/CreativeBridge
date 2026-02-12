@@ -10,7 +10,6 @@ const CommonDashboard = () => {
 
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
 
-  // ক্যাটাগরি লিস্ট
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi"];
 
   useEffect(() => {
@@ -35,7 +34,6 @@ const CommonDashboard = () => {
     if (!requestModal) return;
     const { story } = requestModal;
     
-    // নির্দিষ্ট টাইপের রিকোয়েস্ট আগে পাঠানো হয়েছে কি না চেক
     const alreadySent = requests.find(r => 
       r.storyId === story.id && 
       r.directorName === displayName && 
@@ -50,17 +48,16 @@ const CommonDashboard = () => {
       writerName: story.writerName, 
       directorName: displayName,
       status: 'pending',
-      requestType: type, // 'synopsis' অথবা 'fullStory'
+      requestType: type, // 'synopsis', 'fullStory', অথবা 'contactInfo'
       note: directorNote 
     };
 
     setRequests([...requests, newRequest]);
     setRequestModal(null);
     setDirectorNote("");
-    alert(`${type === 'synopsis' ? 'Synopsis' : 'Full Story'} request sent successfully!`);
+    alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
   };
 
-  // ক্যাটাগরি ফিল্টারিং লজিক
   const filteredStories = selectedCategory === "All" 
     ? stories 
     : stories.filter(s => s.genre === selectedCategory);
@@ -68,7 +65,6 @@ const CommonDashboard = () => {
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
       
-      {/* --- CATEGORY TABS --- */}
       <div style={categoryTabWrapper}>
         {categories.map(cat => (
           <button 
@@ -91,17 +87,16 @@ const CommonDashboard = () => {
             const isExpanded = expandedStory === s.id;
             const isOwner = s.writerName === displayName;
 
-            // আলাদা আলাদা লক চেক
-            const hasSynopsisAccess = requests.find(r => 
-              r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === 'synopsis'
-            );
-            const hasFullStoryAccess = requests.find(r => 
-              r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === 'fullStory'
-            );
+            // এক্সেস চেক লজিক
+            const checkAccess = (type) => {
+                return requests.find(r => 
+                    r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type
+                );
+            };
 
-            // যদি লক না করা থাকে (public) অথবা এক্সেস থাকে
-            const canSeeSynopsis = !s.isSynopsisLocked || hasSynopsisAccess || isOwner;
-            const canSeeFullStory = !s.isFullStoryLocked || hasFullStoryAccess || isOwner;
+            const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
+            const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
+            const canSeeContact = !s.isContactLocked || checkAccess('contactInfo') || isOwner;
 
             return (
               <div key={s.id} style={cardWrapper}>
@@ -128,23 +123,21 @@ const CommonDashboard = () => {
 
                 {isExpanded && (
                   <div style={detailsBox}>
-                    {/* SYNOPSIS SECTION */}
+                    {/* SYNOPSIS */}
                     <div style={{ marginBottom: '15px' }}>
                       <h5 style={labelStyle}>Synopsis</h5>
                       {canSeeSynopsis ? (
                         <p style={{ fontSize: '14px', color: '#444', lineHeight: '1.5' }}>{s.synopsis || "No synopsis provided."}</p>
                       ) : (
                         <div style={lockedBox}>
-                          <span style={{ fontSize: '12px' }}>🔒 Synopsis is locked</span>
-                          {user.role === 'Director' && (
-                            <button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request Access</button>
-                          )}
+                          <span style={{ fontSize: '12px' }}>🔒 Synopsis Locked</span>
+                          <button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request</button>
                         </div>
                       )}
                     </div>
 
-                    {/* FULL STORY SECTION */}
-                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                    {/* FULL STORY */}
+                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginBottom: '15px' }}>
                       <h5 style={labelStyle}>Full Story / Script</h5>
                       {canSeeFullStory ? (
                         s.fullStoryFile ? (
@@ -152,10 +145,24 @@ const CommonDashboard = () => {
                         ) : <p style={{ fontSize: '12px', color: '#888' }}>No file uploaded.</p>
                       ) : (
                         <div style={lockedBox}>
-                          <span style={{ fontSize: '12px' }}>🔒 Full story is locked</span>
-                          {user.role === 'Director' && (
-                            <button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request Access</button>
-                          )}
+                          <span style={{ fontSize: '12px' }}>🔒 Story Locked</span>
+                          <button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CONTACT INFO (New Update) */}
+                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                      <h5 style={labelStyle}>Contact & Portfolio</h5>
+                      {canSeeContact ? (
+                        <div style={{ fontSize: '13px', color: '#2d3436' }}>
+                          <p><strong>Contact:</strong> {s.contactInfo || "N/A"}</p>
+                          {s.portfolio && <p><strong>Portfolio:</strong> <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7'}}>Link</a></p>}
+                        </div>
+                      ) : (
+                        <div style={lockedBox}>
+                          <span style={{ fontSize: '12px' }}>🔒 Contact Locked</span>
+                          <button onClick={() => setRequestModal({ story: s, type: 'contactInfo' })} style={smallReqBtn}>Request</button>
                         </div>
                       )}
                     </div>
@@ -167,13 +174,12 @@ const CommonDashboard = () => {
         </div>
       </div>
 
-      {/* --- MODAL --- */}
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h3 style={{ marginTop: 0, color: '#2d3436' }}>Request {requestModal.type === 'synopsis' ? 'Synopsis' : 'Full Story'}</h3>
+            <h3 style={{ marginTop: 0, color: '#2d3436' }}>Request {requestModal.type}</h3>
             <textarea 
-              placeholder="Hi, I'm interested in your story..." 
+              placeholder="Write a note to the writer..." 
               value={directorNote}
               onChange={(e) => setDirectorNote(e.target.value)}
               style={textareaStyle}
@@ -189,13 +195,11 @@ const CommonDashboard = () => {
   );
 };
 
-// --- New/Updated Styles ---
+// --- Styles (আপনার আগের দেওয়া স্টাইলগুলোই বজায় আছে) ---
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
 const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
 const smallReqBtn = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
-
-// --- Previous Styles (Fixed) ---
 const contentWrapperStyle = { position: 'relative', zIndex: 1 };
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '30px' };
 const cardWrapper = { background: 'rgba(255, 255, 255, 0.95)', padding: '25px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.4)' };
