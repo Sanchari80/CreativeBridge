@@ -2,13 +2,13 @@ import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 
 const CommonDashboard = () => {
-  const { user, stories, setStories, requests, setRequests } = useContext(AppContext);
+  // ১. activeStoryState যোগ করা হয়েছে যাতে নোটিফিকেশন থেকে আসা স্টোরিটি সরাসরি ওপেন হয়
+  const { user, stories, setStories, requests, setRequests, activeStoryId, setActiveStoryId } = useContext(AppContext);
   const [expandedStory, setExpandedStory] = useState(null);
   const [requestModal, setRequestModal] = useState(null); 
   const [directorNote, setDirectorNote] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   
-  // ১. সেভ করা স্টোরির জন্য স্টেট
   const [savedStories, setSavedStories] = useState(() => {
     const saved = localStorage.getItem('savedStories');
     return saved ? JSON.parse(saved) : [];
@@ -16,6 +16,21 @@ const CommonDashboard = () => {
 
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
+
+  // ২. নোটিফিকেশন থেকে আসা স্টোরি আইডি থাকলে সেটি অটোমেটিক এক্সপ্যান্ড (Open) করবে
+  useEffect(() => {
+    if (activeStoryId) {
+      setExpandedStory(activeStoryId);
+      setSelectedCategory("All"); // নিশ্চিত করতে যে স্টোরিটি ফিল্টারে দেখা যাবে
+      
+      // স্ক্রল করে ওই স্টোরিতে নিয়ে যাওয়ার জন্য
+      setTimeout(() => {
+        const element = document.getElementById(`story-${activeStoryId}`);
+        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setActiveStoryId(null); // কাজ শেষ হলে আইডি ক্লিয়ার করে দিন
+      }, 500);
+    }
+  }, [activeStoryId, setActiveStoryId]);
 
   useEffect(() => {
     localStorage.setItem('allRequests', JSON.stringify(requests));
@@ -25,7 +40,6 @@ const CommonDashboard = () => {
     localStorage.setItem('allStories', JSON.stringify(stories));
   }, [stories]);
 
-  // ২. সেভ করা স্টোরি লোকাল স্টোরেজে রাখা
   useEffect(() => {
     localStorage.setItem('savedStories', JSON.stringify(savedStories));
   }, [savedStories]);
@@ -76,14 +90,10 @@ const CommonDashboard = () => {
     alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
   };
 
-  // ৩. ফিল্টারিং লজিক আপডেট (Saved এবং Approved স্টোরির জন্য)
   const filteredStories = stories.filter(s => {
     const isApproved = requests.some(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved');
-    
     if (selectedCategory === "Saved") return savedStories.includes(s.id);
     if (selectedCategory === "All") return true;
-    
-    // ৪. কেউ অ্যাপ্রুভ করলে সেটি তার ড্যাশবোর্ডে বা ক্যাটাগরিতে রেন্ডার হবে
     const matchesCategory = s.genre === selectedCategory;
     return matchesCategory || isApproved; 
   });
@@ -125,10 +135,11 @@ const CommonDashboard = () => {
             const canSeeContact = !s.isContactLocked || checkAccess('contactInfo') || isOwner;
 
             return (
-              <div key={s.id} style={cardWrapper}>
+              <div key={s.id} id={`story-${s.id}`} style={cardWrapper}>
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
+                      {/* ৩. ইউজার প্রোফাইল পিকচার লজিক আপডেট করা হয়েছে */}
                       <img 
                         src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} 
                         alt="p" 
@@ -141,7 +152,6 @@ const CommonDashboard = () => {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    {/* ৫. সেভ বাটন */}
                     <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
                       {isSaved ? "⭐" : "☆"}
                     </button>
@@ -159,6 +169,7 @@ const CommonDashboard = () => {
 
                 {isExpanded && (
                   <div style={detailsBox}>
+                    {/* ... (বাকি ডিটেইলস সেকশন অপরিবর্তিত) ... */}
                     <div style={{ marginBottom: '15px' }}>
                       <h5 style={labelStyle}>Synopsis</h5>
                       {canSeeSynopsis ? (

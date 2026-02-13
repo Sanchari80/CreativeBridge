@@ -19,9 +19,12 @@ export const AppProvider = ({ children }) => {
     return savedRequests ? JSON.parse(savedRequests) : [];
   });
 
-  // --- DATA SAVE KORA (JOKHON-I CHANGE HOBE) ---
+  // নোটিফিকেশন থেকে স্টোরি ওপেন করার জন্য নতুন স্টেট
+  const [activeStoryId, setActiveStoryId] = useState(null);
+
+  // --- DATA SAVE KORA ---
   useEffect(() => {
-    localStorage.setItem('user', JSON.stringify(user));
+    if (user) localStorage.setItem('user', JSON.stringify(user));
   }, [user]);
 
   useEffect(() => {
@@ -32,10 +35,9 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('requests', JSON.stringify(requests));
   }, [requests]);
 
-  // Logout function (Dorkar hole)
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.clear(); // সব ডেটা ক্লিয়ার করবে
   };
 
   return (
@@ -43,6 +45,7 @@ export const AppProvider = ({ children }) => {
       user, setUser, 
       stories, setStories, 
       requests, setRequests,
+      activeStoryId, setActiveStoryId, // এগুলো শেয়ার করা হলো
       logout 
     }}>
       {children}

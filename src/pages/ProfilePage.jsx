@@ -1,15 +1,28 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 
-const ProfilePage = ({ onBack }) => { // onBack প্রপস যোগ করা হলো
-  const { user, setUser } = useContext(AppContext);
+const ProfilePage = ({ onBack }) => {
+  const { user, setUser, stories, setStories } = useContext(AppContext);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUser({ ...user, profilePic: reader.result });
+        const newPhoto = reader.result;
+
+        // ১. ইউজারের প্রোফাইল পিক আপডেট
+        setUser({ ...user, profilePic: newPhoto });
+
+        // ২. ইউজারের আগে আপলোড করা সব স্টোরিতেও নতুন ফটো ম্যাচিং করে দেওয়া
+        if (stories && stories.length > 0) {
+          const updatedStories = stories.map(s => 
+            s.writerName === (user?.name || user?.email?.split('@')[0]) 
+            ? { ...s, writerPic: newPhoto } 
+            : s
+          );
+          setStories(updatedStories);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -17,7 +30,6 @@ const ProfilePage = ({ onBack }) => { // onBack প্রপস যোগ কর
 
   return (
     <div style={containerStyle}>
-      {/* ব্যাক বাটন */}
       <div style={{ width: '100%', maxWidth: '500px', textAlign: 'left', marginBottom: '10px' }}>
         <button onClick={onBack} style={backBtnStyle}>← Back to Dashboard</button>
       </div>
@@ -62,20 +74,8 @@ const ProfilePage = ({ onBack }) => { // onBack প্রপস যোগ কর
   );
 };
 
-// --- নতুন স্টাইল ---
-const backBtnStyle = {
-  background: 'none',
-  border: 'none',
-  color: '#2d3436',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-  fontSize: '14px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '5px'
-};
-
-// --- আগের স্টাইলগুলো (একই থাকবে) ---
+// --- Styles (আপনার দেওয়া স্টাইলগুলোই বজায় রাখা হয়েছে) ---
+const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const containerStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' };
 const profileCard = { background: 'rgba(255, 255, 255, 0.9)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', width: '100%', maxWidth: '500px', textAlign: 'center' };
 const imageWrapper = { position: 'relative', width: '150px', height: '150px', margin: '0 auto 30px' };
