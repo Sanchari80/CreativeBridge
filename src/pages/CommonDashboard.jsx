@@ -2,7 +2,6 @@ import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 
 const CommonDashboard = () => {
-  // ১. activeStoryState যোগ করা হয়েছে যাতে নোটিফিকেশন থেকে আসা স্টোরিটি সরাসরি ওপেন হয়
   const { user, stories, setStories, requests, setRequests, activeStoryId, setActiveStoryId } = useContext(AppContext);
   const [expandedStory, setExpandedStory] = useState(null);
   const [requestModal, setRequestModal] = useState(null); 
@@ -17,17 +16,16 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
-  // ২. নোটিফিকেশন থেকে আসা স্টোরি আইডি থাকলে সেটি অটোমেটিক এক্সপ্যান্ড (Open) করবে
+  // ১. নোটিফিকেশন থেকে আসা আইডি দিয়ে সরাসরি কার্ড ওপেন করা
   useEffect(() => {
     if (activeStoryId) {
-      setExpandedStory(activeStoryId);
-      setSelectedCategory("All"); // নিশ্চিত করতে যে স্টোরিটি ফিল্টারে দেখা যাবে
+      setSelectedCategory("All");
+      setExpandedStory(activeStoryId); // সরাসরি আইডি সেট করা হলো যাতে ডিটেইলস রেন্ডার হয়
       
-      // স্ক্রল করে ওই স্টোরিতে নিয়ে যাওয়ার জন্য
       setTimeout(() => {
         const element = document.getElementById(`story-${activeStoryId}`);
         if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setActiveStoryId(null); // কাজ শেষ হলে আইডি ক্লিয়ার করে দিন
+        setActiveStoryId(null);
       }, 500);
     }
   }, [activeStoryId, setActiveStoryId]);
@@ -90,12 +88,13 @@ const CommonDashboard = () => {
     alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
   };
 
+  // ২. ফিল্টারিং লজিক ফিক্স (এখন শুধু নিজস্ব ক্যাটাগরিতেই দেখাবে)
   const filteredStories = stories.filter(s => {
-    const isApproved = requests.some(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved');
     if (selectedCategory === "Saved") return savedStories.includes(s.id);
     if (selectedCategory === "All") return true;
-    const matchesCategory = s.genre === selectedCategory;
-    return matchesCategory || isApproved; 
+    
+    // ক্যাটাগরি ম্যাচ করলে তবেই দেখাবে
+    return s.genre === selectedCategory; 
   });
 
   return (
@@ -139,7 +138,6 @@ const CommonDashboard = () => {
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
-                      {/* ৩. ইউজার প্রোফাইল পিকচার লজিক আপডেট করা হয়েছে */}
                       <img 
                         src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} 
                         alt="p" 
@@ -167,9 +165,9 @@ const CommonDashboard = () => {
                   {isExpanded ? "Close Details" : "View Details"}
                 </button>
 
+                {/* ৩. Story Card render fix: isExpanded ট্রু হলে এটি দেখাবে */}
                 {isExpanded && (
                   <div style={detailsBox}>
-                    {/* ... (বাকি ডিটেইলস সেকশন অপরিবর্তিত) ... */}
                     <div style={{ marginBottom: '15px' }}>
                       <h5 style={labelStyle}>Synopsis</h5>
                       {canSeeSynopsis ? (
@@ -239,7 +237,7 @@ const CommonDashboard = () => {
   );
 };
 
-// Styles (Unchanged)
+// Styles (একদম অপরিবর্তিত)
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
 const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
