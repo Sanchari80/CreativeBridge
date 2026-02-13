@@ -16,16 +16,16 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
-  // ১. নোটিফিকেশন থেকে আসা আইডি দিয়ে সরাসরি কার্ড ওপেন করা
+  // নোটিফিকেশন থেকে আসা স্টোরি আইডি হ্যান্ডেল করা
   useEffect(() => {
     if (activeStoryId) {
       setSelectedCategory("All");
-      setExpandedStory(activeStoryId); // সরাসরি আইডি সেট করা হলো যাতে ডিটেইলস রেন্ডার হয়
+      setExpandedStory(activeStoryId); // সরাসরি আইডি সেট করা হলো যাতে ডিটেইলস ওপেন হয়
       
       setTimeout(() => {
         const element = document.getElementById(`story-${activeStoryId}`);
         if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setActiveStoryId(null);
+        setActiveStoryId(null); 
       }, 500);
     }
   }, [activeStoryId, setActiveStoryId]);
@@ -88,12 +88,12 @@ const CommonDashboard = () => {
     alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
   };
 
-  // ২. ফিল্টারিং লজিক ফিক্স (এখন শুধু নিজস্ব ক্যাটাগরিতেই দেখাবে)
+  // --- FILTERING LOGIC UPDATE ---
   const filteredStories = stories.filter(s => {
     if (selectedCategory === "Saved") return savedStories.includes(s.id);
     if (selectedCategory === "All") return true;
     
-    // ক্যাটাগরি ম্যাচ করলে তবেই দেখাবে
+    // শুধু সিলেক্টেড জেনারের স্টোরিই দেখাবে
     return s.genre === selectedCategory; 
   });
 
@@ -165,7 +165,6 @@ const CommonDashboard = () => {
                   {isExpanded ? "Close Details" : "View Details"}
                 </button>
 
-                {/* ৩. Story Card render fix: isExpanded ট্রু হলে এটি দেখাবে */}
                 {isExpanded && (
                   <div style={detailsBox}>
                     <div style={{ marginBottom: '15px' }}>
@@ -237,7 +236,7 @@ const CommonDashboard = () => {
   );
 };
 
-// Styles (একদম অপরিবর্তিত)
+// --- Styles (আপনার দেওয়া স্টাইলগুলোই বজায় রাখা হয়েছে) ---
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
 const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
