@@ -20,7 +20,7 @@ const CommonDashboard = () => {
   useEffect(() => {
     if (activeStoryId) {
       setSelectedCategory("All");
-      setExpandedStory(activeStoryId); // সরাসরি আইডি সেট করা হলো যাতে ডিটেইলস ওপেন হয়
+      setExpandedStory(activeStoryId); 
       
       setTimeout(() => {
         const element = document.getElementById(`story-${activeStoryId}`);
@@ -88,29 +88,71 @@ const CommonDashboard = () => {
     alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
   };
 
-  // --- FILTERING LOGIC UPDATE ---
   const filteredStories = stories.filter(s => {
     if (selectedCategory === "Saved") return savedStories.includes(s.id);
     if (selectedCategory === "All") return true;
-    
-    // শুধু সিলেক্টেড জেনারের স্টোরিই দেখাবে
     return s.genre === selectedCategory; 
   });
 
+  // --- সিঙ্গেল কার্ড ভিউ লজিক (নোটিফিকেশন বা ডিটেইলস এর জন্য) ---
+  if (expandedStory && activeStoryId === null) {
+    const s = stories.find(item => item.id === expandedStory);
+    if (s) {
+      const isOwner = s.writerName === displayName;
+      const checkAccess = (type) => requests.find(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type);
+      const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
+      const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
+      const canSeeContact = !s.isContactLocked || checkAccess('contactInfo') || isOwner;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+          <button onClick={() => setExpandedStory(null)} style={backBtnStyle}>← Back to Dashboard</button>
+          <div style={cardWrapper}>
+            <div style={profileHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <div style={avatarWrapper}>
+                  <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
+                </div>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
+                  <span style={tagStyle}>{s.genre || "Creator"}</span>
+                </div>
+              </div>
+            </div>
+            <p style={loglineStyle}>{s.logline}</p>
+            <div style={detailsBox}>
+              <div style={{ marginBottom: '15px' }}>
+                <h5 style={labelStyle}>Synopsis</h5>
+                {canSeeSynopsis ? <p style={{ fontSize: '14px', color: '#444' }}>{s.synopsis}</p> : <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request</button></div>}
+              </div>
+              <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                <h5 style={labelStyle}>Full Story</h5>
+                {canSeeFullStory ? (s.fullStoryFile ? <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a> : "No file") : <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request</button></div>}
+              </div>
+            </div>
+          </div>
+          {requestModal && (
+            <div style={modalOverlay}>
+              <div style={modalContent}>
+                <h3>Request {requestModal.type}</h3>
+                <textarea value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} style={textareaStyle} placeholder="Note..." />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
+                  <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
-      
       <div style={categoryTabWrapper}>
         {categories.map(cat => (
-          <button 
-            key={cat} 
-            onClick={() => setSelectedCategory(cat)}
-            style={{
-              ...categoryBtn,
-              background: selectedCategory === cat ? '#2d3436' : '#fff',
-              color: selectedCategory === cat ? '#fff' : '#2d3436'
-            }}
-          >
+          <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ ...categoryBtn, background: selectedCategory === cat ? '#2d3436' : '#fff', color: selectedCategory === cat ? '#fff' : '#2d3436' }}>
             {cat === "Saved" ? `⭐ ${cat}` : cat}
           </button>
         ))}
@@ -119,112 +161,33 @@ const CommonDashboard = () => {
       <div className="main-content" style={contentWrapperStyle}>
         <div className="story-grid" style={gridStyle}>
           {filteredStories.map(s => {
-            const isExpanded = expandedStory === s.id;
             const isOwner = s.writerName === displayName;
-            const isSaved = savedStories.includes(s.id);
-
-            const checkAccess = (type) => {
-                return requests.find(r => 
-                  r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type
-                );
-            };
-
-            const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
-            const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
-            const canSeeContact = !s.isContactLocked || checkAccess('contactInfo') || isOwner;
-
             return (
               <div key={s.id} id={`story-${s.id}`} style={cardWrapper}>
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
-                      <img 
-                        src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} 
-                        alt="p" 
-                        style={avatarImg} 
-                      />
+                      <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
                     </div>
                     <div>
                       <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
                       <span style={tagStyle}>{s.genre || "Creator"}</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
-                      {isSaved ? "⭐" : "☆"}
-                    </button>
-                    {isOwner && (
-                      <button onClick={() => deleteStory(s.id)} style={deleteBtn}>🗑️</button>
-                    )}
-                  </div>
                 </div>
-
                 <p style={loglineStyle}>{s.logline}</p>
-                
-                <button onClick={() => setExpandedStory(isExpanded ? null : s.id)} style={viewBtn}>
-                  {isExpanded ? "Close Details" : "View Details"}
-                </button>
-
-                {isExpanded && (
-                  <div style={detailsBox}>
-                    <div style={{ marginBottom: '15px' }}>
-                      <h5 style={labelStyle}>Synopsis</h5>
-                      {canSeeSynopsis ? (
-                        <p style={{ fontSize: '14px', color: '#444', lineHeight: '1.5' }}>{s.synopsis || "No synopsis provided."}</p>
-                      ) : (
-                        <div style={lockedBox}>
-                          <span style={{ fontSize: '12px' }}>🔒 Synopsis Locked</span>
-                          <button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request</button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginBottom: '15px' }}>
-                      <h5 style={labelStyle}>Full Story / Script</h5>
-                      {canSeeFullStory ? (
-                        s.fullStoryFile ? (
-                          <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a>
-                        ) : <p style={{ fontSize: '12px', color: '#888' }}>No file uploaded.</p>
-                      ) : (
-                        <div style={lockedBox}>
-                          <span style={{ fontSize: '12px' }}>🔒 Story Locked</span>
-                          <button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request</button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                      <h5 style={labelStyle}>Contact & Portfolio</h5>
-                      {canSeeContact ? (
-                        <div style={{ fontSize: '13px', color: '#2d3436' }}>
-                          <p><strong>Contact:</strong> {s.contactInfo || "N/A"}</p>
-                          {s.portfolio && <p><strong>Portfolio:</strong> <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7'}}>Link</a></p>}
-                        </div>
-                      ) : (
-                        <div style={lockedBox}>
-                          <span style={{ fontSize: '12px' }}>🔒 Contact Locked</span>
-                          <button onClick={() => setRequestModal({ story: s, type: 'contactInfo' })} style={smallReqBtn}>Request</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
               </div>
             );
           })}
         </div>
       </div>
-
+      {/* Modal logic also here for main grid */}
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h3 style={{ marginTop: 0, color: '#2d3436' }}>Request {requestModal.type}</h3>
-            <textarea 
-              placeholder="Write a note to the writer..." 
-              value={directorNote}
-              onChange={(e) => setDirectorNote(e.target.value)}
-              style={textareaStyle}
-            />
+            <h3 style={{ marginTop: 0 }}>Request {requestModal.type}</h3>
+            <textarea placeholder="Note..." value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} style={textareaStyle} />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
               <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send Request</button>
@@ -236,7 +199,8 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles (আপনার দেওয়া স্টাইলগুলোই বজায় রাখা হয়েছে) ---
+// --- Styles (সব অপরিবর্তিত) ---
+const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
 const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
