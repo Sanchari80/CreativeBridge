@@ -91,7 +91,8 @@ function App() {
 
       {/* ৫. ডাইনামিক পেজ রেন্ডারিং */}
       <main style={mainStyle}>
-        {view === 'dashboard' ? <CommonDashboard /> : <ProfilePage />}
+        {/* প্রোফাইল পেজে onBack ফাংশনটি পাঠানো হলো যাতে ব্যাক বাটন কাজ করে */}
+        {view === 'dashboard' ? <CommonDashboard /> : <ProfilePage onBack={() => setView('dashboard')} />}
       </main>
 
       <footer style={footerStyle}>
