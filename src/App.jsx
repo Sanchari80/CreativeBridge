@@ -29,7 +29,14 @@ function App() {
   const [showPostForm, setShowPostForm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [view, setView] = useState('dashboard');
-  const [liveVisitors, setLiveVisitors] = useState(0); // লাইভ ভিজিটর স্টেট
+  const [liveVisitors, setLiveVisitors] = useState(0); 
+
+  // --- Persistence Logic (প্রোফাইল পিকচার ধরে রাখার জন্য) ---
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('activeUser', JSON.stringify(user));
+    }
+  }, [user]);
 
   const footerLogoPath = "/SKT logo.jpg";
 
@@ -77,7 +84,6 @@ function App() {
           <img src="/icon.png" alt="App Icon" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
           <h2 style={{ margin: 0, color: '#2d3436', fontSize: '1.4rem', fontWeight: '800' }}>Creative Bridge</h2>
           
-          {/* লাইভ ভিজিটর ব্যাজ */}
           <div style={liveBadgeStyle}>
             <span style={pulseDot}></span>
             {liveVisitors} Live
@@ -140,7 +146,7 @@ function App() {
   );
 }
 
-// --- Styles (নতুন যুক্ত করা হলো) ---
+// --- Styles ---
 const liveBadgeStyle = { 
   display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', 
   padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', 
@@ -150,8 +156,6 @@ const pulseDot = {
   width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%',
   boxShadow: '0 0 5px #4caf50'
 };
-
-// --- আপনার আগের স্টাইলগুলো ---
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
 const notifHeader = { display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #f0f0f0', marginBottom: '10px' };
 const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999' };
