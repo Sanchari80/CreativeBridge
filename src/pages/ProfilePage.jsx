@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 
-const ProfilePage = () => {
+const ProfilePage = ({ onBack }) => { // onBack প্রপস যোগ করা হলো
   const { user, setUser } = useContext(AppContext);
 
   const handleImageChange = (e) => {
@@ -9,7 +9,6 @@ const ProfilePage = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // user অবজেক্টে profilePic আপডেট করা হচ্ছে
         setUser({ ...user, profilePic: reader.result });
       };
       reader.readAsDataURL(file);
@@ -18,7 +17,12 @@ const ProfilePage = () => {
 
   return (
     <div style={containerStyle}>
-      <h2 style={{ color: '#2d3436', marginBottom: '30px' }}>User Profile Settings</h2>
+      {/* ব্যাক বাটন */}
+      <div style={{ width: '100%', maxWidth: '500px', textAlign: 'left', marginBottom: '10px' }}>
+        <button onClick={onBack} style={backBtnStyle}>← Back to Dashboard</button>
+      </div>
+
+      <h2 style={{ color: '#2d3436', marginBottom: '20px' }}>User Profile Settings</h2>
       
       <div style={profileCard}>
         <div style={imageWrapper}>
@@ -58,7 +62,20 @@ const ProfilePage = () => {
   );
 };
 
-// --- Styles ---
+// --- নতুন স্টাইল ---
+const backBtnStyle = {
+  background: 'none',
+  border: 'none',
+  color: '#2d3436',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+  fontSize: '14px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '5px'
+};
+
+// --- আগের স্টাইলগুলো (একই থাকবে) ---
 const containerStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' };
 const profileCard = { background: 'rgba(255, 255, 255, 0.9)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', width: '100%', maxWidth: '500px', textAlign: 'center' };
 const imageWrapper = { position: 'relative', width: '150px', height: '150px', margin: '0 auto 30px' };
