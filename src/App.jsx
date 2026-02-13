@@ -3,17 +3,17 @@ import { AppContext } from './context/AppContext';
 import AuthPage from './pages/Authpage'; 
 import CommonDashboard from './pages/CommonDashboard';
 import PostForm from './pages/PostForm';
-import NotificationSystem from './components/NotificationSystem'; // ইমপোর্ট করা হলো
+import ProfilePage from './pages/ProfilePage'; // ১. প্রোফাইল পেজ ইমপোর্ট করা হলো
+import NotificationSystem from './components/NotificationSystem';
 
 function App() {
-  const { user, setUser, requests } = useContext(AppContext); // requests আনা হলো
+  const { user, setUser, requests } = useContext(AppContext);
   const [showPostForm, setShowPostForm] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false); // নোটিফিকেশন স্টেট
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [view, setView] = useState('dashboard'); // ২. পেজ নেভিগেশনের জন্য স্টেট
 
-  const navIconPath = "/icon.png"; 
   const footerLogoPath = "/SKT logo.jpg";
 
-  // নোটিফিকেশন কাউন্ট চেক (লাল ডটের জন্য)
   const hasNewNotifications = requests?.some(r => 
     (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
     (user?.role === 'Director' && r.status === 'approved' && r.directorName === user.name)
@@ -37,18 +37,17 @@ function App() {
 
       {/* --- NAVBAR --- */}
       <nav className="navbar" style={navStyle}>
-        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img src={navIconPath} alt="App Icon" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
+        <div 
+          className="logo-section" 
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          onClick={() => setView('dashboard')} // লোগোতে ক্লিক করলে ড্যাশবোর্ডে ফিরবে
+        >
+          <img src="/icon.png" alt="App Icon" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
           <h2 style={{ margin: 0, color: '#2d3436', fontSize: '1.4rem', fontWeight: '800' }}>Creative Bridge</h2>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          {/* Global Notification Button */}
-          <div 
-            style={iconBtnStyle} 
-            title="Notifications" 
-            onClick={() => setShowNotifications(!showNotifications)}
-          >
+          <div style={iconBtnStyle} title="Notifications" onClick={() => setShowNotifications(!showNotifications)}>
             <span style={{ fontSize: '18px' }}>🔔</span>
             {hasNewNotifications && <span style={badgeStyle}></span>}
           </div>
@@ -57,10 +56,22 @@ function App() {
             <button onClick={() => setShowPostForm(true)} style={postBtnStyle}>+ Post Story</button>
           )}
 
-          <div style={{ textAlign: 'right', lineHeight: '1.2' }}>
-            <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
-            <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
+          {/* ৩. ইউজার প্রোফাইল সেকশন - এখানে ক্লিক করলে প্রোফাইল পেজ ওপেন হবে */}
+          <div 
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} 
+            onClick={() => setView('profile')}
+          >
+            <div style={{ textAlign: 'right', lineHeight: '1.2' }}>
+              <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
+              <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
+            </div>
+            <img 
+              src={user.profilePic || "/icon.png"} // ৪. ইউজারের নিজস্ব ছবি থাকলে সেটা দেখাবে
+              alt="Profile" 
+              style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} 
+            />
           </div>
+          
           <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
         </div>
       </nav>
@@ -78,8 +89,9 @@ function App() {
 
       {showPostForm && <PostForm closeForm={() => setShowPostForm(false)} />}
 
+      {/* ৫. ডাইনামিক পেজ রেন্ডারিং */}
       <main style={mainStyle}>
-        <CommonDashboard />
+        {view === 'dashboard' ? <CommonDashboard /> : <ProfilePage />}
       </main>
 
       <footer style={footerStyle}>
