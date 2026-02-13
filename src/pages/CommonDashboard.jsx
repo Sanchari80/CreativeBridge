@@ -118,6 +118,15 @@ const CommonDashboard = () => {
                   <span style={tagStyle}>{s.genre || "Creator"}</span>
                 </div>
               </div>
+              {/* ডিটেইলস ভিউতেও বাটনগুলো রাখা হলো */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
+                  {savedStories.includes(s.id) ? "⭐" : "☆"}
+                </button>
+                {isOwner && (
+                  <button onClick={() => deleteStory(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                )}
+              </div>
             </div>
             <p style={loglineStyle}>{s.logline}</p>
             <div style={detailsBox}>
@@ -174,6 +183,15 @@ const CommonDashboard = () => {
                       <span style={tagStyle}>{s.genre || "Creator"}</span>
                     </div>
                   </div>
+                  {/* গ্রিড কার্ডে বাটনগুলো যোগ করা হলো */}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
+                      {savedStories.includes(s.id) ? "⭐" : "☆"}
+                    </button>
+                    {isOwner && (
+                      <button onClick={() => deleteStory(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                    )}
+                  </div>
                 </div>
                 <p style={loglineStyle}>{s.logline}</p>
                 <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
@@ -182,7 +200,6 @@ const CommonDashboard = () => {
           })}
         </div>
       </div>
-      {/* Modal logic also here for main grid */}
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
