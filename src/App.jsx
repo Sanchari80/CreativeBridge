@@ -1,18 +1,51 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from './context/AppContext';
 import AuthPage from './pages/Authpage'; 
 import CommonDashboard from './pages/CommonDashboard';
 import PostForm from './pages/PostForm';
-import ProfilePage from './pages/ProfilePage'; // ১. প্রোফাইল পেজ ইমপোর্ট করা হলো
+import ProfilePage from './pages/ProfilePage'; 
 import NotificationSystem from './components/NotificationSystem';
+
+// --- Firebase Imports ---
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
+  authDomain: "creativebridge-88c8a.firebaseapp.com",
+  projectId: "creativebridge-88c8a",
+  storageBucket: "creativebridge-88c8a.firebasestorage.app",
+  messagingSenderId: "576097901738",
+  appId: "1:576097901738:web:5cd79c3d32d65bac2c04d3",
+  databaseURL: "https://creativebridge-88c8a-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
 function App() {
   const { user, setUser, requests } = useContext(AppContext);
   const [showPostForm, setShowPostForm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [view, setView] = useState('dashboard'); // ২. পেজ নেভিগেশনের জন্য স্টেট
+  const [view, setView] = useState('dashboard');
+  const [liveVisitors, setLiveVisitors] = useState(0); // লাইভ ভিজিটর স্টেট
 
   const footerLogoPath = "/SKT logo.jpg";
+
+  // --- Realtime Visitor Logic ---
+  useEffect(() => {
+    const visitorId = Math.random().toString(36).substr(2, 9);
+    const myStatusRef = ref(db, 'status/' + visitorId);
+
+    set(myStatusRef, { online: true, lastChanged: serverTimestamp() });
+    onDisconnect(myStatusRef).remove();
+
+    const allStatusRef = ref(db, 'status');
+    onValue(allStatusRef, (snapshot) => {
+      setLiveVisitors(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
+    });
+  }, []);
 
   const hasNewNotifications = requests?.some(r => 
     (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
@@ -35,15 +68,20 @@ function App() {
         <div style={overlayStyle}></div>
       </div>
 
-      {/* --- NAVBAR --- */}
       <nav className="navbar" style={navStyle}>
         <div 
           className="logo-section" 
           style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-          onClick={() => setView('dashboard')} // লোগোতে ক্লিক করলে ড্যাশবোর্ডে ফিরবে
+          onClick={() => setView('dashboard')}
         >
           <img src="/icon.png" alt="App Icon" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
           <h2 style={{ margin: 0, color: '#2d3436', fontSize: '1.4rem', fontWeight: '800' }}>Creative Bridge</h2>
+          
+          {/* লাইভ ভিজিটর ব্যাজ */}
+          <div style={liveBadgeStyle}>
+            <span style={pulseDot}></span>
+            {liveVisitors} Live
+          </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -56,7 +94,6 @@ function App() {
             <button onClick={() => setShowPostForm(true)} style={postBtnStyle}>+ Post Story</button>
           )}
 
-          {/* ৩. ইউজার প্রোফাইল সেকশন - এখানে ক্লিক করলে প্রোফাইল পেজ ওপেন হবে */}
           <div 
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} 
             onClick={() => setView('profile')}
@@ -66,7 +103,7 @@ function App() {
               <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
             </div>
             <img 
-              src={user.profilePic || "/icon.png"} // ৪. ইউজারের নিজস্ব ছবি থাকলে সেটা দেখাবে
+              src={user.profilePic || "/icon.png"} 
               alt="Profile" 
               style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} 
             />
@@ -76,7 +113,6 @@ function App() {
         </div>
       </nav>
 
-      {/* --- NOTIFICATION PANEL --- */}
       {showNotifications && (
         <div style={notifPanelContainer}>
           <div style={notifHeader}>
@@ -89,9 +125,7 @@ function App() {
 
       {showPostForm && <PostForm closeForm={() => setShowPostForm(false)} />}
 
-      {/* ৫. ডাইনামিক পেজ রেন্ডারিং */}
       <main style={mainStyle}>
-        {/* প্রোফাইল পেজে onBack ফাংশনটি পাঠানো হলো যাতে ব্যাক বাটন কাজ করে */}
         {view === 'dashboard' ? <CommonDashboard /> : <ProfilePage onBack={() => setView('dashboard')} />}
       </main>
 
@@ -106,16 +140,22 @@ function App() {
   );
 }
 
-// --- Styles ---
-const notifPanelContainer = {
-  position: 'absolute', top: '75px', right: '5%', width: '320px', 
-  background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-  zIndex: 1001, padding: '15px', border: '1px solid #eee'
+// --- Styles (নতুন যুক্ত করা হলো) ---
+const liveBadgeStyle = { 
+  display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', 
+  padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', 
+  fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9'
 };
+const pulseDot = { 
+  width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%',
+  boxShadow: '0 0 5px #4caf50'
+};
+
+// --- আপনার আগের স্টাইলগুলো ---
+const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
 const notifHeader = { display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #f0f0f0', marginBottom: '10px' };
 const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999' };
 const badgeStyle = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: '#ff4757', borderRadius: '50%', border: '2px solid white' };
-
 const appContainerStyle = { display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' };
 const videoWrapper = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, overflow: 'hidden' };
 const videoBgStyle = { width: '100%', height: '100%', objectFit: 'cover' };

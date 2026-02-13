@@ -7,10 +7,15 @@ const CommonDashboard = () => {
   const [requestModal, setRequestModal] = useState(null); 
   const [directorNote, setDirectorNote] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  
+  // ১. সেভ করা স্টোরির জন্য স্টেট
+  const [savedStories, setSavedStories] = useState(() => {
+    const saved = localStorage.getItem('savedStories');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
-
-  const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi"];
+  const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
   useEffect(() => {
     localStorage.setItem('allRequests', JSON.stringify(requests));
@@ -20,6 +25,11 @@ const CommonDashboard = () => {
     localStorage.setItem('allStories', JSON.stringify(stories));
   }, [stories]);
 
+  // ২. সেভ করা স্টোরি লোকাল স্টোরেজে রাখা
+  useEffect(() => {
+    localStorage.setItem('savedStories', JSON.stringify(savedStories));
+  }, [savedStories]);
+
   const deleteStory = (storyId) => {
     if (window.confirm("Are you sure you want to delete this story?")) {
       const updatedStories = stories.filter(s => s.id !== storyId);
@@ -27,6 +37,14 @@ const CommonDashboard = () => {
       const updatedRequests = requests.filter(r => r.storyId !== storyId);
       setRequests(updatedRequests);
       alert("Story deleted successfully!");
+    }
+  };
+
+  const toggleSaveStory = (storyId) => {
+    if (savedStories.includes(storyId)) {
+      setSavedStories(savedStories.filter(id => id !== storyId));
+    } else {
+      setSavedStories([...savedStories, storyId]);
     }
   };
 
@@ -48,7 +66,7 @@ const CommonDashboard = () => {
       writerName: story.writerName, 
       directorName: displayName,
       status: 'pending',
-      requestType: type, // 'synopsis', 'fullStory', অথবা 'contactInfo'
+      requestType: type,
       note: directorNote 
     };
 
@@ -58,9 +76,17 @@ const CommonDashboard = () => {
     alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
   };
 
-  const filteredStories = selectedCategory === "All" 
-    ? stories 
-    : stories.filter(s => s.genre === selectedCategory);
+  // ৩. ফিল্টারিং লজিক আপডেট (Saved এবং Approved স্টোরির জন্য)
+  const filteredStories = stories.filter(s => {
+    const isApproved = requests.some(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved');
+    
+    if (selectedCategory === "Saved") return savedStories.includes(s.id);
+    if (selectedCategory === "All") return true;
+    
+    // ৪. কেউ অ্যাপ্রুভ করলে সেটি তার ড্যাশবোর্ডে বা ক্যাটাগরিতে রেন্ডার হবে
+    const matchesCategory = s.genre === selectedCategory;
+    return matchesCategory || isApproved; 
+  });
 
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
@@ -76,7 +102,7 @@ const CommonDashboard = () => {
               color: selectedCategory === cat ? '#fff' : '#2d3436'
             }}
           >
-            {cat}
+            {cat === "Saved" ? `⭐ ${cat}` : cat}
           </button>
         ))}
       </div>
@@ -86,11 +112,11 @@ const CommonDashboard = () => {
           {filteredStories.map(s => {
             const isExpanded = expandedStory === s.id;
             const isOwner = s.writerName === displayName;
+            const isSaved = savedStories.includes(s.id);
 
-            // এক্সেস চেক লজিক
             const checkAccess = (type) => {
                 return requests.find(r => 
-                    r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type
+                  r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type
                 );
             };
 
@@ -103,16 +129,26 @@ const CommonDashboard = () => {
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
-                      <img src={s.writerPic || "/icon.png"} alt="p" style={avatarImg} />
+                      <img 
+                        src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} 
+                        alt="p" 
+                        style={avatarImg} 
+                      />
                     </div>
                     <div>
                       <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
                       <span style={tagStyle}>{s.genre || "Creator"}</span>
                     </div>
                   </div>
-                  {isOwner && (
-                    <button onClick={() => deleteStory(s.id)} style={deleteBtn}>🗑️</button>
-                  )}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {/* ৫. সেভ বাটন */}
+                    <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
+                      {isSaved ? "⭐" : "☆"}
+                    </button>
+                    {isOwner && (
+                      <button onClick={() => deleteStory(s.id)} style={deleteBtn}>🗑️</button>
+                    )}
+                  </div>
                 </div>
 
                 <p style={loglineStyle}>{s.logline}</p>
@@ -123,7 +159,6 @@ const CommonDashboard = () => {
 
                 {isExpanded && (
                   <div style={detailsBox}>
-                    {/* SYNOPSIS */}
                     <div style={{ marginBottom: '15px' }}>
                       <h5 style={labelStyle}>Synopsis</h5>
                       {canSeeSynopsis ? (
@@ -136,7 +171,6 @@ const CommonDashboard = () => {
                       )}
                     </div>
 
-                    {/* FULL STORY */}
                     <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginBottom: '15px' }}>
                       <h5 style={labelStyle}>Full Story / Script</h5>
                       {canSeeFullStory ? (
@@ -151,7 +185,6 @@ const CommonDashboard = () => {
                       )}
                     </div>
 
-                    {/* CONTACT INFO (New Update) */}
                     <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
                       <h5 style={labelStyle}>Contact & Portfolio</h5>
                       {canSeeContact ? (
@@ -195,7 +228,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles (আপনার আগের দেওয়া স্টাইলগুলোই বজায় আছে) ---
+// Styles (Unchanged)
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
 const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
