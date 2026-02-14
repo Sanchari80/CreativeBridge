@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
+import { getDatabase, ref, push, set } from "firebase/database"; // ফায়ারবেস ইমপোর্ট
 
 const PostForm = ({ closeForm }) => {
   const { user, stories, setStories } = useContext(AppContext);
@@ -26,27 +27,38 @@ const PostForm = ({ closeForm }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validation: Logline, Genre এবং Contact Info অবশ্যই দিতে হবে
-    if (!formData.logline || !formData.genre) {
-      return alert("Logline and Genre are required!");
+    if (!formData.Name || !formData.logline || !formData.genre) {
+      return alert("Name, Logline and Genre are required!");
     }
     
     if (!formData.contactInfo.trim()) {
       return alert("Please provide at least an Email or Phone number in Contact Info!");
     }
 
+    // নতুন স্টোরি অবজেক্ট
     const newStory = {
       ...formData,
-      id: Date.now(),
       writerName: user.name,
-      writerPic: user.pic,
+      writerPic: user.profilePic || "/icon.png", // user.pic এর বদলে profilePic ব্যবহার করা হয়েছে আপনার App.jsx অনুযায়ী
       writerProfession: user.profession,
-      createdAt: new Date().toLocaleDateString()
+      createdAt: new Date().toLocaleDateString(),
+      timestamp: Date.now()
     };
 
-    setStories([newStory, ...stories]);
-    alert("Story Published Successfully!");
-    closeForm(); 
+    // --- Firebase Logic Start ---
+    const db = getDatabase();
+    const storiesRef = ref(db, 'stories');
+    const newStoryRef = push(storiesRef); // নতুন একটি আইডি জেনারেট করবে
+    
+    set(newStoryRef, newStory)
+      .then(() => {
+        alert("Story Published Successfully on Creative Bridge!");
+        closeForm(); 
+      })
+      .catch((error) => {
+        alert("Error publishing story: " + error.message);
+      });
+    // --- Firebase Logic End ---
   };
 
   return (
@@ -63,6 +75,14 @@ const PostForm = ({ closeForm }) => {
             <option>Action</option><option>Thriller</option><option>Romance</option><option>Drama</option>
             <option>Comedy</option><option>Sci-Fi</option><option>Horror</option><option>Documentary</option>
           </select>
+           
+          <label style={labelStyle}>Name (Required) *:</label>
+          <input 
+            placeholder="A catchy one-line title..." 
+            value={formData.Name} 
+            onChange={e => setFormData({...formData, Name: e.target.value})} 
+            style={inputStyle} 
+          />
 
           <label style={labelStyle}>Logline (Required) *:</label>
           <input 
@@ -145,7 +165,7 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-// --- STYLES ---
+// --- STYLES (অপরিবর্তিত) ---
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(3px)' };
 const modalContent = { background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' };
 const inputStyle = { width: '100%', padding: '10px', margin: '5px 0', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' };

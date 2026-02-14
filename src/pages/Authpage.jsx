@@ -5,27 +5,45 @@ const AuthPage = () => {
   const { setUser } = useContext(AppContext);
   const [view, setView] = useState('landing');
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '' });
+  const [newPassword, setNewPassword] = useState(''); // রিসেট পাসওয়ার্ডের জন্য
 
   const handleAction = () => {
     const users = JSON.parse(localStorage.getItem('allUsers') || '[]');
+    
+    const emailInput = form.email.trim().toLowerCase();
+    const passwordInput = form.password.trim();
 
     if (view === 'login') {
-      const foundUser = users.find(u => u.email === form.email && u.password === form.password);
+      const foundUser = users.find(u => 
+        u.email.trim().toLowerCase() === emailInput && 
+        u.password.trim() === passwordInput
+      );
+
       if (foundUser) {
         localStorage.setItem('activeUser', JSON.stringify(foundUser));
         setUser(foundUser);
       } else {
         alert("Invalid Email or Password!");
       }
-    } else {
+    } else if (view === 'signup') {
       if (!form.name || !form.email || !form.password) return alert("Please fill all fields!");
-      if (users.find(u => u.email === form.email)) return alert("Email already exists!");
+      if (users.find(u => u.email.trim().toLowerCase() === emailInput)) return alert("Email already exists!");
 
-      const newUser = { ...form, id: Date.now() };
+      const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
       users.push(newUser);
       localStorage.setItem('allUsers', JSON.stringify(users));
       localStorage.setItem('activeUser', JSON.stringify(newUser));
       setUser(newUser);
+    } else if (view === 'forgot') {
+      // পাসওয়ার্ড রিসেট লজিক
+      const userIndex = users.findIndex(u => u.email.trim().toLowerCase() === emailInput);
+      if (userIndex === -1) return alert("User not found with this email!");
+      if (!newPassword) return alert("Please enter a new password!");
+
+      users[userIndex].password = newPassword.trim();
+      localStorage.setItem('allUsers', JSON.stringify(users));
+      alert("Password updated successfully! Please login now.");
+      setView('login');
     }
   };
 
@@ -47,7 +65,7 @@ const AuthPage = () => {
           <button onClick={() => setView('landing')} style={backBtn}>← Back</button>
           <img src="/icon.png" alt="Icon" style={{ width: '45px', marginBottom: '10px' }} />
           <h2 style={{ marginBottom: '20px', color: '#2d3436' }}>
-            {view === 'login' ? 'Welcome Back' : 'Join the Bridge'}
+            {view === 'login' ? 'Welcome Back' : view === 'signup' ? 'Join the Bridge' : 'Reset Password'}
           </h2>
 
           {view === 'signup' && (
@@ -61,65 +79,42 @@ const AuthPage = () => {
             </>
           )}
 
-          <input placeholder="Email Address" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
-          <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
+          <input placeholder="Registered Email Address" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
+          
+          {view === 'forgot' ? (
+            <input placeholder="New Password" type="password" style={inputStyle} onChange={e => setNewPassword(e.target.value)} />
+          ) : (
+            <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
+          )}
 
           <button onClick={handleAction} style={actionBtn}>
-            {view === 'login' ? 'Login' : 'Register Now'}
+            {view === 'login' ? 'Login' : view === 'signup' ? 'Register Now' : 'Update Password'}
           </button>
+
+          {view === 'login' && (
+            <p 
+              onClick={() => setView('forgot')} 
+              style={{ fontSize: '13px', color: '#636e72', cursor: 'pointer', marginTop: '15px', textDecoration: 'underline' }}
+            >
+              Forgot Password?
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-// --- STYLES ---
-const containerStyle = { 
-  height: '100vh', 
-  display: 'flex', 
-  justifyContent: 'center', 
-  alignItems: 'center', 
-  backgroundImage: "url('/auth background.png')", // আপনার রিকোয়েস্ট অনুযায়ী ইমেজ সেট করা হয়েছে
-  backgroundSize: 'cover', 
-  backgroundPosition: 'center',
-  backgroundRepeat: 'no-repeat',
-  fontFamily: "'Segoe UI', sans-serif" 
-};
-
-const glassCard = { 
-  background: 'rgba(255, 255, 255, 0.85)', 
-  backdropFilter: 'blur(12px)', 
-  padding: '50px', 
-  borderRadius: '30px', 
-  boxShadow: '0 15px 35px rgba(0,0,0,0.2)', 
-  textAlign: 'center', 
-  width: '380px',
-  border: '1px solid rgba(255, 255, 255, 0.3)'
-};
-
-const authCard = { 
-  background: 'rgba(255, 255, 255, 0.95)', 
-  padding: '40px', 
-  borderRadius: '24px', 
-  boxShadow: '0 15px 45px rgba(0,0,0,0.2)', 
-  textAlign: 'center', 
-  width: '360px', 
-  position: 'relative',
-  backdropFilter: 'blur(10px)'
-};
-
+// --- STYLES (সব অপরিবর্তিত) ---
+const containerStyle = { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundImage: "url('/auth background.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', fontFamily: "'Segoe UI', sans-serif" };
+const glassCard = { background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', padding: '50px', borderRadius: '30px', boxShadow: '0 15px 35px rgba(0,0,0,0.2)', textAlign: 'center', width: '380px', border: '1px solid rgba(255, 255, 255, 0.3)' };
+const authCard = { background: 'rgba(255, 255, 255, 0.95)', padding: '40px', borderRadius: '24px', boxShadow: '0 15px 45px rgba(0,0,0,0.2)', textAlign: 'center', width: '360px', position: 'relative', backdropFilter: 'blur(10px)' };
 const logoStyle = { width: '90px', height: '90px', borderRadius: '20px', objectFit: 'cover', boxShadow: '0 5px 15px rgba(0,0,0,0.1)' };
-
 const btnPrimary = { width: '100%', padding: '14px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px', margin: '10px 0', transition: '0.3s' };
-
 const btnSecondary = { width: '100%', padding: '14px', background: 'transparent', color: '#2d3436', border: '2px solid #2d3436', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' };
-
 const inputStyle = { width: '100%', padding: '12px', margin: '8px 0', border: '1px solid #ddd', borderRadius: '10px', background: '#fff', boxSizing: 'border-box', outline: 'none' };
-
 const actionBtn = { ...btnPrimary, marginTop: '15px', background: '#4A4A4A' };
-
 const backBtn = { position: 'absolute', top: '25px', left: '20px', background: 'none', border: 'none', color: '#4A4A4A', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
-
 const footerBrand = { marginTop: '40px', fontSize: '11px', color: '#636e72', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' };
 
 export default AuthPage;
