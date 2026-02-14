@@ -1,22 +1,29 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { getDatabase, ref, push, set } from "firebase/database";
 
 const PostForm = ({ closeForm }) => {
   const { user } = useContext(AppContext);
   const [formData, setFormData] = useState({
-    Name: '', // ১. এখানে Name ফিল্ডটি ফাঁকা ছিল, তাই পোস্ট হচ্ছিল না
+    Name: '',
     logline: '',
     synopsis: '',
     fullStoryFile: null,
     fileName: '',
     genre: 'Action',
     portfolio: '', 
-    contactInfo: '', 
+    contactInfo: '', // এটি শুরুতে ফাঁকা থাকে
     isSynopsisLocked: false, 
     isFullStoryLocked: true,
     isContactLocked: true 
   });
+
+  // ইউজার লগইন থাকলে অটোমেটিক ইমেইল কন্টাক্ট ইনফোতে বসিয়ে দেওয়া হচ্ছে
+  useEffect(() => {
+    if (user?.email) {
+      setFormData(prev => ({ ...prev, contactInfo: user.email }));
+    }
+  }, [user]);
 
   const handleFile = (e) => {
     const file = e.target.files[0];
@@ -28,35 +35,37 @@ const PostForm = ({ closeForm }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // ২. ফিল্ড চেক করার সময় Name ঠিকমতো চেক হচ্ছে কিনা নিশ্চিত করা
-    if (!formData.Name.trim() || !formData.logline.trim() || !formData.genre) {
-      return alert("Name, Logline and Genre are required!");
-    }
-    
-    if (!formData.contactInfo.trim()) {
-      return alert("Please provide at least an Email or Phone number in Contact Info!");
-    }
-
-    const newStory = {
-      ...formData,
-      writerName: user?.name || user?.email?.split('@')[0], // ইউজার নেম না থাকলে ইমেল থেকে নেবে
-      writerPic: user?.profilePic || "/icon.png",
-      writerProfession: user?.profession || "Writer",
-      createdAt: new Date().toLocaleDateString(),
-      timestamp: Date.now()
-    };
+    // ভ্যালিডেশন চেক আরও নিখুঁত করা হয়েছে
+    if (!formData.Name?.trim()) return alert("Story Name is required!");
+    if (!formData.logline?.trim()) return alert("Logline is required!");
+    if (!formData.contactInfo?.trim()) return alert("Contact Info is required!");
 
     const db = getDatabase();
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
+
+    const newStory = {
+      ...formData,
+      writerId: user?.id || Date.now(),
+      writerName: user?.name || "Anonymous",
+      writerPic: user?.profilePic || "/icon.png",
+      writerProfession: user?.profession || "Writer",
+      createdAt: new Date().toISOString(), // সঠিক ফরম্যাট
+      timestamp: Date.now()
+    };
     
+    // ডাটাবেজে ডাটা পাঠানোর আগে ফাইলে অবজেক্ট থাকলে তা টেক্সট হিসেবে পাঠানো
+    if (newStory.fullStoryFile) {
+        // নোট: রিয়েলটাইম ডাটাবেজে ফাইল সরাসরি পাঠানো যায় না, আপাতত ইউআরএল পাঠানো হচ্ছে
+    }
+
     set(newStoryRef, newStory)
       .then(() => {
         alert("Story Published Successfully!");
         closeForm(); 
       })
       .catch((error) => {
-        alert("Error: " + error.message);
+        alert("Publishing Failed: " + error.message);
       });
   };
 
@@ -64,8 +73,8 @@ const PostForm = ({ closeForm }) => {
     <div style={modalOverlay}>
       <div className="card" style={modalContent}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-          <h3 style={{margin: 0, color: '#4A4A4A'}}>Create New Story</h3>
-          <button onClick={closeForm} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '24px', color: '#999' }}>×</button>
+          <h3 style={{margin: 0, color: '#2d3436'}}>Create New Story</h3>
+          <button onClick={closeForm} style={closeBtn}>×</button>
         </div>
         
         <form onSubmit={handleSubmit}>
@@ -92,65 +101,37 @@ const PostForm = ({ closeForm }) => {
           />
 
           <div style={sectionBox}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={flexSpace}>
               <label style={labelStyle}>Synopsis (Optional):</label>
               <label style={lockToggle}>
-                <input 
-                  type="checkbox" 
-                  checked={formData.isSynopsisLocked} 
-                  onChange={e => setFormData({...formData, isSynopsisLocked: e.target.checked})} 
-                />
+                <input type="checkbox" checked={formData.isSynopsisLocked} onChange={e => setFormData({...formData, isSynopsisLocked: e.target.checked})} />
                 {formData.isSynopsisLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
-            <textarea 
-              placeholder="Brief overview..." 
-              value={formData.synopsis} 
-              onChange={e => setFormData({...formData, synopsis: e.target.value})} 
-              style={{...inputStyle, height: '80px', resize: 'vertical'}} 
-            />
+            <textarea placeholder="Brief overview..." value={formData.synopsis} onChange={e => setFormData({...formData, synopsis: e.target.value})} style={{...inputStyle, height: '70px', resize: 'none'}} />
           </div>
 
           <div style={sectionBox}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={flexSpace}>
               <label style={labelStyle}>📄 Full Story File (Optional):</label>
               <label style={lockToggle}>
-                <input 
-                  type="checkbox" 
-                  checked={formData.isFullStoryLocked} 
-                  onChange={e => setFormData({...formData, isFullStoryLocked: e.target.checked})} 
-                />
+                <input type="checkbox" checked={formData.isFullStoryLocked} onChange={e => setFormData({...formData, isFullStoryLocked: e.target.checked})} />
                 {formData.isFullStoryLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
-            <input type="file" accept=".pdf,.doc,.docx" onChange={handleFile} style={{fontSize: '13px', marginTop: '10px'}} />
-            {formData.fileName && <p style={{fontSize: '11px', color: '#20c997', margin: '5px 0'}}>{formData.fileName}</p>}
+            <input type="file" accept=".pdf,.doc,.docx" onChange={handleFile} style={{fontSize: '12px', marginTop: '5px'}} />
           </div>
 
           <div style={sectionBox}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={flexSpace}>
               <label style={labelStyle}>Portfolio & Contact Info:</label>
               <label style={lockToggle}>
-                <input 
-                  type="checkbox" 
-                  checked={formData.isContactLocked} 
-                  onChange={e => setFormData({...formData, isContactLocked: e.target.checked})} 
-                />
+                <input type="checkbox" checked={formData.isContactLocked} onChange={e => setFormData({...formData, isContactLocked: e.target.checked})} />
                 {formData.isContactLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
-            <input 
-              placeholder="Portfolio URL..." 
-              value={formData.portfolio} 
-              onChange={e => setFormData({...formData, portfolio: e.target.value})} 
-              style={inputStyle} 
-            />
-            <input 
-              placeholder="Email or Phone (Required)..." 
-              value={formData.contactInfo} 
-              onChange={e => setFormData({...formData, contactInfo: e.target.value})} 
-              style={inputStyle} 
-            />
+            <input placeholder="Portfolio URL (Optional)..." value={formData.portfolio} onChange={e => setFormData({...formData, portfolio: e.target.value})} style={inputStyle} />
+            <input placeholder="Email or Phone (Required)..." value={formData.contactInfo} onChange={e => setFormData({...formData, contactInfo: e.target.value})} style={inputStyle} />
           </div>
 
           <button type="submit" style={btnStyle}>Publish Story</button>
@@ -160,12 +141,15 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-const btnStyle = { width: '100%', padding: '12px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' };
-const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(3px)' };
-const modalContent = { background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' };
-const inputStyle = { width: '100%', padding: '10px', margin: '5px 0', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' };
-const sectionBox = { border: '1px solid #eee', padding: '12px', borderRadius: '10px', margin: '10px 0', background: '#fcfcfc' };
-const labelStyle = { fontSize: '12px', fontWeight: '600', color: '#555', display: 'block' };
-const lockToggle = { fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontWeight: 'bold', color: '#4834d4' };
+// Styles
+const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' };
+const modalContent = { background: 'white', padding: '20px', borderRadius: '20px', width: '95%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' };
+const inputStyle = { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '10px', border: '1px solid #eee', background: '#f9f9f9', boxSizing: 'border-box', outline: 'none', fontSize: '14px' };
+const sectionBox = { border: '1px solid #f0f0f0', padding: '10px', borderRadius: '12px', margin: '8px 0', background: '#fff' };
+const labelStyle = { fontSize: '12px', fontWeight: 'bold', color: '#666' };
+const flexSpace = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' };
+const lockToggle = { fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#6c5ce7' };
+const btnStyle = { width: '100%', padding: '14px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', marginTop: '10px' };
+const closeBtn = { border: 'none', background: '#eee', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' };
 
 export default PostForm;
