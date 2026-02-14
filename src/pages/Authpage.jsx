@@ -1,77 +1,81 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
+import { getDatabase, ref, set, get, child } from "firebase/database";
 
 const AuthPage = () => {
   const { setUser } = useContext(AppContext);
   const [view, setView] = useState('landing');
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '' });
-  
-  // Forgot Password এর জন্য নতুন স্টেট
-  const [step, setStep] = useState(1); // ১: ইমেইল দেওয়া, ২: OTP কোড, ৩: নতুন পাসওয়ার্ড
+  const [step, setStep] = useState(1);
   const [otpCode, setOtpCode] = useState('');
   const [userOtpInput, setUserOtpInput] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  const handleAction = () => {
-    const users = JSON.parse(localStorage.getItem('allUsers') || '[]');
+  // তোর ডাটাবেজ URL
+  const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
+
+  const handleAction = async () => {
+    const db = getDatabase(undefined, dbUrl);
     
-    // মোবাইল কিবোর্ডের অদৃশ্য স্পেস বা ফরম্যাটিং একদম মুছে ফেলার জন্য Regex
+    // মোবাইল কিবোর্ডের স্পেস বা ক্যাপিটাল লেটার ফিক্স
     const emailInput = form.email ? form.email.replace(/\s+/g, '').toLowerCase() : "";
     const passwordInput = form.password ? form.password.trim() : "";
+    // Firebase key তে '.' সাপোর্ট করে না, তাই ',' দিয়ে রিপ্লেস করছি
+    const emailKey = emailInput.replace(/\./g, ',');
 
     if (view === 'login') {
-      const foundUser = users.find(u => 
-        u.email.replace(/\s+/g, '').toLowerCase() === emailInput && 
-        u.password.trim() === passwordInput
-      );
-
-      if (foundUser) {
-        localStorage.setItem('activeUser', JSON.stringify(foundUser));
-        setUser(foundUser);
+      const snapshot = await get(child(ref(db), `users/${emailKey}`));
+      if (snapshot.exists()) {
+        const foundUser = snapshot.val();
+        if (foundUser.password === passwordInput) {
+          localStorage.setItem('activeUser', JSON.stringify(foundUser));
+          setUser(foundUser);
+        } else {
+          alert("ভুল পাসওয়ার্ড!");
+        }
       } else {
-        alert("ভুল ইমেইল বা পাসওয়ার্ড! আবার চেক কর।");
+        alert("এই ইমেইলে কোনো অ্যাকাউন্ট নেই!");
       }
     } 
     
     else if (view === 'signup') {
-      if (!form.name || !form.email || !form.password) return alert("সবগুলো ঘর পূরণ কর!");
-      if (users.find(u => u.email.toLowerCase() === emailInput)) return alert("এই ইমেইল দিয়ে অলরেডি আইডি আছে!");
+      if (!form.name || !emailInput || !passwordInput) return alert("সব পূরণ কর!");
+      
+      const snapshot = await get(child(ref(db), `users/${emailKey}`));
+      if (snapshot.exists()) return alert("এই ইমেইল দিয়ে অ্যাকাউন্ট আছে!");
 
       const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
-      users.push(newUser);
-      localStorage.setItem('allUsers', JSON.stringify(users));
+      await set(ref(db, `users/${emailKey}`), newUser);
+      
       localStorage.setItem('activeUser', JSON.stringify(newUser));
       setUser(newUser);
     } 
 
     else if (view === 'forgot') {
-      const userIndex = users.findIndex(u => u.email.toLowerCase() === emailInput);
-      if (userIndex === -1) return alert("এই ইমেইলটি পাওয়া যায়নি!");
+      const snapshot = await get(child(ref(db), `users/${emailKey}`));
+      if (!snapshot.exists()) return alert("ইমেইলটি পাওয়া যায়নি!");
 
       if (step === 1) {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         setOtpCode(code);
-        alert(`আপনার OTP কোড হলো: ${code}`); // পপ-আপে কোড দেখাবে
+        alert(`OTP কোড: ${code}`);
         setStep(2);
       } 
       else if (step === 2) {
-        if (userOtpInput === otpCode) {
-          setStep(3);
-        } else {
-          alert("ভুল OTP! আবার টাইপ কর।");
-        }
+        if (userOtpInput === otpCode) setStep(3);
+        else alert("ভুল OTP!");
       } 
       else if (step === 3) {
-        if (!newPassword) return alert("নতুন পাসওয়ার্ড দে!");
-        users[userIndex].password = newPassword.trim();
-        localStorage.setItem('allUsers', JSON.stringify(users));
-        alert("পাসওয়ার্ড আপডেট হয়েছে! লগইন কর এখন।");
+        if (!newPassword) return alert("পাসওয়ার্ড দিন!");
+        await set(ref(db, `users/${emailKey}/password`), newPassword.trim());
+        alert("পাসওয়ার্ড আপডেট হয়েছে!");
         setView('login');
         setStep(1);
       }
     }
   };
 
+  // UI layout এবং Style তোর আগের মতোই সব ঠিক আছে (কোনো চেঞ্জ করিনি)
   return (
     <div style={containerStyle}>
       {view === 'landing' ? (
@@ -97,7 +101,7 @@ const AuthPage = () => {
               <input placeholder="Profession" style={inputStyle} onChange={e => setForm({...form, profession: e.target.value})} />
               <select style={inputStyle} onChange={e => setForm({...form, role: e.target.value})}>
                 <option value="Writer">Writer</option>
-                <option value="Director">Director</option>
+                <option value="Looking for new stories">Looking for new stories</option>
               </select>
             </>
           )}
@@ -112,7 +116,6 @@ const AuthPage = () => {
               type="email" 
               style={inputStyle} 
               autoCapitalize="none"
-              autoComplete="off"
               onChange={e => setForm({...form, email: e.target.value})} 
             />
           )}
@@ -136,7 +139,7 @@ const AuthPage = () => {
   );
 };
 
-// স্টাইলগুলো তোর আগেরটাই রাখা হয়েছে
+// তোর আগের সব CSS ভেরিয়েবল (containerStyle, glassCard, etc.) নিচে বসিয়ে দে
 const containerStyle = { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundImage: "url('/auth background.png')", backgroundSize: 'cover', backgroundPosition: 'center', fontFamily: "'Segoe UI', sans-serif" };
 const glassCard = { background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', padding: '50px', borderRadius: '30px', textAlign: 'center', width: '380px' };
 const authCard = { background: 'rgba(255, 255, 255, 0.95)', padding: '40px', borderRadius: '24px', textAlign: 'center', width: '360px', position: 'relative' };

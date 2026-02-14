@@ -17,8 +17,9 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
+  // --- ডাটাবেজ ইউআরএল আপডেট করা হলো ---
   useEffect(() => {
-    const db = getDatabase();
+    const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
     const storiesRef = ref(db, 'stories');
     const unsubscribe = onValue(storiesRef, (snapshot) => {
       const data = snapshot.val();
@@ -57,7 +58,7 @@ const CommonDashboard = () => {
 
   const deleteStory = (story) => {
     if (window.confirm("Are you sure you want to delete this story?")) {
-      const db = getDatabase();
+      const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
       remove(ref(db, `stories/${story.firebaseId}`))
         .then(() => alert("Story deleted successfully!"))
         .catch((err) => alert("Error: " + err.message));
@@ -72,7 +73,6 @@ const CommonDashboard = () => {
     }
   };
 
-  // --- Updated sendRequest with Firebase ---
   const sendRequest = (type) => {
     if (!requestModal) return;
     const { story } = requestModal;
@@ -98,7 +98,7 @@ const CommonDashboard = () => {
       timestamp: Date.now()
     };
 
-    const db = getDatabase();
+    const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
     const requestsRef = ref(db, 'requests');
     push(requestsRef, newRequest)
       .then(() => {
@@ -230,7 +230,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles ---
+// --- Styles (তোর আগের গুলোই আছে) ---
 const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
