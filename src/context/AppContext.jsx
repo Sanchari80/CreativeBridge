@@ -1,14 +1,18 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getDatabase, ref, onValue } from "firebase/database";
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+  const auth = getAuth();
+  const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
+
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('activeUser');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // লোকাল স্টোরেজ থেকে রিড করার লজিক ফিরিয়ে আনা হলো যাতে Firebase লোড হওয়ার আগে পুরনো ডাটা দেখা যায়
   const [stories, setStories] = useState(() => {
     const savedStories = localStorage.getItem('stories');
     return savedStories ? JSON.parse(savedStories) : [];
@@ -21,26 +25,54 @@ export const AppProvider = ({ children }) => {
 
   const [activeStoryId, setActiveStoryId] = useState(null);
 
+  // ১. Firebase Auth State Sync (Mobile login fix korar jonno)
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('activeUser', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('activeUser');
-    }
-  }, [user]);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // User profile data (Name/Pic) jodi database e thake ota fetch kora dorkar
+        // Tobe আপাততো auth user set kora hocche
+        const userData = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || "Anonymous",
+          profilePic: firebaseUser.photoURL || "/icon.png"
+        };
+        setUser(userData);
+        localStorage.setItem('activeUser', JSON.stringify(userData));
+      } else {
+        setUser(null);
+        localStorage.removeItem('activeUser');
+      }
+    });
+    return () => unsubscribe();
+  }, [auth]);
 
-  // স্টোরি আপডেট হলে লোকাল স্টোরেজেও রাখা হচ্ছে
+  // ২. Database theke Stories Fetch kora (Real-time updates)
   useEffect(() => {
-    localStorage.setItem('stories', JSON.stringify(stories));
-  }, [stories]);
+    const storiesRef = ref(db, 'stories');
+    const unsubscribe = onValue(storiesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const formattedStories = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+        setStories(formattedStories);
+        localStorage.setItem('stories', JSON.stringify(formattedStories));
+      }
+    });
+    return () => unsubscribe();
+  }, [db]);
 
   useEffect(() => {
     localStorage.setItem('requests', JSON.stringify(requests));
   }, [requests]);
 
   const logout = () => {
-    localStorage.removeItem('activeUser');
-    setUser(null);
+    auth.signOut().then(() => {
+      localStorage.clear();
+      setUser(null);
+    });
   };
 
   return (

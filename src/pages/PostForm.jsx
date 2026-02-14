@@ -38,13 +38,16 @@ const PostForm = ({ closeForm }) => {
     if (!formData.logline?.trim()) return alert("Logline is required!");
     if (!formData.contactInfo?.trim()) return alert("Contact Info is required!");
 
-    // তোর সিঙ্গাপুর ডাটাবেজ লোকেশন অনুযায়ী ইউআরএল সেট করে দিচ্ছি
-    const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
+    const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
 
+    // file object-ti database e jabe na, tai oita baad diye baki data pathano hocche
+    const { fullStoryFile, ...otherData } = formData;
+
     const newStory = {
-      ...formData,
+      ...otherData,
+      fileName: formData.fileName || "", // Shudhu name jabe database-e
       writerId: user?.id || Date.now(),
       writerName: user?.name || "Anonymous",
       writerPic: user?.profilePic || "/icon.png",
