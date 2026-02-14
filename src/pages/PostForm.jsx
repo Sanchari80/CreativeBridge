@@ -12,13 +12,12 @@ const PostForm = ({ closeForm }) => {
     fileName: '',
     genre: 'Action',
     portfolio: '', 
-    contactInfo: '', // এটি শুরুতে ফাঁকা থাকে
+    contactInfo: '', 
     isSynopsisLocked: false, 
     isFullStoryLocked: true,
     isContactLocked: true 
   });
 
-  // ইউজার লগইন থাকলে অটোমেটিক ইমেইল কন্টাক্ট ইনফোতে বসিয়ে দেওয়া হচ্ছে
   useEffect(() => {
     if (user?.email) {
       setFormData(prev => ({ ...prev, contactInfo: user.email }));
@@ -35,12 +34,12 @@ const PostForm = ({ closeForm }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // ভ্যালিডেশন চেক আরও নিখুঁত করা হয়েছে
     if (!formData.Name?.trim()) return alert("Story Name is required!");
     if (!formData.logline?.trim()) return alert("Logline is required!");
     if (!formData.contactInfo?.trim()) return alert("Contact Info is required!");
 
-    const db = getDatabase();
+    // তোর সিঙ্গাপুর ডাটাবেজ লোকেশন অনুযায়ী ইউআরএল সেট করে দিচ্ছি
+    const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
 
@@ -50,14 +49,9 @@ const PostForm = ({ closeForm }) => {
       writerName: user?.name || "Anonymous",
       writerPic: user?.profilePic || "/icon.png",
       writerProfession: user?.profession || "Writer",
-      createdAt: new Date().toISOString(), // সঠিক ফরম্যাট
+      createdAt: new Date().toISOString(),
       timestamp: Date.now()
     };
-    
-    // ডাটাবেজে ডাটা পাঠানোর আগে ফাইলে অবজেক্ট থাকলে তা টেক্সট হিসেবে পাঠানো
-    if (newStory.fullStoryFile) {
-        // নোট: রিয়েলটাইম ডাটাবেজে ফাইল সরাসরি পাঠানো যায় না, আপাতত ইউআরএল পাঠানো হচ্ছে
-    }
 
     set(newStoryRef, newStory)
       .then(() => {
@@ -85,20 +79,10 @@ const PostForm = ({ closeForm }) => {
           </select>
             
           <label style={labelStyle}>Name (Required) *:</label>
-          <input 
-            placeholder="Story Title..." 
-            value={formData.Name} 
-            onChange={e => setFormData({...formData, Name: e.target.value})} 
-            style={inputStyle} 
-          />
+          <input placeholder="Story Title..." value={formData.Name} onChange={e => setFormData({...formData, Name: e.target.value})} style={inputStyle} />
 
           <label style={labelStyle}>Logline (Required) *:</label>
-          <input 
-            placeholder="Short one-line summary..." 
-            value={formData.logline} 
-            onChange={e => setFormData({...formData, logline: e.target.value})} 
-            style={inputStyle} 
-          />
+          <input placeholder="Short one-line summary..." value={formData.logline} onChange={e => setFormData({...formData, logline: e.target.value})} style={inputStyle} />
 
           <div style={sectionBox}>
             <div style={flexSpace}>
@@ -141,7 +125,6 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-// Styles
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' };
 const modalContent = { background: 'white', padding: '20px', borderRadius: '20px', width: '95%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' };
 const inputStyle = { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '10px', border: '1px solid #eee', background: '#f9f9f9', boxSizing: 'border-box', outline: 'none', fontSize: '14px' };
