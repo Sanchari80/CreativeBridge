@@ -4,40 +4,41 @@ export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   // --- LOCALSTORAGE THEKE DATA LOAD ---
+  // আপনার App.jsx এ 'activeUser' ব্যবহার করা হয়েছে, তাই এখানেও 'activeUser' থাকতে হবে
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem('activeUser');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const [stories, setStories] = useState(() => {
-    const savedStories = localStorage.getItem('stories');
-    return savedStories ? JSON.parse(savedStories) : [];
-  });
+  // ফায়ারবেস থেকে ডাটা আসবে, তাই শুরুতে খালি অ্যারে রাখা ভালো
+  const [stories, setStories] = useState([]);
 
   const [requests, setRequests] = useState(() => {
     const savedRequests = localStorage.getItem('requests');
     return savedRequests ? JSON.parse(savedRequests) : [];
   });
 
-  // নোটিফিকেশন থেকে স্টোরি ওপেন করার জন্য নতুন স্টেট
+  // নোটিফিকেশন থেকে স্টোরি ওপেন করার স্টেট
   const [activeStoryId, setActiveStoryId] = useState(null);
 
   // --- DATA SAVE KORA ---
   useEffect(() => {
-    if (user) localStorage.setItem('user', JSON.stringify(user));
+    if (user) {
+      localStorage.setItem('activeUser', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('activeUser');
+    }
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('stories', JSON.stringify(stories));
-  }, [stories]);
-
-  useEffect(() => {
-    localStorage.setItem('requests', JSON.stringify(requests));
+    if (requests.length > 0) {
+      localStorage.setItem('requests', JSON.stringify(requests));
+    }
   }, [requests]);
 
   const logout = () => {
+    localStorage.removeItem('activeUser');
     setUser(null);
-    localStorage.clear(); // সব ডেটা ক্লিয়ার করবে
   };
 
   return (
@@ -45,7 +46,7 @@ export const AppProvider = ({ children }) => {
       user, setUser, 
       stories, setStories, 
       requests, setRequests,
-      activeStoryId, setActiveStoryId, // এগুলো শেয়ার করা হলো
+      activeStoryId, setActiveStoryId,
       logout 
     }}>
       {children}

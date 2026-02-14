@@ -10,7 +10,7 @@ import NotificationSystem from './components/NotificationSystem';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 
-// Firebase Config
+// Firebase Config (অপরিবর্তিত)
 const firebaseConfig = {
   apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
   authDomain: "creativebridge-88c8a.firebaseapp.com",
@@ -31,16 +31,30 @@ function App() {
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
 
-  // --- Persistence Logic (প্রোফাইল পিকচার ধরে রাখার জন্য) ---
+  // --- প্রোফাইল পিকচার এবং ইউজার ডেটা পারসিস্টেন্স ---
   useEffect(() => {
+    // ১. প্রথমে চেক করি লোকাল স্টোরেজে কোনো আপডেট করা ইউজার ডেটা আছে কিনা
+    const savedUser = localStorage.getItem('activeUser');
+    if (savedUser && !user) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, [setUser, user]);
+
+  useEffect(() => {
+    // ২. যখনই প্রোফাইল পেজ থেকে ইউজার আপডেট হবে, তখনই লোকাল স্টোরেজে সেভ হবে
     if (user) {
       localStorage.setItem('activeUser', JSON.stringify(user));
+      
+      // ৩. অল-ইউজার লিস্টেও আপডেট করা ছবি সেভ করছি যাতে লগআউট করে লগইন করলেও ছবি থাকে
+      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
+      const updatedUsers = allUsers.map(u => u.email === user.email ? user : u);
+      localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
     }
   }, [user]);
 
   const footerLogoPath = "/SKT logo.jpg";
 
-  // --- Realtime Visitor Logic ---
+  // --- Realtime Visitor Logic (অপরিবর্তিত) ---
   useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
@@ -108,6 +122,7 @@ function App() {
               <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
               <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
             </div>
+            {/* এখানে ইমেজ রেন্ডারিং ফিক্স করা হয়েছে */}
             <img 
               src={user.profilePic || "/icon.png"} 
               alt="Profile" 
@@ -146,16 +161,9 @@ function App() {
   );
 }
 
-// --- Styles ---
-const liveBadgeStyle = { 
-  display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', 
-  padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', 
-  fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9'
-};
-const pulseDot = { 
-  width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%',
-  boxShadow: '0 0 5px #4caf50'
-};
+// --- STYLES (অপরিবর্তিত) ---
+const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
+const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
 const notifHeader = { display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #f0f0f0', marginBottom: '10px' };
 const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999' };

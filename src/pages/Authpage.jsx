@@ -5,13 +5,13 @@ const AuthPage = () => {
   const { setUser } = useContext(AppContext);
   const [view, setView] = useState('landing');
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '' });
-  const [newPassword, setNewPassword] = useState(''); // রিসেট পাসওয়ার্ডের জন্য
+  const [newPassword, setNewPassword] = useState('');
 
   const handleAction = () => {
     const users = JSON.parse(localStorage.getItem('allUsers') || '[]');
     
-    const emailInput = form.email.trim().toLowerCase();
-    const passwordInput = form.password.trim();
+    const emailInput = form.email ? form.email.trim().toLowerCase() : "";
+    const passwordInput = form.password ? form.password.trim() : "";
 
     if (view === 'login') {
       const foundUser = users.find(u => 
@@ -27,22 +27,37 @@ const AuthPage = () => {
       }
     } else if (view === 'signup') {
       if (!form.name || !form.email || !form.password) return alert("Please fill all fields!");
+      
       if (users.find(u => u.email.trim().toLowerCase() === emailInput)) return alert("Email already exists!");
 
-      const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
+      // নতুন ইউজার তৈরির সময় আগের প্রোফাইল পিকচার (যদি থাকে) বজায় রাখা হচ্ছে
+      const newUser = { 
+        ...form, 
+        email: emailInput, 
+        password: passwordInput, 
+        profilePic: form.ProfilePic || "/icon.png", // যদি ছবি না থাকে তবেই ডিফল্ট
+        id: Date.now() 
+      };
+      
       users.push(newUser);
       localStorage.setItem('allUsers', JSON.stringify(users));
       localStorage.setItem('activeUser', JSON.stringify(newUser));
       setUser(newUser);
+
     } else if (view === 'forgot') {
-      // পাসওয়ার্ড রিসেট লজিক
       const userIndex = users.findIndex(u => u.email.trim().toLowerCase() === emailInput);
-      if (userIndex === -1) return alert("User not found with this email!");
+      
+      if (userIndex === -1) {
+        return alert("Email not found! Please check your spelling.");
+      }
+      
       if (!newPassword) return alert("Please enter a new password!");
 
+      // পাসওয়ার্ড আপডেট করার সময় প্রোফাইল পিকচার বা অন্য ডেটা যেন নষ্ট না হয়
       users[userIndex].password = newPassword.trim();
+      
       localStorage.setItem('allUsers', JSON.stringify(users));
-      alert("Password updated successfully! Please login now.");
+      alert("Password updated successfully! Now Login.");
       setView('login');
     }
   };
@@ -54,10 +69,8 @@ const AuthPage = () => {
           <img src="/SKT logo.jpg" alt="Logo" style={logoStyle} />
           <h1 style={{ color: '#2d3436', margin: '15px 0', fontSize: '28px' }}>Creative Bridge</h1>
           <p style={{ color: '#444', marginBottom: '30px', fontWeight: '500' }}>Connecting Writers & Directors</p>
-          
           <button onClick={() => setView('login')} style={btnPrimary}>Login</button>
           <button onClick={() => setView('signup')} style={btnSecondary}>Sign Up</button>
-          
           <p style={footerBrand}>CreativeBridge.SKT</p>
         </div>
       ) : (
@@ -79,12 +92,27 @@ const AuthPage = () => {
             </>
           )}
 
-          <input placeholder="Registered Email Address" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
+          <input 
+            placeholder="Registered Email Address" 
+            type="email" 
+            style={inputStyle} 
+            onChange={e => setForm({...form, email: e.target.value})} 
+          />
           
           {view === 'forgot' ? (
-            <input placeholder="New Password" type="password" style={inputStyle} onChange={e => setNewPassword(e.target.value)} />
+            <input 
+              placeholder="New Password" 
+              type="password" 
+              style={inputStyle} 
+              onChange={e => setNewPassword(e.target.value)} 
+            />
           ) : (
-            <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
+            <input 
+              placeholder="Password" 
+              type="password" 
+              style={inputStyle} 
+              onChange={e => setForm({...form, password: e.target.value})} 
+            />
           )}
 
           <button onClick={handleAction} style={actionBtn}>
@@ -105,7 +133,7 @@ const AuthPage = () => {
   );
 };
 
-// --- STYLES (সব অপরিবর্তিত) ---
+// --- STYLES ---
 const containerStyle = { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundImage: "url('/auth background.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', fontFamily: "'Segoe UI', sans-serif" };
 const glassCard = { background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', padding: '50px', borderRadius: '30px', boxShadow: '0 15px 35px rgba(0,0,0,0.2)', textAlign: 'center', width: '380px', border: '1px solid rgba(255, 255, 255, 0.3)' };
 const authCard = { background: 'rgba(255, 255, 255, 0.95)', padding: '40px', borderRadius: '24px', boxShadow: '0 15px 45px rgba(0,0,0,0.2)', textAlign: 'center', width: '360px', position: 'relative', backdropFilter: 'blur(10px)' };

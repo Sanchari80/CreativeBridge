@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
+import { getDatabase, ref, onValue, push, set, remove } from "firebase/database"; // Firebase ইমপোর্ট
 
 const CommonDashboard = () => {
   const { user, stories, setStories, requests, setRequests, activeStoryId, setActiveStoryId } = useContext(AppContext);
@@ -16,7 +17,30 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
-  // নোটিফিকেশন থেকে আসা স্টোরি আইডি হ্যান্ডেল করা
+  // --- Firebase থেকে রিয়েলটাইম স্টোরি লোড করা ---
+  useEffect(() => {
+    const db = getDatabase();
+    const storiesRef = ref(db, 'stories');
+    
+    // রিয়েলটাইম ডাটা রিড
+    const unsubscribe = onValue(storiesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // অবজেক্টকে অ্যারেতে রূপান্তর এবং লেটেস্ট পোস্ট উপরে রাখা
+        const storyList = Object.entries(data).map(([key, value]) => ({
+          ...value,
+          firebaseId: key // ডিলিট করার জন্য আইডি রাখা
+        })).reverse();
+        setStories(storyList);
+      } else {
+        setStories([]);
+      }
+    });
+
+    return () => unsubscribe(); // ক্লিনআপ
+  }, [setStories]);
+
+  // নোটিফিকেশন হ্যান্ডলিং (অপরিবর্তিত)
   useEffect(() => {
     if (activeStoryId) {
       setSelectedCategory("All");
@@ -35,20 +59,16 @@ const CommonDashboard = () => {
   }, [requests]);
 
   useEffect(() => {
-    localStorage.setItem('allStories', JSON.stringify(stories));
-  }, [stories]);
-
-  useEffect(() => {
     localStorage.setItem('savedStories', JSON.stringify(savedStories));
   }, [savedStories]);
 
-  const deleteStory = (storyId) => {
+  const deleteStory = (story) => {
     if (window.confirm("Are you sure you want to delete this story?")) {
-      const updatedStories = stories.filter(s => s.id !== storyId);
-      setStories(updatedStories);
-      const updatedRequests = requests.filter(r => r.storyId !== storyId);
-      setRequests(updatedRequests);
-      alert("Story deleted successfully!");
+      const db = getDatabase();
+      // Firebase থেকে ডিলিট
+      remove(ref(db, `stories/${story.firebaseId}`))
+        .then(() => alert("Story deleted successfully!"))
+        .catch((err) => alert("Error: " + err.message));
     }
   };
 
@@ -94,7 +114,6 @@ const CommonDashboard = () => {
     return s.genre === selectedCategory; 
   });
 
-  // --- সিঙ্গেল কার্ড ভিউ লজিক (নোটিফিকেশন বা ডিটেইলস এর জন্য) ---
   if (expandedStory && activeStoryId === null) {
     const s = stories.find(item => item.id === expandedStory);
     if (s) {
@@ -102,7 +121,6 @@ const CommonDashboard = () => {
       const checkAccess = (type) => requests.find(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type);
       const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
       const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
-      const canSeeContact = !s.isContactLocked || checkAccess('contactInfo') || isOwner;
 
       return (
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
@@ -111,6 +129,7 @@ const CommonDashboard = () => {
             <div style={profileHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                 <div style={avatarWrapper}>
+                  {/* ইমেজে পরিবর্তন: ইউজার নিজেই রাইটার হলে Context থেকে ছবি নেবে, নাহলে স্টোরি থেকে */}
                   <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
                 </div>
                 <div>
@@ -118,17 +137,20 @@ const CommonDashboard = () => {
                   <span style={tagStyle}>{s.genre || "Creator"}</span>
                 </div>
               </div>
-              {/* ডিটেইলস ভিউতেও বাটনগুলো রাখা হলো */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
                   {savedStories.includes(s.id) ? "⭐" : "☆"}
                 </button>
                 {isOwner && (
-                  <button onClick={() => deleteStory(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                  <button onClick={() => deleteStory(s)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
                 )}
               </div>
             </div>
+            
+            {/* Story Name যোগ করা হয়েছে */}
+            <h2 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '22px' }}>{s.Name || "Untitled Story"}</h2>
             <p style={loglineStyle}>{s.logline}</p>
+
             <div style={detailsBox}>
               <div style={{ marginBottom: '15px' }}>
                 <h5 style={labelStyle}>Synopsis</h5>
@@ -140,18 +162,6 @@ const CommonDashboard = () => {
               </div>
             </div>
           </div>
-          {requestModal && (
-            <div style={modalOverlay}>
-              <div style={modalContent}>
-                <h3>Request {requestModal.type}</h3>
-                <textarea value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} style={textareaStyle} placeholder="Note..." />
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
-                  <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send</button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       );
     }
@@ -159,6 +169,25 @@ const CommonDashboard = () => {
 
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
+      {/* রিকোয়েস্ট মোডাল UI যোগ করা হলো */}
+      {requestModal && (
+        <div style={modalOverlay}>
+          <div style={modalContent}>
+            <h3 style={{marginTop: 0}}>Request {requestModal.type}</h3>
+            <textarea 
+              style={textareaStyle} 
+              placeholder="Write a note to the writer..." 
+              value={directorNote} 
+              onChange={(e) => setDirectorNote(e.target.value)}
+            />
+            <div style={{display: 'flex', gap: '10px'}}>
+              <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
+              <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send Request</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={categoryTabWrapper}>
         {categories.map(cat => (
           <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ ...categoryBtn, background: selectedCategory === cat ? '#2d3436' : '#fff', color: selectedCategory === cat ? '#fff' : '#2d3436' }}>
@@ -176,6 +205,7 @@ const CommonDashboard = () => {
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
+                      {/* ইমেজে পরিবর্তন: ইউজার নিজেই রাইটার হলে Context থেকে ছবি নেবে, নাহলে স্টোরি থেকে */}
                       <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
                     </div>
                     <div>
@@ -183,35 +213,26 @@ const CommonDashboard = () => {
                       <span style={tagStyle}>{s.genre || "Creator"}</span>
                     </div>
                   </div>
-                  {/* গ্রিড কার্ডে বাটনগুলো যোগ করা হলো */}
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
                       {savedStories.includes(s.id) ? "⭐" : "☆"}
                     </button>
                     {isOwner && (
-                      <button onClick={() => deleteStory(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                      <button onClick={() => deleteStory(s)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
                     )}
                   </div>
                 </div>
-                <p style={loglineStyle}>{s.logline}</p>
+                
+                {/* কার্ডে Story Name প্রদর্শন */}
+                <h4 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '16px' }}>{s.Name || "Untitled"}</h4>
+                <p style={{ ...loglineStyle, fontSize: '15px', minHeight: '40px' }}>{s.logline}</p>
+                
                 <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
               </div>
             );
           })}
         </div>
       </div>
-      {requestModal && (
-        <div style={modalOverlay}>
-          <div style={modalContent}>
-            <h3 style={{ marginTop: 0 }}>Request {requestModal.type}</h3>
-            <textarea placeholder="Note..." value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} style={textareaStyle} />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
-              <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send Request</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

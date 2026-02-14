@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
+import { getDatabase, ref, update } from "firebase/database"; // Firebase functions যোগ করা হয়েছে
 
 const ProfilePage = ({ onBack }) => {
   const { user, setUser, stories, setStories } = useContext(AppContext);
@@ -11,17 +12,26 @@ const ProfilePage = ({ onBack }) => {
       reader.onloadend = () => {
         const newPhoto = reader.result;
 
-        // ১. ইউজারের প্রোফাইল পিক আপডেট
-        setUser({ ...user, profilePic: newPhoto });
+        // ১. লোকাল স্টেট এবং স্টোরেজ আপডেট
+        const updatedUser = { ...user, profilePic: newPhoto };
+        setUser(updatedUser);
+        localStorage.setItem('activeUser', JSON.stringify(updatedUser));
 
-        // ২. ইউজারের আগে আপলোড করা সব স্টোরিতেও নতুন ফটো ম্যাচিং করে দেওয়া
+        // ২. লোকাল স্টোরি স্টেট আপডেট
         if (stories && stories.length > 0) {
           const updatedStories = stories.map(s => 
-            s.writerName === (user?.name || user?.email?.split('@')[0]) 
-            ? { ...s, writerPic: newPhoto } 
-            : s
+            s.writerName === user.name ? { ...s, writerPic: newPhoto } : s
           );
           setStories(updatedStories);
+
+          // ৩. Firebase Realtime Database আপডেট (যাতে অন্য সবাই নতুন ছবি দেখে)
+          const db = getDatabase();
+          stories.forEach(s => {
+            if (s.writerName === user.name && s.firebaseId) {
+              const storyRef = ref(db, `stories/${s.firebaseId}`);
+              update(storyRef, { writerPic: newPhoto });
+            }
+          });
         }
       };
       reader.readAsDataURL(file);
@@ -39,7 +49,7 @@ const ProfilePage = ({ onBack }) => {
       <div style={profileCard}>
         <div style={imageWrapper}>
           <img 
-            src={user?.profilePic || '/icon.png'} 
+            src={user?.profilePic } 
             alt="Profile" 
             style={imageStyle} 
           />
@@ -74,7 +84,7 @@ const ProfilePage = ({ onBack }) => {
   );
 };
 
-// --- Styles (আপনার দেওয়া স্টাইলগুলোই বজায় রাখা হয়েছে) ---
+// --- Styles (অপরিবর্তিত) ---
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const containerStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' };
 const profileCard = { background: 'rgba(255, 255, 255, 0.9)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', width: '100%', maxWidth: '500px', textAlign: 'center' };
