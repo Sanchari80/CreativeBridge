@@ -10,7 +10,7 @@ import NotificationSystem from './components/NotificationSystem';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 
-// Firebase Config (অপরিবর্তিত)
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
   authDomain: "creativebridge-88c8a.firebaseapp.com",
@@ -25,15 +25,33 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 function App() {
-  const { user, setUser, requests } = useContext(AppContext);
+  const { user, setUser, requests, setRequests } = useContext(AppContext); 
   const [showPostForm, setShowPostForm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
 
-  // --- প্রোফাইল পিকচার এবং ইউজার ডেটা পারসিস্টেন্স ---
+  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার (App লেভেলে) ---
   useEffect(() => {
-    // ১. প্রথমে চেক করি লোকাল স্টোরেজে কোনো আপডেট করা ইউজার ডেটা আছে কিনা
+    if (!user) return;
+    const db = getDatabase();
+    const reqRef = ref(db, 'requests');
+    
+    const unsubscribe = onValue(reqRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const reqList = Object.entries(data).map(([key, value]) => ({
+          ...value,
+          firebaseKey: key
+        }));
+        setRequests(reqList);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, setRequests]);
+
+  // --- প্রোফাইল এবং ভিজিটর লজিক ---
+  useEffect(() => {
     const savedUser = localStorage.getItem('activeUser');
     if (savedUser && !user) {
       setUser(JSON.parse(savedUser));
@@ -41,33 +59,26 @@ function App() {
   }, [setUser, user]);
 
   useEffect(() => {
-    // ২. যখনই প্রোফাইল পেজ থেকে ইউজার আপডেট হবে, তখনই লোকাল স্টোরেজে সেভ হবে
     if (user) {
       localStorage.setItem('activeUser', JSON.stringify(user));
-      
-      // ৩. অল-ইউজার লিস্টেও আপডেট করা ছবি সেভ করছি যাতে লগআউট করে লগইন করলেও ছবি থাকে
       const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
       const updatedUsers = allUsers.map(u => u.email === user.email ? user : u);
       localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
     }
   }, [user]);
 
-  const footerLogoPath = "/SKT logo.jpg";
-
-  // --- Realtime Visitor Logic (অপরিবর্তিত) ---
   useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
-
     set(myStatusRef, { online: true, lastChanged: serverTimestamp() });
     onDisconnect(myStatusRef).remove();
-
     const allStatusRef = ref(db, 'status');
     onValue(allStatusRef, (snapshot) => {
       setLiveVisitors(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
     });
   }, []);
 
+  // --- ২. ব্যাজ লজিক আপডেট ---
   const hasNewNotifications = requests?.some(r => 
     (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
     (user?.role === 'Director' && r.status === 'approved' && r.directorName === user.name)
@@ -90,18 +101,10 @@ function App() {
       </div>
 
       <nav className="navbar" style={navStyle}>
-        <div 
-          className="logo-section" 
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-          onClick={() => setView('dashboard')}
-        >
-          <img src="/icon.png" alt="App Icon" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setView('dashboard')}>
+          <img src="/icon.png" alt="App Icon" style={{ width: '35px', height: '35px' }} />
           <h2 style={{ margin: 0, color: '#2d3436', fontSize: '1.4rem', fontWeight: '800' }}>Creative Bridge</h2>
-          
-          <div style={liveBadgeStyle}>
-            <span style={pulseDot}></span>
-            {liveVisitors} Live
-          </div>
+          <div style={liveBadgeStyle}><span style={pulseDot}></span>{liveVisitors} Live</div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -114,33 +117,25 @@ function App() {
             <button onClick={() => setShowPostForm(true)} style={postBtnStyle}>+ Post Story</button>
           )}
 
-          <div 
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} 
-            onClick={() => setView('profile')}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setView('profile')}>
             <div style={{ textAlign: 'right', lineHeight: '1.2' }}>
               <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
               <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
             </div>
-            {/* এখানে ইমেজ রেন্ডারিং ফিক্স করা হয়েছে */}
-            <img 
-              src={user.profilePic || "/icon.png"} 
-              alt="Profile" 
-              style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} 
-            />
+            <img src={user.profilePic || "/icon.png"} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} />
           </div>
-          
           <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
         </div>
       </nav>
 
+      {/* ৩. নোটিফিকেশন প্যানেল ফিক্স */}
       {showNotifications && (
         <div style={notifPanelContainer}>
           <div style={notifHeader}>
             <span style={{ fontWeight: '800' }}>Notifications</span>
             <button onClick={() => setShowNotifications(false)} style={closeBtn}>✕</button>
           </div>
-          <NotificationSystem />
+          <NotificationSystem onBack={() => setShowNotifications(false)} />
         </div>
       )}
 
@@ -151,17 +146,15 @@ function App() {
       </main>
 
       <footer style={footerStyle}>
-        <img src={footerLogoPath} alt="SKT Logo" style={{ width: '50px', borderRadius: '8px', marginBottom: '10px' }} />
-        <div style={{ fontWeight: '700', color: '#2d3436', letterSpacing: '1px' }}>CREATIVE BRIDGE • SKT</div>
-        <div style={{ fontSize: '0.8rem', color: '#636e72', marginTop: '5px' }}>
-          © {new Date().getFullYear()} | Connecting Creative Minds Globally
-        </div>
+        <img src="/SKT logo.jpg" alt="SKT Logo" style={{ width: '50px', borderRadius: '8px', marginBottom: '10px' }} />
+        <div style={{ fontWeight: '700', color: '#2d3436' }}>CREATIVE BRIDGE • SKT</div>
+        <div style={{ fontSize: '0.8rem', color: '#636e72' }}>© {new Date().getFullYear()} | Connecting Creative Minds</div>
       </footer>
     </div>
   );
 }
 
-// --- STYLES (অপরিবর্তিত) ---
+// --- STYLES ---
 const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
 const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };

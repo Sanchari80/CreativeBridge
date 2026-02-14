@@ -3,25 +3,24 @@ import React, { createContext, useState, useEffect } from 'react';
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  // --- LOCALSTORAGE THEKE DATA LOAD ---
-  // আপনার App.jsx এ 'activeUser' ব্যবহার করা হয়েছে, তাই এখানেও 'activeUser' থাকতে হবে
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('activeUser');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // ফায়ারবেস থেকে ডাটা আসবে, তাই শুরুতে খালি অ্যারে রাখা ভালো
-  const [stories, setStories] = useState([]);
+  // লোকাল স্টোরেজ থেকে রিড করার লজিক ফিরিয়ে আনা হলো যাতে Firebase লোড হওয়ার আগে পুরনো ডাটা দেখা যায়
+  const [stories, setStories] = useState(() => {
+    const savedStories = localStorage.getItem('stories');
+    return savedStories ? JSON.parse(savedStories) : [];
+  });
 
   const [requests, setRequests] = useState(() => {
     const savedRequests = localStorage.getItem('requests');
     return savedRequests ? JSON.parse(savedRequests) : [];
   });
 
-  // নোটিফিকেশন থেকে স্টোরি ওপেন করার স্টেট
   const [activeStoryId, setActiveStoryId] = useState(null);
 
-  // --- DATA SAVE KORA ---
   useEffect(() => {
     if (user) {
       localStorage.setItem('activeUser', JSON.stringify(user));
@@ -30,10 +29,13 @@ export const AppProvider = ({ children }) => {
     }
   }, [user]);
 
+  // স্টোরি আপডেট হলে লোকাল স্টোরেজেও রাখা হচ্ছে
   useEffect(() => {
-    if (requests.length > 0) {
-      localStorage.setItem('requests', JSON.stringify(requests));
-    }
+    localStorage.setItem('stories', JSON.stringify(stories));
+  }, [stories]);
+
+  useEffect(() => {
+    localStorage.setItem('requests', JSON.stringify(requests));
   }, [requests]);
 
   const logout = () => {

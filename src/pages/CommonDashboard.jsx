@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, onValue, push, set, remove } from "firebase/database"; // Firebase ইমপোর্ট
+import { getDatabase, ref, onValue, push, set, remove } from "firebase/database";
 
 const CommonDashboard = () => {
   const { user, stories, setStories, requests, setRequests, activeStoryId, setActiveStoryId } = useContext(AppContext);
@@ -17,35 +17,28 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
-  // --- Firebase থেকে রিয়েলটাইম স্টোরি লোড করা ---
   useEffect(() => {
     const db = getDatabase();
     const storiesRef = ref(db, 'stories');
-    
-    // রিয়েলটাইম ডাটা রিড
     const unsubscribe = onValue(storiesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // অবজেক্টকে অ্যারেতে রূপান্তর এবং লেটেস্ট পোস্ট উপরে রাখা
         const storyList = Object.entries(data).map(([key, value]) => ({
           ...value,
-          firebaseId: key // ডিলিট করার জন্য আইডি রাখা
+          firebaseId: key 
         })).reverse();
         setStories(storyList);
       } else {
         setStories([]);
       }
     });
-
-    return () => unsubscribe(); // ক্লিনআপ
+    return () => unsubscribe();
   }, [setStories]);
 
-  // নোটিফিকেশন হ্যান্ডলিং (অপরিবর্তিত)
   useEffect(() => {
     if (activeStoryId) {
       setSelectedCategory("All");
       setExpandedStory(activeStoryId); 
-      
       setTimeout(() => {
         const element = document.getElementById(`story-${activeStoryId}`);
         if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -65,7 +58,6 @@ const CommonDashboard = () => {
   const deleteStory = (story) => {
     if (window.confirm("Are you sure you want to delete this story?")) {
       const db = getDatabase();
-      // Firebase থেকে ডিলিট
       remove(ref(db, `stories/${story.firebaseId}`))
         .then(() => alert("Story deleted successfully!"))
         .catch((err) => alert("Error: " + err.message));
@@ -80,6 +72,7 @@ const CommonDashboard = () => {
     }
   };
 
+  // --- Updated sendRequest with Firebase ---
   const sendRequest = (type) => {
     if (!requestModal) return;
     const { story } = requestModal;
@@ -90,22 +83,31 @@ const CommonDashboard = () => {
       r.requestType === type
     );
     
-    if (alreadySent) return alert(`Already sent a ${type} request for this story!`);
+    if (alreadySent) return alert(`Already sent a ${type} request!`);
 
     const newRequest = { 
       id: Date.now(), 
       storyId: story.id, 
+      firebaseId: story.firebaseId,
       writerName: story.writerName, 
       directorName: displayName,
+      directorPic: user?.profilePic,
       status: 'pending',
       requestType: type,
-      note: directorNote 
+      note: directorNote,
+      timestamp: Date.now()
     };
 
-    setRequests([...requests, newRequest]);
-    setRequestModal(null);
-    setDirectorNote("");
-    alert(`${type.charAt(0).toUpperCase() + type.slice(1)} request sent successfully!`);
+    const db = getDatabase();
+    const requestsRef = ref(db, 'requests');
+    push(requestsRef, newRequest)
+      .then(() => {
+        setRequests([...requests, newRequest]);
+        setRequestModal(null);
+        setDirectorNote("");
+        alert("Request sent successfully to the writer!");
+      })
+      .catch(err => alert("Failed to send request: " + err.message));
   };
 
   const filteredStories = stories.filter(s => {
@@ -129,7 +131,6 @@ const CommonDashboard = () => {
             <div style={profileHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                 <div style={avatarWrapper}>
-                  {/* ইমেজে পরিবর্তন: ইউজার নিজেই রাইটার হলে Context থেকে ছবি নেবে, নাহলে স্টোরি থেকে */}
                   <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
                 </div>
                 <div>
@@ -146,11 +147,8 @@ const CommonDashboard = () => {
                 )}
               </div>
             </div>
-            
-            {/* Story Name যোগ করা হয়েছে */}
             <h2 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '22px' }}>{s.Name || "Untitled Story"}</h2>
             <p style={loglineStyle}>{s.logline}</p>
-
             <div style={detailsBox}>
               <div style={{ marginBottom: '15px' }}>
                 <h5 style={labelStyle}>Synopsis</h5>
@@ -169,7 +167,6 @@ const CommonDashboard = () => {
 
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
-      {/* রিকোয়েস্ট মোডাল UI যোগ করা হলো */}
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
@@ -205,7 +202,6 @@ const CommonDashboard = () => {
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
-                      {/* ইমেজে পরিবর্তন: ইউজার নিজেই রাইটার হলে Context থেকে ছবি নেবে, নাহলে স্টোরি থেকে */}
                       <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
                     </div>
                     <div>
@@ -222,11 +218,8 @@ const CommonDashboard = () => {
                     )}
                   </div>
                 </div>
-                
-                {/* কার্ডে Story Name প্রদর্শন */}
                 <h4 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '16px' }}>{s.Name || "Untitled"}</h4>
                 <p style={{ ...loglineStyle, fontSize: '15px', minHeight: '40px' }}>{s.logline}</p>
-                
                 <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
               </div>
             );
@@ -237,7 +230,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles (সব অপরিবর্তিত) ---
+// --- Styles ---
 const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };

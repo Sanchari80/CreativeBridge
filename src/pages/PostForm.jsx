@@ -1,10 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, push, set } from "firebase/database"; // ফায়ারবেস ইমপোর্ট
+import { getDatabase, ref, push, set } from "firebase/database";
 
 const PostForm = ({ closeForm }) => {
-  const { user, stories, setStories } = useContext(AppContext);
+  const { user } = useContext(AppContext);
   const [formData, setFormData] = useState({
+    Name: '', // ১. এখানে Name ফিল্ডটি ফাঁকা ছিল, তাই পোস্ট হচ্ছিল না
     logline: '',
     synopsis: '',
     fullStoryFile: null,
@@ -27,7 +28,8 @@ const PostForm = ({ closeForm }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!formData.Name || !formData.logline || !formData.genre) {
+    // ২. ফিল্ড চেক করার সময় Name ঠিকমতো চেক হচ্ছে কিনা নিশ্চিত করা
+    if (!formData.Name.trim() || !formData.logline.trim() || !formData.genre) {
       return alert("Name, Logline and Genre are required!");
     }
     
@@ -35,30 +37,27 @@ const PostForm = ({ closeForm }) => {
       return alert("Please provide at least an Email or Phone number in Contact Info!");
     }
 
-    // নতুন স্টোরি অবজেক্ট
     const newStory = {
       ...formData,
-      writerName: user.name,
-      writerPic: user.profilePic || "/icon.png", // user.pic এর বদলে profilePic ব্যবহার করা হয়েছে আপনার App.jsx অনুযায়ী
-      writerProfession: user.profession,
+      writerName: user?.name || user?.email?.split('@')[0], // ইউজার নেম না থাকলে ইমেল থেকে নেবে
+      writerPic: user?.profilePic || "/icon.png",
+      writerProfession: user?.profession || "Writer",
       createdAt: new Date().toLocaleDateString(),
       timestamp: Date.now()
     };
 
-    // --- Firebase Logic Start ---
     const db = getDatabase();
     const storiesRef = ref(db, 'stories');
-    const newStoryRef = push(storiesRef); // নতুন একটি আইডি জেনারেট করবে
+    const newStoryRef = push(storiesRef); 
     
     set(newStoryRef, newStory)
       .then(() => {
-        alert("Story Published Successfully on Creative Bridge!");
+        alert("Story Published Successfully!");
         closeForm(); 
       })
       .catch((error) => {
-        alert("Error publishing story: " + error.message);
+        alert("Error: " + error.message);
       });
-    // --- Firebase Logic End ---
   };
 
   return (
@@ -75,10 +74,10 @@ const PostForm = ({ closeForm }) => {
             <option>Action</option><option>Thriller</option><option>Romance</option><option>Drama</option>
             <option>Comedy</option><option>Sci-Fi</option><option>Horror</option><option>Documentary</option>
           </select>
-           
+            
           <label style={labelStyle}>Name (Required) *:</label>
           <input 
-            placeholder="A catchy one-line title..." 
+            placeholder="Story Title..." 
             value={formData.Name} 
             onChange={e => setFormData({...formData, Name: e.target.value})} 
             style={inputStyle} 
@@ -86,7 +85,7 @@ const PostForm = ({ closeForm }) => {
 
           <label style={labelStyle}>Logline (Required) *:</label>
           <input 
-            placeholder="A short one-line summary..." 
+            placeholder="Short one-line summary..." 
             value={formData.logline} 
             onChange={e => setFormData({...formData, logline: e.target.value})} 
             style={inputStyle} 
@@ -140,32 +139,28 @@ const PostForm = ({ closeForm }) => {
                 {formData.isContactLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
-            
-            <label style={{fontSize: '10px', color: '#888'}}>Portfolio / CV (Optional):</label>
             <input 
-              placeholder="URL or drive link..." 
+              placeholder="Portfolio URL..." 
               value={formData.portfolio} 
               onChange={e => setFormData({...formData, portfolio: e.target.value})} 
               style={inputStyle} 
             />
-            
-            <label style={{fontSize: '10px', color: '#888'}}>Contact Email/Phone (Required) *:</label>
             <input 
-              placeholder="Email or Phone..." 
+              placeholder="Email or Phone (Required)..." 
               value={formData.contactInfo} 
               onChange={e => setFormData({...formData, contactInfo: e.target.value})} 
               style={inputStyle} 
             />
           </div>
 
-          <button type="submit" className="btn-ash" style={{width: '100%', marginTop: '10px'}}>Publish Story</button>
+          <button type="submit" style={btnStyle}>Publish Story</button>
         </form>
       </div>
     </div>
   );
 };
 
-// --- STYLES (অপরিবর্তিত) ---
+const btnStyle = { width: '100%', padding: '12px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' };
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(3px)' };
 const modalContent = { background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' };
 const inputStyle = { width: '100%', padding: '10px', margin: '5px 0', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' };
