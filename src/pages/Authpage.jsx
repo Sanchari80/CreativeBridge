@@ -15,8 +15,6 @@ const AuthPage = () => {
 
   const handleAction = async () => {
     const db = getDatabase(undefined, dbUrl);
-    
-    // Sob jaygay SAME format thakar jonno toLowerCase() ar trim() must
     const emailInput = form.email ? form.email.trim().toLowerCase() : ""; 
     const passwordInput = form.password ? form.password.trim() : "";
     const emailKey = emailInput.replace(/\./g, ',');
@@ -25,7 +23,6 @@ const AuthPage = () => {
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
       if (snapshot.exists()) {
         const foundUser = snapshot.val();
-        // Database-e thaka user-er email-o lowercase hobe, tai milbe ekhon
         if (foundUser.password === passwordInput) {
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
@@ -39,12 +36,14 @@ const AuthPage = () => {
     } 
     
     else if (view === 'signup') {
-      if (!form.name || !emailInput || !passwordInput) return alert("সব পূরণ কর!");
+      // Validating all fields including password
+      if (!form.name || !emailInput || !passwordInput || !form.profession) {
+        return alert("সব পূরণ কর!");
+      }
       
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
       if (snapshot.exists()) return alert("এই ইমেইল দিয়ে অ্যাকাউন্ট আছে!");
 
-      // Notun user save korar somoy-o same logic
       const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
       await set(ref(db, `users/${emailKey}`), newUser);
       
@@ -77,7 +76,6 @@ const AuthPage = () => {
     }
   };
 
-  // UI layout (Previous code follows...)
   return (
     <div style={containerStyle}>
       {view === 'landing' ? (
@@ -105,6 +103,13 @@ const AuthPage = () => {
                 <option value="Writer">Writer</option>
                 <option value="Looking for new stories">Looking for new stories</option>
               </select>
+              {/* Added Password Field for Signup */}
+              <input 
+                placeholder="Create Password" 
+                type="password" 
+                style={inputStyle} 
+                onChange={e => setForm({...form, password: e.target.value})} 
+              />
             </>
           )}
 
