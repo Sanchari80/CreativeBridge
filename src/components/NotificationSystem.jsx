@@ -1,14 +1,16 @@
 import React, { useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, onValue, update } from "firebase/database"; // Firebase ইমপোর্ট
+import { getDatabase, ref, onValue, update } from "firebase/database";
 
 const NotificationSystem = ({ onBack }) => {
-  const { user, requests, setRequests, setView, stories, setActiveStoryId } = useContext(AppContext); 
+  const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
   const displayName = user?.name || user?.email?.split('@')[0];
+  
+  // Database URL specify kora safe
+  const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
-  // --- Firebase থেকে রিয়েলটাইম রিকোয়েস্ট লোড করা ---
   useEffect(() => {
-    const db = getDatabase();
+    const db = getDatabase(undefined, dbUrl);
     const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
@@ -16,7 +18,7 @@ const NotificationSystem = ({ onBack }) => {
       if (data) {
         const reqList = Object.entries(data).map(([key, value]) => ({
           ...value,
-          firebaseKey: key // আপডেট করার জন্য কী রাখা হলো
+          firebaseKey: key 
         }));
         setRequests(reqList);
       } else {
@@ -28,8 +30,7 @@ const NotificationSystem = ({ onBack }) => {
   }, [setRequests]);
 
   const updateStatus = (req, newStatus) => {
-    const db = getDatabase();
-    // Firebase-এ স্ট্যাটাস আপডেট
+    const db = getDatabase(undefined, dbUrl);
     const updates = {};
     updates[`/requests/${req.firebaseKey}/status`] = newStatus;
     
@@ -38,17 +39,17 @@ const NotificationSystem = ({ onBack }) => {
       .catch((err) => alert("Error: " + err.message));
   };
 
+  // Filter logic thik ache
   const myNotifications = requests.filter(req => {
     if (user.role === 'Writer') {
       return req.writerName === displayName;
-    } else if (user.role === 'Director') {
+    } else if (user.role === 'Looking for new stories') { // Tomar signup-e role eta chilo
       return req.directorName === displayName && req.status === 'approved';
     }
     return false;
   });
 
   const handleViewStory = (storyId) => {
-    // এখানে storyId-টি মূলত ড্যাশবোর্ডের আইটেমের আইডির সাথে মিলতে হবে
     setActiveStoryId(storyId); 
     setView('dashboard'); 
   };
@@ -64,7 +65,7 @@ const NotificationSystem = ({ onBack }) => {
           <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No notifications found</p>
         ) : (
           [...myNotifications].reverse().map(req => (
-            <div key={req.id} style={{
+            <div key={req.firebaseKey || req.id} style={{
               ...notifCard, 
               borderLeft: req.status === 'declined' ? '4px solid #e74c3c' : (req.status === 'approved' ? '4px solid #2ecc71' : '4px solid #2d3436'),
               opacity: req.status !== 'pending' && user.role === 'Writer' ? 0.8 : 1
@@ -92,14 +93,8 @@ const NotificationSystem = ({ onBack }) => {
 
               {user.role === 'Writer' && req.status === 'pending' && (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    onClick={() => updateStatus(req, 'approved')} 
-                    style={{ ...actionBtn, background: '#2ecc71' }}
-                  >Approve</button>
-                  <button 
-                    onClick={() => updateStatus(req, 'declined')} 
-                    style={{ ...actionBtn, background: '#e74c3c' }}
-                  >Decline</button>
+                  <button onClick={() => updateStatus(req, 'approved')} style={{ ...actionBtn, background: '#2ecc71' }}>Approve</button>
+                  <button onClick={() => updateStatus(req, 'declined')} style={{ ...actionBtn, background: '#e74c3c' }}>Decline</button>
                 </div>
               )}
             </div>
@@ -110,7 +105,6 @@ const NotificationSystem = ({ onBack }) => {
   );
 };
 
-// --- Styles (আপনার দেওয়া স্টাইলই থাকবে) ---
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px', padding: '0' };
 const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' };
 const notifCard = { padding: '12px', background: '#f9f9f9', borderRadius: '10px', marginBottom: '5px', flexShrink: 0 };

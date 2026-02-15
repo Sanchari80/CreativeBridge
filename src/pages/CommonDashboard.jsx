@@ -1,9 +1,14 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, onValue, push, set, remove } from "firebase/database";
+import { getDatabase, ref, onValue } from "firebase/database";
 
 const CommonDashboard = () => {
-  const { user, stories, setStories, requests, setRequests, activeStoryId, setActiveStoryId } = useContext(AppContext);
+  // AppContext theke functions gulo neya holo
+  const { 
+    user, stories, setStories, requests, setRequests, 
+    activeStoryId, setActiveStoryId, deleteStory, sendRequest 
+  } = useContext(AppContext);
+
   const [expandedStory, setExpandedStory] = useState(null);
   const [requestModal, setRequestModal] = useState(null); 
   const [directorNote, setDirectorNote] = useState("");
@@ -17,16 +22,16 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
-  // --- ডাটাবেজ ইউআরএল আপডেট করা হলো ---
+  // --- Real-time Stories Sync ---
   useEffect(() => {
-    const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
+    const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
     const storiesRef = ref(db, 'stories');
     const unsubscribe = onValue(storiesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const storyList = Object.entries(data).map(([key, value]) => ({
           ...value,
-          firebaseId: key 
+          id: key // Firebase key-ke id hishebe set kora holo matching-er jonno
         })).reverse();
         setStories(storyList);
       } else {
@@ -49,21 +54,8 @@ const CommonDashboard = () => {
   }, [activeStoryId, setActiveStoryId]);
 
   useEffect(() => {
-    localStorage.setItem('allRequests', JSON.stringify(requests));
-  }, [requests]);
-
-  useEffect(() => {
     localStorage.setItem('savedStories', JSON.stringify(savedStories));
   }, [savedStories]);
-
-  const deleteStory = (story) => {
-    if (window.confirm("Are you sure you want to delete this story?")) {
-      const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
-      remove(ref(db, `stories/${story.firebaseId}`))
-        .then(() => alert("Story deleted successfully!"))
-        .catch((err) => alert("Error: " + err.message));
-    }
-  };
 
   const toggleSaveStory = (storyId) => {
     if (savedStories.includes(storyId)) {
@@ -73,41 +65,20 @@ const CommonDashboard = () => {
     }
   };
 
-  const sendRequest = (type) => {
+  // --- Handlers using AppContext Functions ---
+  const handleRequest = (type) => {
     if (!requestModal) return;
     const { story } = requestModal;
     
-    const alreadySent = requests.find(r => 
-      r.storyId === story.id && 
-      r.directorName === displayName && 
-      r.requestType === type
-    );
-    
-    if (alreadySent) return alert(`Already sent a ${type} request!`);
+    // AppContext-er sendRequest call kora hocche
+    sendRequest(story.writerEmail || story.email, story.Name || story.title);
+    setRequestModal(null);
+    setDirectorNote("");
+  };
 
-    const newRequest = { 
-      id: Date.now(), 
-      storyId: story.id, 
-      firebaseId: story.firebaseId,
-      writerName: story.writerName, 
-      directorName: displayName,
-      directorPic: user?.profilePic,
-      status: 'pending',
-      requestType: type,
-      note: directorNote,
-      timestamp: Date.now()
-    };
-
-    const db = getDatabase(undefined, "https://kholachithi-default-rtdb.asia-southeast1.firebasedatabase.app/");
-    const requestsRef = ref(db, 'requests');
-    push(requestsRef, newRequest)
-      .then(() => {
-        setRequests([...requests, newRequest]);
-        setRequestModal(null);
-        setDirectorNote("");
-        alert("Request sent successfully to the writer!");
-      })
-      .catch(err => alert("Failed to send request: " + err.message));
+  const handleDelete = (storyId) => {
+    deleteStory(storyId); // AppContext theke asha delete function
+    setExpandedStory(null);
   };
 
   const filteredStories = stories.filter(s => {
@@ -119,8 +90,9 @@ const CommonDashboard = () => {
   if (expandedStory && activeStoryId === null) {
     const s = stories.find(item => item.id === expandedStory);
     if (s) {
-      const isOwner = s.writerName === displayName;
-      const checkAccess = (type) => requests.find(r => r.storyId === s.id && r.directorName === displayName && r.status === 'approved' && r.requestType === type);
+      const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
+      const checkAccess = (type) => requests?.find(r => r.storyId === s.id && r.fromEmail === user?.email && r.status === 'approved');
+      
       const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
       const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
 
@@ -143,7 +115,7 @@ const CommonDashboard = () => {
                   {savedStories.includes(s.id) ? "⭐" : "☆"}
                 </button>
                 {isOwner && (
-                  <button onClick={() => deleteStory(s)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                  <button onClick={() => handleDelete(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
                 )}
               </div>
             </div>
@@ -179,7 +151,7 @@ const CommonDashboard = () => {
             />
             <div style={{display: 'flex', gap: '10px'}}>
               <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
-              <button onClick={() => sendRequest(requestModal.type)} style={confirmBtn}>Send Request</button>
+              <button onClick={handleRequest} style={confirmBtn}>Send Request</button>
             </div>
           </div>
         </div>
@@ -196,7 +168,7 @@ const CommonDashboard = () => {
       <div className="main-content" style={contentWrapperStyle}>
         <div className="story-grid" style={gridStyle}>
           {filteredStories.map(s => {
-            const isOwner = s.writerName === displayName;
+            const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
             return (
               <div key={s.id} id={`story-${s.id}`} style={cardWrapper}>
                 <div style={profileHeader}>
@@ -214,7 +186,7 @@ const CommonDashboard = () => {
                       {savedStories.includes(s.id) ? "⭐" : "☆"}
                     </button>
                     {isOwner && (
-                      <button onClick={() => deleteStory(s)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                      <button onClick={() => handleDelete(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
                     )}
                   </div>
                 </div>
@@ -230,7 +202,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles (তোর আগের গুলোই আছে) ---
+// --- Styles (Hubuhu Tomar tai ache) ---
 const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
