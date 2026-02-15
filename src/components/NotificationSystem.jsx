@@ -5,22 +5,30 @@ import { getDatabase, ref, onValue, update } from "firebase/database";
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
   const displayName = user?.name || user?.email?.split('@')[0];
+  const userKey = user?.email?.replace(/\./g, ',');
   
-  // Database URL specify kora safe
   const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   useEffect(() => {
     const db = getDatabase(undefined, dbUrl);
+    // Path-ta ekhon pura 'requests' node-e thakbe
     const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const reqList = Object.entries(data).map(([key, value]) => ({
-          ...value,
-          firebaseKey: key 
-        }));
-        setRequests(reqList);
+        let allReqs = [];
+        // requests er bhetore prottekta ownerKey (email) folder theke data nichi
+        Object.entries(data).forEach(([ownerKey, requestsInFolder]) => {
+          Object.entries(requestsInFolder).forEach(([key, value]) => {
+            allReqs.push({
+              ...value,
+              firebaseKey: key,
+              ownerPath: ownerKey // Update korar somoy lagbe
+            });
+          });
+        });
+        setRequests(allReqs);
       } else {
         setRequests([]);
       }
@@ -32,21 +40,22 @@ const NotificationSystem = ({ onBack }) => {
   const updateStatus = (req, newStatus) => {
     const db = getDatabase(undefined, dbUrl);
     const updates = {};
-    updates[`/requests/${req.firebaseKey}/status`] = newStatus;
+    // Exact path-e status update korchi
+    updates[`/requests/${req.ownerPath}/${req.firebaseKey}/status`] = newStatus;
     
     update(ref(db), updates)
       .then(() => alert(`Request ${newStatus}!`))
       .catch((err) => alert("Error: " + err.message));
   };
 
-  // Filter logic thik ache
   const myNotifications = requests.filter(req => {
     if (user.role === 'Writer') {
-      return req.writerName === displayName;
-    } else if (user.role === 'Looking for new stories') { // Tomar signup-e role eta chilo
-      return req.directorName === displayName && req.status === 'approved';
+      // Writer dekhbe tar kache asha requests
+      return req.ownerPath === userKey;
+    } else {
+      // Director dekhbe tar approved requests
+      return req.fromEmail === user?.email && req.status === 'approved';
     }
-    return false;
   });
 
   const handleViewStory = (storyId) => {
@@ -65,7 +74,7 @@ const NotificationSystem = ({ onBack }) => {
           <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No notifications found</p>
         ) : (
           [...myNotifications].reverse().map(req => (
-            <div key={req.firebaseKey || req.id} style={{
+            <div key={req.firebaseKey} style={{
               ...notifCard, 
               borderLeft: req.status === 'declined' ? '4px solid #e74c3c' : (req.status === 'approved' ? '4px solid #2ecc71' : '4px solid #2d3436'),
               opacity: req.status !== 'pending' && user.role === 'Writer' ? 0.8 : 1
@@ -73,12 +82,12 @@ const NotificationSystem = ({ onBack }) => {
               <div style={{ fontSize: '13px', marginBottom: '8px' }}>
                 {user.role === 'Writer' ? (
                   <>
-                    <strong>{req.directorName}</strong> requested access to <strong>{req.requestType}</strong>.
+                    <strong>{req.fromName}</strong> requested access to <strong>{req.storyTitle}</strong>.
                     <div style={{fontSize: '11px', color: '#888', marginTop: '2px'}}>Status: {req.status}</div>
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span>Your request for <strong>{req.writerName}'s</strong> {req.requestType} was approved!</span>
+                    <span>Your request for <strong>{req.storyTitle}</strong> was approved!</span>
                     <button 
                       onClick={() => handleViewStory(req.storyId)}
                       style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}
