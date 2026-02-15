@@ -11,30 +11,30 @@ const AuthPage = () => {
   const [userOtpInput, setUserOtpInput] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // তোর ডাটাবেজ URL
   const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   const handleAction = async () => {
     const db = getDatabase(undefined, dbUrl);
     
-    // মোবাইল কিবোর্ডের স্পেস বা ক্যাপিটাল লেটার ফিক্স
-    const emailInput = form.email ? form.email.replace(/\s+/g, '').toLowerCase() : "";
+    // Sob jaygay SAME format thakar jonno toLowerCase() ar trim() must
+    const emailInput = form.email ? form.email.trim().toLowerCase() : ""; 
     const passwordInput = form.password ? form.password.trim() : "";
-    // Firebase key তে '.' সাপোর্ট করে না, তাই ',' দিয়ে রিপ্লেস করছি
     const emailKey = emailInput.replace(/\./g, ',');
 
     if (view === 'login') {
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
       if (snapshot.exists()) {
         const foundUser = snapshot.val();
+        // Database-e thaka user-er email-o lowercase hobe, tai milbe ekhon
         if (foundUser.password === passwordInput) {
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
+          alert("Login Successful!");
         } else {
           alert("ভুল পাসওয়ার্ড!");
         }
       } else {
-        alert("এই ইমেইলে কোনো অ্যাকাউন্ট নেই!");
+        alert("এই ইমেইলে কোনো অ্যাকাউন্ট নেই! স্পেলিং চেক করুন।");
       }
     } 
     
@@ -42,18 +42,20 @@ const AuthPage = () => {
       if (!form.name || !emailInput || !passwordInput) return alert("সব পূরণ কর!");
       
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
-      if (snapshot.exists()) return alert("এই ইমেইল দিয়ে অ্যাকাউন্ট আছে!");
+      if (snapshot.exists()) return alert("এই ইমেইল দিয়ে অ্যাকাউন্ট আছে!");
 
+      // Notun user save korar somoy-o same logic
       const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
       await set(ref(db, `users/${emailKey}`), newUser);
       
       localStorage.setItem('activeUser', JSON.stringify(newUser));
       setUser(newUser);
+      alert("Registration Successful!");
     } 
 
     else if (view === 'forgot') {
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
-      if (!snapshot.exists()) return alert("ইমেইলটি পাওয়া যায়নি!");
+      if (!snapshot.exists()) return alert("ইমেইলটি পাওয়া যায়নি!");
 
       if (step === 1) {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -62,20 +64,20 @@ const AuthPage = () => {
         setStep(2);
       } 
       else if (step === 2) {
-        if (userOtpInput === otpCode) setStep(3);
+        if (userOtpInput.trim() === otpCode) setStep(3);
         else alert("ভুল OTP!");
       } 
       else if (step === 3) {
-        if (!newPassword) return alert("পাসওয়ার্ড দিন!");
+        if (!newPassword) return alert("পাসওয়ার্ড দিন!");
         await set(ref(db, `users/${emailKey}/password`), newPassword.trim());
-        alert("পাসওয়ার্ড আপডেট হয়েছে!");
+        alert("পাসওয়ার্ড আপডেট হয়েছে! এবার লগইন করুন।");
         setView('login');
         setStep(1);
       }
     }
   };
 
-  // UI layout এবং Style তোর আগের মতোই সব ঠিক আছে (কোনো চেঞ্জ করিনি)
+  // UI layout (Previous code follows...)
   return (
     <div style={containerStyle}>
       {view === 'landing' ? (
@@ -139,7 +141,6 @@ const AuthPage = () => {
   );
 };
 
-// তোর আগের সব CSS ভেরিয়েবল (containerStyle, glassCard, etc.) নিচে বসিয়ে দে
 const containerStyle = { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundImage: "url('/auth background.png')", backgroundSize: 'cover', backgroundPosition: 'center', fontFamily: "'Segoe UI', sans-serif" };
 const glassCard = { background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', padding: '50px', borderRadius: '30px', textAlign: 'center', width: '380px' };
 const authCard = { background: 'rgba(255, 255, 255, 0.95)', padding: '40px', borderRadius: '24px', textAlign: 'center', width: '360px', position: 'relative' };
