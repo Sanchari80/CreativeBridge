@@ -54,18 +54,23 @@ export const AppProvider = ({ children }) => {
   // --- SEND REQUEST FUNCTION ---
   const sendRequest = async (ownerEmail, storyTitle) => {
     if (!user) return alert("Please Login First!");
+    
+    // ownerEmail jodi null ba faka thake, tobe request fail hoy. Tai safe check:
+    const finalEmail = ownerEmail || "unknown_writer@mail.com";
+    
     try {
-      const ownerKey = ownerEmail.replace(/\./g, ',');
+      const ownerKey = finalEmail.replace(/\./g, ',');
       const newRequestRef = push(ref(db, `requests/${ownerKey}`));
       await set(newRequestRef, {
         fromEmail: user.email,
         fromName: user.name,
-        storyTitle: storyTitle,
+        storyTitle: storyTitle || "Untitled Story",
         status: 'pending',
         timestamp: Date.now()
       });
       alert("Request Sent Successfully!");
     } catch (error) {
+      console.error("Firebase Error:", error);
       alert("Request failed!");
     }
   };
@@ -81,7 +86,7 @@ export const AppProvider = ({ children }) => {
       stories, setStories, 
       requests, setRequests,
       activeStoryId, setActiveStoryId,
-      deleteStory, sendRequest, // Functions added here
+      deleteStory, sendRequest,
       logout 
     }}>
       {children}

@@ -202,7 +202,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- Styles (Hubuhu Tomar tai ache) ---
+// --- Styles ---
 const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
@@ -221,8 +221,32 @@ const viewBtn = { width: '100%', padding: '12px', background: '#2d3436', color: 
 const detailsBox = { marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #eee' };
 const labelStyle = { margin: '0 0 8px 0', fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '1px' };
 const downloadLink = { display: 'inline-block', marginTop: '15px', color: '#4834d4', fontWeight: 'bold', textDecoration: 'none', fontSize: '14px' };
-const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' };
-const modalContent = { background: '#fff', padding: '30px', borderRadius: '24px', width: '90%', maxWidth: '450px' };
+
+// --- Niche tomar deya updated style gulo ---
+const modalOverlay = { 
+  position: 'fixed', 
+  top: 0, 
+  left: 0, 
+  width: '100%', 
+  height: '100%', 
+  background: 'rgba(0,0,0,0.7)', 
+  display: 'flex', 
+  justifyContent: 'center', 
+  alignItems: 'center', 
+  zIndex: 9999, 
+  backdropFilter: 'blur(5px)' 
+};
+
+const modalContent = { 
+  background: '#fff', 
+  padding: '30px', 
+  borderRadius: '20px', 
+  width: '90%', 
+  maxWidth: '400px', 
+  boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+  animation: 'fadeIn 0.3s ease' 
+};
+
 const textareaStyle = { width: '100%', height: '120px', padding: '15px', borderRadius: '12px', border: '1px solid #ddd', marginBottom: '20px', resize: 'none', fontSize: '14px', outline: 'none' };
 const cancelBtn = { flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#f1f2f6', cursor: 'pointer', fontWeight: '600' };
 const confirmBtn = { flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#2d3436', color: '#fff', cursor: 'pointer', fontWeight: '600' };
