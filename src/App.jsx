@@ -6,65 +6,88 @@ import PostForm from './pages/PostForm';
 import ProfilePage from './pages/ProfilePage'; 
 import NotificationSystem from './components/NotificationSystem';
 
+// --- Firebase Imports ---
+import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
+  authDomain: "creativebridge-88c8a.firebaseapp.com",
+  projectId: "creativebridge-88c8a",
+  storageBucket: "creativebridge-88c8a.firebasestorage.app",
+  messagingSenderId: "576097901738",
+  appId: "1:576097901738:web:5cd79c3d32d65bac2c04d3",
+  databaseURL: "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 function App() {
-  const { user, setUser, requests, setRequests, logout } = useContext(AppContext); 
+  const { user, setUser, requests, setRequests } = useContext(AppContext); 
   const [showPostForm, setShowPostForm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
-  const db = getDatabase();
 
-  // --- ১. নোটিফিকেশন লিসেনার (App লেভেলে) ---
+  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার ---
   useEffect(() => {
     if (!user) return;
-    const reqRef = ref(db, 'requests');
+    const reqRef = ref(db, 'requests'); // Context-er db use koro
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        let allReqs = [];
+        const reqList = [];
         Object.entries(data).forEach(([ownerKey, folderData]) => {
-          if (folderData && typeof folderData === 'object') {
-            Object.entries(folderData).forEach(([key, value]) => {
-              allReqs.push({ ...value, firebaseKey: key, ownerPath: ownerKey });
-            });
-          }
+            if (typeof folderData === 'object') {
+                Object.entries(folderData).forEach(([key, value]) => {
+                    reqList.push({ ...value, firebaseKey: key });
+                });
+            }
         });
-        setRequests(allReqs);
-      } else {
-        setRequests([]);
+        setRequests(reqList);
       }
     });
     return () => unsubscribe();
-  }, [user, setRequests, db]);
+  }, [user, setRequests]);
 
-  // --- ২. ভিজিটর লজিক (অনলাইন ট্র্যাকিং) ---
+  // --- প্রোফাইল এবং ভিজিটর লজিক ---
+  useEffect(() => {
+    const savedUser = localStorage.getItem('activeUser');
+    if (savedUser && !user) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, [setUser, user]);
+
   useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
     set(myStatusRef, { online: true, lastChanged: serverTimestamp() });
     onDisconnect(myStatusRef).remove();
-
     const allStatusRef = ref(db, 'status');
-    const unsubscribe = onValue(allStatusRef, (snapshot) => {
+    onValue(allStatusRef, (snapshot) => {
       setLiveVisitors(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
     });
-    return () => unsubscribe();
-  }, [db]);
+  }, []);
 
-  // --- ৩. ব্যাজ লজিক (ইমেল দিয়ে চেক) ---
-  const userKey = user?.email?.replace(/\./g, ',');
-  const hasNewNotifications = requests?.some(r => {
-    if (user?.role === 'Writer') {
-      return r.ownerPath === userKey && r.status === 'pending';
-    } else {
-      return r.fromEmail === user?.email && (r.status === 'approved' || r.status === 'declined');
-    }
-  });
+  // --- ২. ব্যাজ লজিক ---
+  const hasNewNotifications = requests?.some(r => 
+    (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
+    (user?.role === 'Director' && r.status === 'approved' && r.directorName === user.name)
+  );
 
-  if (!user) return <AuthPage />;
+  const handleLogout = () => {
+    localStorage.removeItem('activeUser');
+    setUser(null);
+    window.location.reload(); // Hard reset for safety
+  };
+
+  // --- FIX: Loading state check ---
+  // Jodi localStorage-e user thake kintu state ekhono load hoy nai, tokhon jeno blank na thake
+  if (!user && !localStorage.getItem('activeUser')) return <AuthPage />;
+  if (!user) return <div style={{color: 'white', textAlign: 'center', marginTop: '20%'}}>Loading Profile...</div>;
 
   return (
     <div className="app-container" style={appContainerStyle}>
@@ -97,9 +120,9 @@ function App() {
               <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
               <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
             </div>
-            <img src={user.profilePic || "/icon.png"} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #6c5ce7' }} />
+            <img src={user.profilePic || "/icon.png"} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} />
           </div>
-          <button onClick={logout} style={logoutBtnStyle}>Logout</button>
+          <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
         </div>
       </nav>
 
@@ -128,13 +151,13 @@ function App() {
   );
 }
 
-// Styles unchanged as per your request...
+// STYLES (Hubuhu same)
 const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
 const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
 const notifHeader = { display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #f0f0f0', marginBottom: '10px' };
 const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999' };
-const badgeStyle = { position: 'absolute', top: '5px', right: '5px', width: '10px', height: '10px', background: '#ff4757', borderRadius: '50%', border: '2px solid white' };
+const badgeStyle = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: '#ff4757', borderRadius: '50%', border: '2px solid white' };
 const appContainerStyle = { display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' };
 const videoWrapper = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, overflow: 'hidden' };
 const videoBgStyle = { width: '100%', height: '100%', objectFit: 'cover' };
