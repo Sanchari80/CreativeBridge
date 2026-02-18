@@ -7,7 +7,6 @@ const LandingPage = () => {
   const [view, setView] = useState('landing');
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '', pic: null });
 
-  // তোর ডাটাবেজ URL
   const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   useEffect(() => {
@@ -18,13 +17,12 @@ const LandingPage = () => {
   const handleAction = async () => {
     const db = getDatabase(undefined, dbUrl);
     
-    // ডাটা ক্লিন করা (স্পেস রিমুভ)
+    // Data Cleanup
     const emailInput = form.email ? form.email.replace(/\s+/g, '').toLowerCase() : "";
     const passwordInput = form.password ? form.password.trim() : "";
     const emailKey = emailInput.replace(/\./g, ',');
 
     if (view === 'login') {
-      // Firebase থেকে ইউজার চেক
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
       
       if (snapshot.exists()) {
@@ -33,14 +31,16 @@ const LandingPage = () => {
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
         } else {
-          alert("ভুল পাসওয়ার্ড!");
+          alert("ভুল পাসওয়ার্ড!");
         }
       } else {
-        alert("অ্যাকাউন্ট পাওয়া যায়নি!");
+        alert("অ্যাকাউন্ট পাওয়া যায়নি!");
       }
     } else {
-      // সাইন-আপ লজিক (Firebase এ সেভ)
-      if (!form.name || !emailInput || !passwordInput) return alert("সব ঘর পূরণ কর!");
+      // Signup Logic - Required field validation
+      if (!form.name || !emailInput || !passwordInput || !form.profession) {
+        return alert("সব ঘর পূরণ কর!");
+      }
       
       const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
       await set(ref(db, `users/${emailKey}`), newUser);
@@ -50,10 +50,8 @@ const LandingPage = () => {
     }
   };
 
-  // UI এবং Styles তোর আগের মতোই থাকবে (কোনো পরিবর্তন নেই)
   return (
     <div style={container}>
-      {/* Navbar, Content, Footer - সব তোর কোড অনুযায়ী */}
       <nav style={navStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setView('landing')}>
           <img src="/SKT logo.jpg" alt="Logo" style={logoStyle} />
@@ -103,18 +101,18 @@ const LandingPage = () => {
   );
 };
 
-// --- STYLES (তোর আগের গুলোই থাকবে) ---
-const container = { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundImage: "url('/background.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Segoe UI', Roboto, sans-serif" };
-const navStyle = { padding: '15px 5%', display: 'flex', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
+// --- STYLES (Fixed Opacity for Visibility) ---
+const container = { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f2f5', backgroundImage: "url('/background.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Segoe UI', sans-serif" };
+const navStyle = { padding: '15px 5%', display: 'flex', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
 const logoStyle = { width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' };
 const content = { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 20px' };
-const glassCard = { textAlign: 'center', padding: '60px 40px', background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(12px)', borderRadius: '35px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', border: '1px solid rgba(255,255,255,0.3)' };
-const authCard = { width: '100%', maxWidth: '400px', padding: '40px', borderRadius: '25px', background: 'rgba(255, 255, 255, 0.95)', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', textAlign: 'center', position: 'relative' };
-const btnPrimary = { padding: '14px 45px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '35px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', transition: '0.3s' };
-const btnSecondary = { padding: '14px 45px', background: 'transparent', color: '#2d3436', border: '2px solid #2d3436', borderRadius: '35px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', transition: '0.3s' };
-const backBtn = { position: 'absolute', top: '25px', left: '25px', background: 'none', border: 'none', color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
-const inputStyle = { width: '100%', padding: '14px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '12px', boxSizing: 'border-box', fontSize: '15px' };
-const actionBtn = { width: '100%', padding: '15px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', marginTop: '15px' };
-const footerStyle = { textAlign: 'center', padding: '25px', fontSize: '14px', color: '#2d3436', background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(5px)' };
+const glassCard = { textAlign: 'center', padding: '60px 40px', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderRadius: '35px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px' };
+const authCard = { width: '100%', maxWidth: '400px', padding: '40px', borderRadius: '25px', background: 'white', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', textAlign: 'center', position: 'relative' };
+const btnPrimary = { padding: '14px 45px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '35px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' };
+const btnSecondary = { ...btnPrimary, background: 'transparent', color: '#2d3436', border: '2px solid #2d3436' };
+const backBtn = { position: 'absolute', top: '25px', left: '25px', background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold' };
+const inputStyle = { width: '100%', padding: '14px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '12px', boxSizing: 'border-box' };
+const actionBtn = { ...btnPrimary, width: '100%', marginTop: '15px' };
+const footerStyle = { textAlign: 'center', padding: '25px', background: 'rgba(255, 255, 255, 0.95)' };
 
 export default LandingPage;

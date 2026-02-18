@@ -31,130 +31,98 @@ const AuthPage = () => {
           alert("ভুল পাসওয়ার্ড!");
         }
       } else {
-        alert("এই ইমেইলে কোনো অ্যাকাউন্ট নেই! স্পেলিং চেক করুন।");
+        alert("এই ইমেইলে কোনো অ্যাকাউন্ট নেই!");
       }
     } 
-    
     else if (view === 'signup') {
-      // Validating all fields including password
       if (!form.name || !emailInput || !passwordInput || !form.profession) {
         return alert("সব পূরণ কর!");
       }
-      
       const snapshot = await get(child(ref(db), `users/${emailKey}`));
       if (snapshot.exists()) return alert("এই ইমেইল দিয়ে অ্যাকাউন্ট আছে!");
-
       const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
       await set(ref(db, `users/${emailKey}`), newUser);
-      
       localStorage.setItem('activeUser', JSON.stringify(newUser));
       setUser(newUser);
-      alert("Registration Successful!");
-    } 
-
-    else if (view === 'forgot') {
-      const snapshot = await get(child(ref(db), `users/${emailKey}`));
-      if (!snapshot.exists()) return alert("ইমেইলটি পাওয়া যায়নি!");
-
-      if (step === 1) {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        setOtpCode(code);
-        alert(`OTP কোড: ${code}`);
-        setStep(2);
-      } 
-      else if (step === 2) {
-        if (userOtpInput.trim() === otpCode) setStep(3);
-        else alert("ভুল OTP!");
-      } 
-      else if (step === 3) {
-        if (!newPassword) return alert("পাসওয়ার্ড দিন!");
-        await set(ref(db, `users/${emailKey}/password`), newPassword.trim());
-        alert("পাসওয়ার্ড আপডেট হয়েছে! এবার লগইন করুন।");
-        setView('login');
-        setStep(1);
-      }
     }
   };
 
   return (
     <div style={containerStyle}>
-      {view === 'landing' ? (
-        <div style={glassCard}>
-          <img src="/SKT logo.jpg" alt="Logo" style={logoStyle} />
-          <h1 style={{ color: '#2d3436', margin: '15px 0', fontSize: '28px' }}>Creative Bridge</h1>
-          <p style={{ color: '#444', marginBottom: '30px', fontWeight: '500' }}>Connecting Writers & Directors</p>
-          <button onClick={() => setView('login')} style={btnPrimary}>Login</button>
-          <button onClick={() => setView('signup')} style={btnSecondary}>Sign Up</button>
-          <p style={footerBrand}>CreativeBridge.SKT</p>
-        </div>
-      ) : (
-        <div style={authCard}>
-          <button onClick={() => { setView('landing'); setStep(1); }} style={backBtn}>← Back</button>
-          <img src="/icon.png" alt="Icon" style={{ width: '45px', marginBottom: '10px' }} />
-          <h2 style={{ marginBottom: '20px', color: '#2d3436' }}>
-            {view === 'login' ? 'Welcome Back' : view === 'signup' ? 'Join Us' : 'Reset Password'}
-          </h2>
-
-          {view === 'signup' && (
-            <>
-              <input placeholder="Full Name" style={inputStyle} onChange={e => setForm({...form, name: e.target.value})} />
-              <input placeholder="Profession" style={inputStyle} onChange={e => setForm({...form, profession: e.target.value})} />
-              <select style={inputStyle} onChange={e => setForm({...form, role: e.target.value})}>
-                <option value="Writer">Writer</option>
-                <option value="Looking for new stories">Looking for new stories</option>
-              </select>
-              {/* Added Password Field for Signup */}
-              <input 
-                placeholder="Create Password" 
-                type="password" 
-                style={inputStyle} 
-                onChange={e => setForm({...form, password: e.target.value})} 
-              />
-            </>
-          )}
-
-          {view === 'forgot' && step === 2 ? (
-            <input placeholder="Enter 6-digit OTP" style={inputStyle} onChange={e => setUserOtpInput(e.target.value)} />
-          ) : view === 'forgot' && step === 3 ? (
-            <input placeholder="Enter New Password" type="password" style={inputStyle} onChange={e => setNewPassword(e.target.value)} />
-          ) : (
-            <input 
-              placeholder="Email Address" 
-              type="email" 
-              style={inputStyle} 
-              autoCapitalize="none"
-              onChange={e => setForm({...form, email: e.target.value})} 
-            />
-          )}
-          
-          {view === 'login' && (
-            <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
-          )}
-
-          <button onClick={handleAction} style={actionBtn}>
-            {view === 'login' ? 'Login' : view === 'signup' ? 'Register' : step === 1 ? 'Get OTP' : step === 2 ? 'Verify OTP' : 'Update Password'}
-          </button>
-
-          {view === 'login' && (
-            <p onClick={() => { setView('forgot'); setStep(1); }} style={{ fontSize: '13px', color: '#636e72', cursor: 'pointer', marginTop: '15px', textDecoration: 'underline' }}>
-              Forgot Password?
-            </p>
-          )}
-        </div>
-      )}
+      {/* Container-er bhetore card thakbe */}
+      <div style={{ position: 'relative', zIndex: 10 }}> 
+        {view === 'landing' ? (
+          <div style={glassCard}>
+            <img src="/SKT logo.jpg" alt="Logo" style={logoStyle} />
+            <h1 style={{ color: '#2d3436', margin: '15px 0', fontSize: '28px' }}>Creative Bridge</h1>
+            <p style={{ color: '#444', marginBottom: '30px', fontWeight: '500' }}>Connecting Writers & Directors</p>
+            <button onClick={() => setView('login')} style={btnPrimary}>Login</button>
+            <button onClick={() => setView('signup')} style={btnSecondary}>Sign Up</button>
+            <p style={footerBrand}>CreativeBridge.SKT</p>
+          </div>
+        ) : (
+          <div style={authCard}>
+            <button onClick={() => { setView('landing'); setStep(1); }} style={backBtn}>← Back</button>
+            <img src="/icon.png" alt="Icon" style={{ width: '45px', marginBottom: '10px' }} />
+            <h2 style={{ marginBottom: '20px', color: '#2d3436' }}>
+              {view === 'login' ? 'Welcome Back' : view === 'signup' ? 'Join Us' : 'Reset Password'}
+            </h2>
+            {view === 'signup' && (
+              <>
+                <input placeholder="Full Name" style={inputStyle} onChange={e => setForm({...form, name: e.target.value})} />
+                <input placeholder="Profession" style={inputStyle} onChange={e => setForm({...form, profession: e.target.value})} />
+                <select style={inputStyle} onChange={e => setForm({...form, role: e.target.value})}>
+                  <option value="Writer">Writer</option>
+                  <option value="Looking for new stories">Looking for new stories</option>
+                </select>
+                <input placeholder="Create Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
+              </>
+            )}
+            <input placeholder="Email Address" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
+            {view === 'login' && <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />}
+            <button onClick={handleAction} style={actionBtn}>
+              {view === 'login' ? 'Login' : 'Register'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-const containerStyle = { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundImage: "url('/auth background.png')", backgroundSize: 'cover', backgroundPosition: 'center', fontFamily: "'Segoe UI', sans-serif" };
-const glassCard = { background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', padding: '50px', borderRadius: '30px', textAlign: 'center', width: '380px' };
-const authCard = { background: 'rgba(255, 255, 255, 0.95)', padding: '40px', borderRadius: '24px', textAlign: 'center', width: '360px', position: 'relative' };
-const logoStyle = { width: '90px', height: '90px', borderRadius: '20px', objectFit: 'cover' };
-const btnPrimary = { width: '100%', padding: '14px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' };
-const btnSecondary = { width: '100%', padding: '14px', background: 'transparent', color: '#2d3436', border: '2px solid #2d3436', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' };
-const inputStyle = { width: '100%', padding: '12px', margin: '8px 0', border: '1px solid #ddd', borderRadius: '10px', boxSizing: 'border-box' };
+// Styles
+const containerStyle = { 
+  height: '100vh', 
+  width: '100%',
+  display: 'flex', 
+  justifyContent: 'center', 
+  alignItems: 'center', 
+  backgroundImage: "url('/auth background.png')", 
+  backgroundSize: 'cover', 
+  backgroundPosition: 'center', 
+  backgroundRepeat: 'no-repeat',
+  position: 'fixed', // Jate pura screen cover kore
+  top: 0,
+  left: 0
+};
+
+const glassCard = { 
+  background: 'rgba(255, 255, 255, 0.9)', // Opacity baralam jate thikmoto dekha jay
+  backdropFilter: 'blur(10px)', 
+  padding: '40px', 
+  borderRadius: '24px', 
+  textAlign: 'center', 
+  width: '350px',
+  boxShadow: '0 15px 35px rgba(0,0,0,0.2)' // Shadow dilam jate background theke alada hoy
+};
+
+const authCard = { ...glassCard, position: 'relative' };
+const logoStyle = { width: '80px', height: '80px', borderRadius: '15px', objectFit: 'cover', marginBottom: '10px' };
+const btnPrimary = { width: '100%', padding: '12px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
+const btnSecondary = { ...btnPrimary, background: 'transparent', color: '#2d3436', border: '2px solid #2d3436', marginTop: '10px' };
+const inputStyle = { width: '100%', padding: '11px', margin: '6px 0', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' };
 const actionBtn = { ...btnPrimary, marginTop: '15px', background: '#4A4A4A' };
-const backBtn = { position: 'absolute', top: '25px', left: '20px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
-const footerBrand = { marginTop: '40px', fontSize: '11px', color: '#636e72', fontWeight: 'bold', letterSpacing: '2px' };
+const backBtn = { position: 'absolute', top: '20px', left: '15px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
+const footerBrand = { marginTop: '30px', fontSize: '10px', color: '#636e72', fontWeight: 'bold', letterSpacing: '1px' };
 
 export default AuthPage;
