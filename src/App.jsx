@@ -31,11 +31,18 @@ function App() {
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
 
-  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার ---
+  // --- ১. LocalStorage Sync (Auth priority-r jonno) ---
+  useEffect(() => {
+    const savedUser = localStorage.getItem('activeUser');
+    if (savedUser && !user) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, [setUser, user]);
+
+  // --- ২. নোটিফিকেশন লিসেনার ---
   useEffect(() => {
     if (!user) return;
     const reqRef = ref(db, 'requests');
-    
     const unsubscribe = onValue(reqRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -53,7 +60,7 @@ function App() {
     return () => unsubscribe();
   }, [user, setRequests]);
 
-  // --- ২. ভিজিটর লজিক ---
+  // --- ৩. ভিজিটর লজিক ---
   useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
@@ -66,18 +73,11 @@ function App() {
     });
   }, []);
 
-  // --- ৩. ব্যাজ লজিক ---
-  const hasNewNotifications = requests?.some(r => 
-    (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
-    (user?.role === 'Director' && r.status === 'approved' && r.directorName === user.name)
-  );
-
   const handleLogout = () => {
     localStorage.removeItem('activeUser');
     setUser(null);
   };
 
-  // Background Video Component for consistency
   const VideoBackground = () => (
     <div style={videoWrapper}>
       <video autoPlay loop muted playsInline style={videoBgStyle}>
@@ -87,16 +87,17 @@ function App() {
     </div>
   );
 
-  // Authentication Guard
+  // --- ৪. Authentication Logic (LINK OPEN KORLE AGE ETA LOAD HOBE) ---
   if (!user) {
     return (
-      <>
+      <div className="app-container" style={appContainerStyle}>
         <VideoBackground />
         <AuthPage />
-      </>
+      </div>
     );
   }
 
+  // Jodi user thake, tokhon main dashboard render hobe
   return (
     <div className="app-container" style={appContainerStyle}>
       <VideoBackground />
@@ -111,7 +112,7 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={iconBtnStyle} title="Notifications" onClick={() => setShowNotifications(!showNotifications)}>
             <span style={{ fontSize: '18px' }}>🔔</span>
-            {hasNewNotifications && <span style={badgeStyle}></span>}
+            {requests?.some(r => (user.role === 'Writer' && r.status === 'pending' && r.writerName === user.name)) && <span style={badgeStyle}></span>}
           </div>
 
           {user.role === 'Writer' && (
@@ -154,7 +155,7 @@ function App() {
   );
 }
 
-// --- STYLES (Keep as you provided) ---
+// Styles - Tomar provide kora same style gulo
 const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
 const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };

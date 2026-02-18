@@ -6,6 +6,7 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
 
+  // Initial load-e localstorage theke user neya
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('activeUser');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -15,14 +16,13 @@ export const AppProvider = ({ children }) => {
   const [requests, setRequests] = useState([]);
   const [activeStoryId, setActiveStoryId] = useState(null);
 
-  // --- Persistent User & Sync with DB (FIXED to prevent infinite loop) ---
+  // --- 1. LocalStorage & Database Sync ---
   useEffect(() => {
-    if (!user?.email) {
+    if (!user) {
       localStorage.removeItem('activeUser');
       return;
     }
 
-    // LocalStorage update logic alada rakhlam
     localStorage.setItem('activeUser', JSON.stringify(user));
     
     const userKey = user.email.replace(/\./g, ',');
@@ -31,18 +31,17 @@ export const AppProvider = ({ children }) => {
     const unsubscribeUser = onValue(userRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Shudhu jodi data different hoy tokhon-i set korbe
-        const hasChanges = Object.keys(data).some(key => data[key] !== user[key]);
-        if (hasChanges) {
+        // Strict check jate unnecessary re-render ba loop na hoy
+        if (JSON.stringify(data) !== JSON.stringify(user)) {
           setUser(prev => ({ ...prev, ...data }));
         }
       }
     });
 
     return () => unsubscribeUser();
-  }, [user?.email, db]); // user object-er bodole shudhu email monitor korbe
+  }, [user?.email]); // Shudhu email change holei effect trigger hobe
 
-  // --- Sync Stories ---
+  // --- 2. Sync Stories ---
   useEffect(() => {
     const storiesRef = ref(db, 'stories');
     const unsubscribe = onValue(storiesRef, (snapshot) => {
