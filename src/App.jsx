@@ -31,54 +31,42 @@ function App() {
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
 
-  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার (App লেভেলে) ---
+  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার ---
   useEffect(() => {
     if (!user) return;
-    const db = getDatabase();
     const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const reqList = Object.entries(data).map(([key, value]) => ({
-          ...value,
-          firebaseKey: key
-        }));
-        setRequests(reqList);
+        let allReqs = [];
+        Object.entries(data).forEach(([ownerKey, folderData]) => {
+          if (typeof folderData === 'object') {
+            Object.entries(folderData).forEach(([key, value]) => {
+              allReqs.push({ ...value, firebaseKey: key, ownerPath: ownerKey });
+            });
+          }
+        });
+        setRequests(allReqs);
       }
     });
     return () => unsubscribe();
   }, [user, setRequests]);
 
-  // --- প্রোফাইল এবং ভিজিটর লজিক ---
-  useEffect(() => {
-    const savedUser = localStorage.getItem('activeUser');
-    if (savedUser && !user) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, [setUser, user]);
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('activeUser', JSON.stringify(user));
-      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
-      const updatedUsers = allUsers.map(u => u.email === user.email ? user : u);
-      localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
-    }
-  }, [user]);
-
+  // --- ২. ভিজিটর লজিক ---
   useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
     set(myStatusRef, { online: true, lastChanged: serverTimestamp() });
     onDisconnect(myStatusRef).remove();
+    
     const allStatusRef = ref(db, 'status');
     onValue(allStatusRef, (snapshot) => {
       setLiveVisitors(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
     });
   }, []);
 
-  // --- ২. ব্যাজ লজিক আপডেট ---
+  // --- ৩. ব্যাজ লজিক ---
   const hasNewNotifications = requests?.some(r => 
     (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
     (user?.role === 'Director' && r.status === 'approved' && r.directorName === user.name)
@@ -89,16 +77,29 @@ function App() {
     setUser(null);
   };
 
-  if (!user) return <AuthPage />;
+  // Background Video Component for consistency
+  const VideoBackground = () => (
+    <div style={videoWrapper}>
+      <video autoPlay loop muted playsInline style={videoBgStyle}>
+        <source src="/CommonDashboard.mp4" type="video/mp4" />
+      </video>
+      <div style={overlayStyle}></div>
+    </div>
+  );
+
+  // Authentication Guard
+  if (!user) {
+    return (
+      <>
+        <VideoBackground />
+        <AuthPage />
+      </>
+    );
+  }
 
   return (
     <div className="app-container" style={appContainerStyle}>
-      <div style={videoWrapper}>
-        <video autoPlay loop muted playsInline style={videoBgStyle}>
-          <source src="/CommonDashboard.mp4" type="video/mp4" />
-        </video>
-        <div style={overlayStyle}></div>
-      </div>
+      <VideoBackground />
 
       <nav className="navbar" style={navStyle}>
         <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setView('dashboard')}>
@@ -122,13 +123,12 @@ function App() {
               <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
               <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
             </div>
-            <img src={user.profilePic} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} />
+            <img src={user.profilePic || "/icon.png"} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} />
           </div>
           <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
         </div>
       </nav>
 
-      {/* ৩. নোটিফিকেশন প্যানেল ফিক্স */}
       {showNotifications && (
         <div style={notifPanelContainer}>
           <div style={notifHeader}>
@@ -154,7 +154,7 @@ function App() {
   );
 }
 
-// --- STYLES ---
+// --- STYLES (Keep as you provided) ---
 const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
 const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };

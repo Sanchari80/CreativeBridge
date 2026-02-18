@@ -15,30 +15,32 @@ export const AppProvider = ({ children }) => {
   const [requests, setRequests] = useState([]);
   const [activeStoryId, setActiveStoryId] = useState(null);
 
-  // --- Persistent User & Sync with DB (FIXED) ---
+  // --- Persistent User & Sync with DB (FIXED to prevent infinite loop) ---
   useEffect(() => {
-    if (user?.email) {
-      localStorage.setItem('activeUser', JSON.stringify(user));
-      
-      const userKey = user.email.replace(/\./g, ',');
-      const userRef = ref(db, `users/${userKey}`);
-
-      const unsubscribeUser = onValue(userRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          setUser(prev => {
-            // Check if data is actually different to avoid infinite loop
-            const newData = { ...prev, ...data };
-            if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
-            return newData;
-          });
-        }
-      });
-      return () => unsubscribeUser();
-    } else {
+    if (!user?.email) {
       localStorage.removeItem('activeUser');
+      return;
     }
-  }, [user?.email, db]);
+
+    // LocalStorage update logic alada rakhlam
+    localStorage.setItem('activeUser', JSON.stringify(user));
+    
+    const userKey = user.email.replace(/\./g, ',');
+    const userRef = ref(db, `users/${userKey}`);
+
+    const unsubscribeUser = onValue(userRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Shudhu jodi data different hoy tokhon-i set korbe
+        const hasChanges = Object.keys(data).some(key => data[key] !== user[key]);
+        if (hasChanges) {
+          setUser(prev => ({ ...prev, ...data }));
+        }
+      }
+    });
+
+    return () => unsubscribeUser();
+  }, [user?.email, db]); // user object-er bodole shudhu email monitor korbe
 
   // --- Sync Stories ---
   useEffect(() => {
