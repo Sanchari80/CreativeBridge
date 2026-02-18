@@ -20,14 +20,20 @@ const PostForm = ({ closeForm }) => {
 
   useEffect(() => {
     if (user?.email) {
-      setFormData(prev => ({ ...prev, contactInfo: user.email }));
+      setFormData(prev => ({ 
+        ...prev, 
+        contactInfo: user.email,
+        portfolio: user.portfolio || "" // User profile theke portfolio niye asha
+      }));
     }
   }, [user]);
 
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({ ...formData, fullStoryFile: URL.createObjectURL(file), fileName: file.name });
+      // Note: Full file database-e direct pathano jay na. 
+      // Ekhonkar moto file name save hobe, download kaj korbe na storage chara.
+      setFormData({ ...formData, fullStoryFile: file, fileName: file.name });
     }
   };
 
@@ -42,16 +48,17 @@ const PostForm = ({ closeForm }) => {
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
 
-    // file object-ti database e jabe na, tai oita baad diye baki data pathano hocche
+    // file object bad diye database-er data ready kora
     const { fullStoryFile, ...otherData } = formData;
 
     const newStory = {
       ...otherData,
-      fileName: formData.fileName || "", // Shudhu name jabe database-e
       writerId: user?.id || Date.now(),
       writerName: user?.name || "Anonymous",
+      writerEmail: user?.email, // Eita must thaka lagbe request system-er jonno
       writerPic: user?.profilePic || "/icon.png",
       writerProfession: user?.profession || "Writer",
+      fullStoryFile: "", // Eikhane pore Storage URL boshbe
       createdAt: new Date().toISOString(),
       timestamp: Date.now()
     };
@@ -107,6 +114,7 @@ const PostForm = ({ closeForm }) => {
               </label>
             </div>
             <input type="file" accept=".pdf,.doc,.docx" onChange={handleFile} style={{fontSize: '12px', marginTop: '5px'}} />
+            {formData.fileName && <div style={{fontSize: '11px', color: '#2ecc71'}}>Selected: {formData.fileName}</div>}
           </div>
 
           <div style={sectionBox}>
@@ -117,8 +125,8 @@ const PostForm = ({ closeForm }) => {
                 {formData.isContactLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
-            <input placeholder="Portfolio URL (Optional)..." value={formData.portfolio} onChange={e => setFormData({...formData, portfolio: e.target.value})} style={inputStyle} />
-            <input placeholder="Email or Phone (Required)..." value={formData.contactInfo} onChange={e => setFormData({...formData, contactInfo: e.target.value})} style={inputStyle} />
+            <input placeholder="Portfolio URL..." value={formData.portfolio} onChange={e => setFormData({...formData, portfolio: e.target.value})} style={inputStyle} />
+            <input placeholder="Email or Phone..." value={formData.contactInfo} onChange={e => setFormData({...formData, contactInfo: e.target.value})} style={inputStyle} />
           </div>
 
           <button type="submit" style={btnStyle}>Publish Story</button>
@@ -128,6 +136,7 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
+// Styles (Ager gulo-i thakbe)
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' };
 const modalContent = { background: 'white', padding: '20px', borderRadius: '20px', width: '95%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' };
 const inputStyle = { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '10px', border: '1px solid #eee', background: '#f9f9f9', boxSizing: 'border-box', outline: 'none', fontSize: '14px' };

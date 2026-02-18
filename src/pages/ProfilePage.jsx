@@ -9,37 +9,44 @@ const ProfilePage = ({ onBack }) => {
     const file = e.target.files[0];
     if (file && user) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const newPhoto = reader.result;
-        const userKey = user.email.replace(/\./g, ','); // Firebase key format
+        const userKey = user.email.replace(/\./g, ','); 
         const db = getDatabase();
 
-        // ১. Local State এবং Storage আপডেট
-        const updatedUser = { ...user, profilePic: newPhoto };
-        setUser(updatedUser);
-        localStorage.setItem('activeUser', JSON.stringify(updatedUser));
+        try {
+          // ১. Firebase 'users' node-এ permanent save
+          const userRef = ref(db, `users/${userKey}`);
+          await update(userRef, { profilePic: newPhoto });
 
-        // ২. Firebase 'users' node-এ permanent save (যাতে logout করলেও না হারায়)
-        const userRef = ref(db, `users/${userKey}`);
-        update(userRef, { profilePic: newPhoto });
+          // ২. Local State এবং Storage আপডেট
+          const updatedUser = { ...user, profilePic: newPhoto };
+          setUser(updatedUser);
+          localStorage.setItem('activeUser', JSON.stringify(updatedUser));
 
-        // ৩. Firebase 'stories' node-এ update (যাতে সবাই নতুন ছবি দেখে)
-        if (stories && stories.length > 0) {
-          stories.forEach(s => {
-            // s.id holo firebase key
-            if (s.writerEmail === user.email) {
-              const storyRef = ref(db, `stories/${s.id}`);
-              update(storyRef, { writerPic: newPhoto });
-            }
-          });
-          
-          // Local story list-ও আপডেট করে দিচ্ছি
-          const updatedStories = stories.map(s => 
-            s.writerEmail === user.email ? { ...s, writerPic: newPhoto } : s
-          );
-          setStories(updatedStories);
+          // ৩. Firebase 'stories' node-এ update (যাতে সবাই নতুন ছবি দেখে)
+          if (stories && stories.length > 0) {
+            const updatePromises = stories.map(async (s) => {
+              if (s.writerEmail === user.email) {
+                const storyRef = ref(db, `stories/${s.id}`);
+                return update(storyRef, { writerPic: newPhoto });
+              }
+              return null;
+            });
+            
+            await Promise.all(updatePromises);
+
+            // Local story list-ও আপডেট
+            const updatedStories = stories.map(s => 
+              s.writerEmail === user.email ? { ...s, writerPic: newPhoto } : s
+            );
+            setStories(updatedStories);
+          }
+          alert("Profile Picture Updated Successfully!");
+        } catch (error) {
+          console.error(error);
+          alert("Failed to update profile picture.");
         }
-        alert("Profile Picture Updated Successfully!");
       };
       reader.readAsDataURL(file);
     }
@@ -91,7 +98,7 @@ const ProfilePage = ({ onBack }) => {
   );
 };
 
-// --- Styles (অপরিবর্তিত) ---
+// --- Styles (Hubuhu Same) ---
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const containerStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' };
 const profileCard = { background: 'rgba(255, 255, 255, 0.9)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', width: '100%', maxWidth: '500px', textAlign: 'center' };

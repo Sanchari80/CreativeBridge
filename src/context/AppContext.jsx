@@ -15,26 +15,32 @@ export const AppProvider = ({ children }) => {
   const [requests, setRequests] = useState([]);
   const [activeStoryId, setActiveStoryId] = useState(null);
 
-  // --- Persistent User & Sync with DB ---
+  // --- Persistent User & Sync with DB (FIXED) ---
   useEffect(() => {
-    if (user) {
+    if (user?.email) {
       localStorage.setItem('activeUser', JSON.stringify(user));
       
-      // Database theke user data sync kora (Chhobi/Profile update-er jonno)
       const userKey = user.email.replace(/\./g, ',');
       const userRef = ref(db, `users/${userKey}`);
+
       const unsubscribeUser = onValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          setUser(prev => ({ ...prev, ...data }));
+          setUser(prev => {
+            // Check if data is actually different to avoid infinite loop
+            const newData = { ...prev, ...data };
+            if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
+            return newData;
+          });
         }
       });
       return () => unsubscribeUser();
     } else {
       localStorage.removeItem('activeUser');
     }
-  }, [user?.email]); // Shudhu email change hole ba login hole trigger hobe
+  }, [user?.email, db]);
 
+  // --- Sync Stories ---
   useEffect(() => {
     const storiesRef = ref(db, 'stories');
     const unsubscribe = onValue(storiesRef, (snapshot) => {

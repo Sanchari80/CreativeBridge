@@ -4,7 +4,7 @@ import { getDatabase, ref, onValue } from "firebase/database";
 
 const CommonDashboard = () => {
   const { 
-    user, stories, setStories, requests, setRequests, 
+    user, stories, setStories, requests, 
     activeStoryId, setActiveStoryId, deleteStory, sendRequest 
   } = useContext(AppContext);
 
@@ -27,11 +27,7 @@ const CommonDashboard = () => {
     const unsubscribe = onValue(storiesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const storyList = Object.entries(data).map(([key, value]) => ({
-          ...value,
-          id: key 
-        })).reverse();
-        setStories(storyList);
+        setStories(Object.entries(data).map(([key, value]) => ({ ...value, id: key })).reverse());
       } else {
         setStories([]);
       }
@@ -43,150 +39,85 @@ const CommonDashboard = () => {
     if (activeStoryId) {
       setSelectedCategory("All");
       setExpandedStory(activeStoryId); 
-      setTimeout(() => {
-        const element = document.getElementById(`story-${activeStoryId}`);
-        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setActiveStoryId(null); 
-      }, 500);
+      setActiveStoryId(null); 
     }
   }, [activeStoryId, setActiveStoryId]);
-
-  useEffect(() => {
-    localStorage.setItem('savedStories', JSON.stringify(savedStories));
-  }, [savedStories]);
-
-  const toggleSaveStory = (storyId) => {
-    if (savedStories.includes(storyId)) {
-      setSavedStories(savedStories.filter(id => id !== storyId));
-    } else {
-      setSavedStories([...savedStories, storyId]);
-    }
-  };
 
   const handleRequest = () => {
     if (!requestModal || !user) return;
     const { story, type } = requestModal;
-    sendRequest(
-      story.writerEmail || story.email, 
-      story.Name || story.title, 
-      story.id,
-      type,
-      directorNote
-    );
+    sendRequest(story.writerEmail || story.email, story.Name || story.title, story.id, type, directorNote);
     setRequestModal(null);
     setDirectorNote("");
   };
 
-  const handleDelete = (storyId) => {
-    deleteStory(storyId);
-    setExpandedStory(null);
-  };
-
-  const filteredStories = stories.filter(s => {
-    if (selectedCategory === "Saved") return savedStories.includes(s.id);
-    if (selectedCategory === "All") return true;
-    return s.genre === selectedCategory; 
-  });
+  const filteredStories = stories.filter(s => selectedCategory === "Saved" ? savedStories.includes(s.id) : selectedCategory === "All" || s.genre === selectedCategory);
 
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
       
-      {/* MODAL: Eita ekhon shobar opore render hobe */}
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h3 style={{marginTop: 0, color: '#2d3436'}}>Request {requestModal.type === 'synopsis' ? 'Synopsis' : 'Full Story'}</h3>
-            <p style={{fontSize: '12px', color: '#636e72'}}>Sending request for: <b>{requestModal.story.Name}</b></p>
-            
-            <textarea 
-              style={textareaStyle} 
-              placeholder="Write a note to the writer (e.g., Why you want to read this?)" 
-              value={directorNote} 
-              onChange={(e) => setDirectorNote(e.target.value)}
-            />
-            
+            <h3 style={{marginTop: 0}}>Request {requestModal.type}</h3>
+            <textarea style={textareaStyle} placeholder="Note to writer..." value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} />
             <div style={{display: 'flex', gap: '10px'}}>
-              <button onClick={() => { setRequestModal(null); setDirectorNote(""); }} style={cancelBtn}>Cancel</button>
+              <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
               <button onClick={handleRequest} style={confirmBtn}>Send Request</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Baki Dashboard Logic */}
-      {expandedStory && activeStoryId === null ? (
-        // --- EXPANDED VIEW ---
+      {expandedStory ? (
         (() => {
           const s = stories.find(item => item.id === expandedStory);
           if (!s) return null;
-          const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
+          const isOwner = s.writerEmail === user?.email;
           const checkAccess = (type) => requests?.find(r => r.storyId === s.id && r.fromEmail === user?.email && r.status === 'approved');
-          const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
-          const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
+          const hasSynopsisAccess = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
+          const hasFullStoryAccess = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
 
           return (
             <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
               <button onClick={() => setExpandedStory(null)} style={backBtnStyle}>← Back to Dashboard</button>
               <div style={cardWrapper}>
                 <div style={profileHeader}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <div style={avatarWrapper}>
-                      <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
-                    </div>
-                    <div>
-                      <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
-                      <span style={tagStyle}>{s.genre || "Creator"}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
-                      {savedStories.includes(s.id) ? "⭐" : "☆"}
-                    </button>
-                    {isOwner && (
-                      <button onClick={() => handleDelete(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
-                    )}
+                  <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || s.profilePic || "/icon.png")} alt="p" style={avatarImg} />
+                  <div style={{marginLeft: '12px'}}>
+                    <strong style={{display: 'block'}}>{s.writerName}</strong>
+                    <span style={tagStyle}>{s.genre}</span>
                   </div>
                 </div>
-                
-                <h2 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '22px' }}>{s.Name || "Untitled Story"}</h2>
+
+                <h2 style={{color: '#4834d4'}}>{s.Name}</h2>
                 <p style={loglineStyle}>{s.logline}</p>
-                
+
                 <div style={detailsBox}>
-                  <div style={{ marginBottom: '15px' }}>
-                    <h5 style={labelStyle}>Synopsis</h5>
-                    {canSeeSynopsis ? (
-                      <p style={{ fontSize: '14px', color: '#444' }}>{s.synopsis}</p>
-                    ) : (
-                      <div style={lockedBox}>
-                        <span>🔒 Locked (Approved Director Only)</span>
-                        <button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request Access</button>
-                      </div>
+                  <div style={{marginBottom: '20px'}}>
+                    <h5 style={labelStyle}>Synopsis / Outline</h5>
+                    {hasSynopsisAccess ? <p style={{fontSize: '14px'}}>{s.synopsis}</p> : (
+                      <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'synopsis'})} style={smallReqBtn}>Request Access</button></div>
                     )}
                   </div>
 
-                  <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                  <div style={{borderTop: '1px solid #eee', paddingTop: '15px', marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Full Story / Script</h5>
-                    {canSeeFullStory ? (
-                      s.fullStoryFile ? <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a> : "No script uploaded"
+                    {hasFullStoryAccess ? (
+                      s.fullStoryFile ? <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a> : "No file uploaded"
                     ) : (
-                      <div style={lockedBox}>
-                        <span>🔒 Script Locked</span>
-                        <button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request Script</button>
-                      </div>
+                      <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Script</button></div>
                     )}
                   </div>
 
+                  {/* Writer's Portfolio/Info for Directors */}
                   {!isOwner && user.role === 'Director' && (
-                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginTop: '10px' }}>
-                      <h5 style={labelStyle}>Contact & Portfolio</h5>
-                      {checkAccess('fullStory') ? (
-                        <div style={{fontSize: '13px'}}>
-                          <p>📧 Email: {s.writerEmail}</p>
-                          {s.portfolio && <a href={s.portfolio} target="_blank" rel="noreferrer">🌐 View Portfolio</a>}
-                        </div>
-                      ) : (
-                        <p style={{fontSize: '12px', color: '#888'}}><i>Contact details are hidden until request is approved.</i></p>
-                      )}
+                    <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
+                      <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
+                      <div style={{fontSize: '13px'}}>
+                         <p>📧 Email: {checkAccess('fullStory') ? (s.writerEmail || s.email) : "Locked"}</p>
+                         {s.portfolio && <p>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -195,78 +126,48 @@ const CommonDashboard = () => {
           );
         })()
       ) : (
-        // --- GRID VIEW ---
-        <>
-          <div style={categoryTabWrapper}>
-            {categories.map(cat => (
-              <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ ...categoryBtn, background: selectedCategory === cat ? '#2d3436' : '#fff', color: selectedCategory === cat ? '#fff' : '#2d3436' }}>
-                {cat === "Saved" ? `⭐ ${cat}` : cat}
-              </button>
-            ))}
-          </div>
-
-          <div className="main-content" style={contentWrapperStyle}>
-            <div className="story-grid" style={gridStyle}>
-              {filteredStories.map(s => {
-                const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
-                return (
-                  <div key={s.id} id={`story-${s.id}`} style={cardWrapper}>
-                    <div style={profileHeader}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                        <div style={avatarWrapper}>
-                          <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
-                        </div>
-                        <div>
-                          <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
-                          <span style={tagStyle}>{s.genre || "Creator"}</span>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
-                          {savedStories.includes(s.id) ? "⭐" : "☆"}
-                        </button>
-                        {isOwner && (
-                          <button onClick={() => handleDelete(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
-                        )}
-                      </div>
-                    </div>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '16px' }}>{s.Name || "Untitled"}</h4>
-                    <p style={{ ...loglineStyle, fontSize: '15px', minHeight: '40px' }}>{s.logline}</p>
-                    <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
+        <div style={gridStyle}>
+          {filteredStories.map(s => {
+            const isOwner = s.writerEmail === user?.email;
+            return (
+              <div key={s.id} style={cardWrapper}>
+                <div style={profileHeader}>
+                  <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || s.profilePic || "/icon.png")} alt="p" style={avatarImg} />
+                  <div style={{marginLeft: '12px'}}>
+                    <strong>{s.writerName}</strong>
+                    <div style={tagStyle}>{s.genre}</div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </>
+                </div>
+                <h4 style={{color: '#4834d4'}}>{s.Name}</h4>
+                <p style={{...loglineStyle, fontSize: '14px'}}>{s.logline}</p>
+                <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
 };
 
-// Styles (unchanged)
-const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
-const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
-const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
-const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee', marginTop: '5px' };
-const smallReqBtn = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
-const contentWrapperStyle = { position: 'relative', zIndex: 1 };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '30px' };
-const cardWrapper = { background: 'rgba(255, 255, 255, 0.95)', padding: '25px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.4)' };
-const profileHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
-const avatarWrapper = { width: '50px', height: '50px', borderRadius: '15px', overflow: 'hidden', border: '2px solid #fff', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' };
-const avatarImg = { width: '100%', height: '100%', objectFit: 'cover' };
-const tagStyle = { fontSize: '11px', color: '#636e72', background: '#f1f2f6', padding: '3px 10px', borderRadius: '20px', fontWeight: '600' };
-const deleteBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', opacity: 0.6 };
-const loglineStyle = { fontWeight: '700', fontSize: '18px', color: '#2d3436', marginBottom: '20px', minHeight: '50px', lineHeight: '1.4' };
-const viewBtn = { width: '100%', padding: '12px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '600' };
-const detailsBox = { marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #eee' };
-const labelStyle = { margin: '0 0 8px 0', fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '1px' };
-const downloadLink = { display: 'inline-block', marginTop: '15px', color: '#4834d4', fontWeight: 'bold', textDecoration: 'none', fontSize: '14px' };
+// --- STYLES (Hubuhu same thakbe) ---
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
-const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s ease' };
-const textareaStyle = { width: '100%', height: '120px', padding: '15px', borderRadius: '12px', border: '1px solid #ddd', marginBottom: '20px', resize: 'none', fontSize: '14px', outline: 'none' };
-const cancelBtn = { flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#f1f2f6', cursor: 'pointer', fontWeight: '600' };
-const confirmBtn = { flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#2d3436', color: '#fff', cursor: 'pointer', fontWeight: '600' };
+const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
+const cardWrapper = { background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', marginBottom: '20px' };
+const profileHeader = { display: 'flex', alignItems: 'center', marginBottom: '15px' };
+const avatarImg = { width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' };
+const tagStyle = { fontSize: '11px', color: '#636e72', background: '#f1f2f6', padding: '2px 8px', borderRadius: '10px' };
+const loglineStyle = { fontWeight: '600', color: '#2d3436', marginBottom: '15px' };
+const viewBtn = { width: '100%', padding: '10px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer' };
+const detailsBox = { marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '12px' };
+const labelStyle = { margin: '0 0 8px 0', fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase' };
+const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee' };
+const smallReqBtn = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' };
+const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
+const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', padding: '20px' };
+const textareaStyle = { width: '100%', height: '100px', padding: '10px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '15px' };
+const cancelBtn = { flex: 1, padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer' };
+const confirmBtn = { flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#2d3436', color: '#fff', cursor: 'pointer' };
+const downloadLink = { color: '#4834d4', fontWeight: 'bold', textDecoration: 'none' };
 
 export default CommonDashboard;

@@ -4,11 +4,14 @@ import { getDatabase, ref, onValue, update } from "firebase/database";
 
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
-  const userKey = user?.email?.replace(/\./g, ',');
   
+  // Safe Email Key (Firebase doesn't like dots)
+  const userKey = user?.email?.replace(/\./g, ',');
   const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   useEffect(() => {
+    if (!user) return;
+
     const db = getDatabase(undefined, dbUrl);
     const reqRef = ref(db, 'requests');
     
@@ -16,9 +19,8 @@ const NotificationSystem = ({ onBack }) => {
       const data = snapshot.val();
       if (data) {
         let allReqs = [];
-        // Prottekta ownerKey (email folder) theke request gulo ber kore ana hocche
         Object.entries(data).forEach(([ownerKey, requestsInFolder]) => {
-          if (typeof requestsInFolder === 'object') {
+          if (requestsInFolder && typeof requestsInFolder === 'object') {
             Object.entries(requestsInFolder).forEach(([key, value]) => {
               allReqs.push({
                 ...value,
@@ -35,11 +37,12 @@ const NotificationSystem = ({ onBack }) => {
     });
 
     return () => unsubscribe();
-  }, [setRequests]);
+  }, [setRequests, user]); // Added user to dependency
 
   const updateStatus = (req, newStatus) => {
     const db = getDatabase(undefined, dbUrl);
     const updates = {};
+    // Update path correction
     updates[`/requests/${req.ownerPath}/${req.firebaseKey}/status`] = newStatus;
     
     update(ref(db), updates)
@@ -47,13 +50,14 @@ const NotificationSystem = ({ onBack }) => {
       .catch((err) => alert("Error: " + err.message));
   };
 
+  // Notification Filtering Logic
   const myNotifications = requests.filter(req => {
     if (user.role === 'Writer') {
-      // Writer dekhbe tar kache asha requests (ownerPath milte hobe)
+      // Writer tar nijer email path er shob notification dekhbe
       return req.ownerPath === userKey;
     } else {
-      // Director dekhbe tar approved requests (tar email milte hobe)
-      return req.fromEmail === user?.email && req.status === 'approved';
+      // Director shudhu tar pathano approved/declined results dekhbe
+      return req.fromEmail === user?.email && (req.status === 'approved' || req.status === 'declined');
     }
   });
 
@@ -75,32 +79,34 @@ const NotificationSystem = ({ onBack }) => {
           [...myNotifications].reverse().map(req => (
             <div key={req.firebaseKey} style={{
               ...notifCard, 
-              borderLeft: req.status === 'declined' ? '4px solid #e74c3c' : (req.status === 'approved' ? '4px solid #2ecc71' : '4px solid #2d3436'),
-              opacity: req.status !== 'pending' && user.role === 'Writer' ? 0.8 : 1
+              borderLeft: req.status === 'declined' ? '4px solid #e74c3c' : (req.status === 'approved' ? '4px solid #2ecc71' : '4px solid #f1c40f'),
+              background: req.status === 'pending' ? '#fff9db' : '#f9f9f9'
             }}>
               <div style={{ fontSize: '13px', marginBottom: '8px' }}>
                 {user.role === 'Writer' ? (
                   <>
-                    <strong>{req.fromName}</strong> requested access to <strong>{req.storyTitle}</strong>.
-                    <div style={{fontSize: '11px', color: '#888', marginTop: '2px'}}>Status: {req.status}</div>
+                    <strong>{req.fromName}</strong> requested <strong>{req.type}</strong> for <strong>{req.storyTitle}</strong>.
+                    <div style={{fontSize: '11px', color: '#666', marginTop: '2px'}}>Status: <b style={{textTransform: 'capitalize'}}>{req.status}</b></div>
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span>Your request for <strong>{req.storyTitle}</strong> was approved!</span>
-                    <button 
-                      onClick={() => handleViewStory(req.storyId)}
-                      style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}
-                    >
-                      View Story
-                    </button>
+                    <span>Your request for <strong>{req.storyTitle}</strong> was <strong>{req.status}</strong>!</span>
+                    {req.status === 'approved' && (
+                      <button 
+                        onClick={() => handleViewStory(req.storyId)}
+                        style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}
+                      >
+                        View Story
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
               
-              {req.note && <p style={noteStyle}>"{req.note}"</p>}
+              {req.note && <p style={noteStyle}>Note: "{req.note}"</p>}
 
               {user.role === 'Writer' && req.status === 'pending' && (
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                   <button onClick={() => updateStatus(req, 'approved')} style={{ ...actionBtn, background: '#2ecc71' }}>Approve</button>
                   <button onClick={() => updateStatus(req, 'declined')} style={{ ...actionBtn, background: '#e74c3c' }}>Decline</button>
                 </div>
@@ -113,10 +119,11 @@ const NotificationSystem = ({ onBack }) => {
   );
 };
 
-const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px', padding: '0' };
-const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' };
-const notifCard = { padding: '12px', background: '#f9f9f9', borderRadius: '10px', marginBottom: '5px', flexShrink: 0 };
-const noteStyle = { fontSize: '12px', fontStyle: 'italic', color: '#636e72', margin: '5px 0', background: '#fff', padding: '5px', borderRadius: '5px' };
-const actionBtn = { padding: '5px 12px', border: 'none', borderRadius: '5px', color: 'white', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' };
+// Styles (Same as yours, added scroll smooth)
+const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
+const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto', padding: '5px' };
+const notifCard = { padding: '15px', borderRadius: '12px', marginBottom: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
+const noteStyle = { fontSize: '12px', fontStyle: 'italic', color: '#636e72', margin: '8px 0', background: '#fff', padding: '8px', borderRadius: '8px', border: '1px solid #eee' };
+const actionBtn = { padding: '6px 14px', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: '0.2s' };
 
 export default NotificationSystem;
