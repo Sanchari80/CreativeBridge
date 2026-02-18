@@ -10,7 +10,6 @@ import NotificationSystem from './components/NotificationSystem';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 
-// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
   authDomain: "creativebridge-88c8a.firebaseapp.com",
@@ -31,7 +30,6 @@ function App() {
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
 
-  // --- ১. LocalStorage Sync (Auth priority-r jonno) ---
   useEffect(() => {
     const savedUser = localStorage.getItem('activeUser');
     if (savedUser && !user) {
@@ -39,7 +37,6 @@ function App() {
     }
   }, [setUser, user]);
 
-  // --- ২. নোটিফিকেশন লিসেনার ---
   useEffect(() => {
     if (!user) return;
     const reqRef = ref(db, 'requests');
@@ -60,7 +57,6 @@ function App() {
     return () => unsubscribe();
   }, [user, setRequests]);
 
-  // --- ৩. ভিজিটর লজিক ---
   useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
@@ -87,17 +83,15 @@ function App() {
     </div>
   );
 
-  // --- ৪. Authentication Logic (LINK OPEN KORLE AGE ETA LOAD HOBE) ---
-  if (!user) {
-    return (
-      <div className="app-container" style={appContainerStyle}>
-        <VideoBackground />
-        <AuthPage />
-      </div>
-    );
+  // --- ১. AUTH CHECK: User na thakle shudhu AuthPage render hobe ---
+  if (!user && !localStorage.getItem('activeUser')) {
+    return <AuthPage />; 
   }
 
-  // Jodi user thake, tokhon main dashboard render hobe
+  // --- ২. Loading State: User login state check houyar somoy screen khali thakbe na ---
+  if (!user) return null;
+
+  // --- ৩. LOGGED IN UI: User thakle video bg shoho dashboard asbe ---
   return (
     <div className="app-container" style={appContainerStyle}>
       <VideoBackground />
@@ -155,7 +149,7 @@ function App() {
   );
 }
 
-// Styles - Tomar provide kora same style gulo
+// Styles
 const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
 const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
