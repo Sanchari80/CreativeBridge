@@ -31,22 +31,19 @@ function App() {
   const [view, setView] = useState('dashboard');
   const [liveVisitors, setLiveVisitors] = useState(0); 
 
-  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার ---
+  // --- ১. নোটিফিকেশন রিয়েলটাইম লিসেনার (App লেভেলে) ---
   useEffect(() => {
     if (!user) return;
-    const reqRef = ref(db, 'requests'); // Context-er db use koro
+    const db = getDatabase();
+    const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const reqList = [];
-        Object.entries(data).forEach(([ownerKey, folderData]) => {
-            if (typeof folderData === 'object') {
-                Object.entries(folderData).forEach(([key, value]) => {
-                    reqList.push({ ...value, firebaseKey: key });
-                });
-            }
-        });
+        const reqList = Object.entries(data).map(([key, value]) => ({
+          ...value,
+          firebaseKey: key
+        }));
         setRequests(reqList);
       }
     });
@@ -62,6 +59,15 @@ function App() {
   }, [setUser, user]);
 
   useEffect(() => {
+    if (user) {
+      localStorage.setItem('activeUser', JSON.stringify(user));
+      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
+      const updatedUsers = allUsers.map(u => u.email === user.email ? user : u);
+      localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
+    }
+  }, [user]);
+
+  useEffect(() => {
     const visitorId = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
     set(myStatusRef, { online: true, lastChanged: serverTimestamp() });
@@ -72,7 +78,7 @@ function App() {
     });
   }, []);
 
-  // --- ২. ব্যাজ লজিক ---
+  // --- ২. ব্যাজ লজিক আপডেট ---
   const hasNewNotifications = requests?.some(r => 
     (user?.role === 'Writer' && r.status === 'pending' && r.writerName === user.name) || 
     (user?.role === 'Director' && r.status === 'approved' && r.directorName === user.name)
@@ -81,13 +87,9 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('activeUser');
     setUser(null);
-    window.location.reload(); // Hard reset for safety
   };
 
-  // --- FIX: Loading state check ---
-  // Jodi localStorage-e user thake kintu state ekhono load hoy nai, tokhon jeno blank na thake
-  if (!user && !localStorage.getItem('activeUser')) return <AuthPage />;
-  if (!user) return <div style={{color: 'white', textAlign: 'center', marginTop: '20%'}}>Loading Profile...</div>;
+  if (!user) return <AuthPage />;
 
   return (
     <div className="app-container" style={appContainerStyle}>
@@ -120,12 +122,13 @@ function App() {
               <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
               <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
             </div>
-            <img src={user.profilePic || "/icon.png"} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} />
+            <img src={user.profilePic} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' }} />
           </div>
           <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
         </div>
       </nav>
 
+      {/* ৩. নোটিফিকেশন প্যানেল ফিক্স */}
       {showNotifications && (
         <div style={notifPanelContainer}>
           <div style={notifHeader}>
@@ -151,7 +154,7 @@ function App() {
   );
 }
 
-// STYLES (Hubuhu same)
+// --- STYLES ---
 const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
 const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
