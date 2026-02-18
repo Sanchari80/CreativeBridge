@@ -4,29 +4,29 @@ import { getDatabase, ref, onValue, update } from "firebase/database";
 
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
-  const displayName = user?.name || user?.email?.split('@')[0];
   const userKey = user?.email?.replace(/\./g, ',');
   
   const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   useEffect(() => {
     const db = getDatabase(undefined, dbUrl);
-    // Path-ta ekhon pura 'requests' node-e thakbe
     const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         let allReqs = [];
-        // requests er bhetore prottekta ownerKey (email) folder theke data nichi
+        // Prottekta ownerKey (email folder) theke request gulo ber kore ana hocche
         Object.entries(data).forEach(([ownerKey, requestsInFolder]) => {
-          Object.entries(requestsInFolder).forEach(([key, value]) => {
-            allReqs.push({
-              ...value,
-              firebaseKey: key,
-              ownerPath: ownerKey // Update korar somoy lagbe
+          if (typeof requestsInFolder === 'object') {
+            Object.entries(requestsInFolder).forEach(([key, value]) => {
+              allReqs.push({
+                ...value,
+                firebaseKey: key,
+                ownerPath: ownerKey 
+              });
             });
-          });
+          }
         });
         setRequests(allReqs);
       } else {
@@ -40,7 +40,6 @@ const NotificationSystem = ({ onBack }) => {
   const updateStatus = (req, newStatus) => {
     const db = getDatabase(undefined, dbUrl);
     const updates = {};
-    // Exact path-e status update korchi
     updates[`/requests/${req.ownerPath}/${req.firebaseKey}/status`] = newStatus;
     
     update(ref(db), updates)
@@ -50,10 +49,10 @@ const NotificationSystem = ({ onBack }) => {
 
   const myNotifications = requests.filter(req => {
     if (user.role === 'Writer') {
-      // Writer dekhbe tar kache asha requests
+      // Writer dekhbe tar kache asha requests (ownerPath milte hobe)
       return req.ownerPath === userKey;
     } else {
-      // Director dekhbe tar approved requests
+      // Director dekhbe tar approved requests (tar email milte hobe)
       return req.fromEmail === user?.email && req.status === 'approved';
     }
   });

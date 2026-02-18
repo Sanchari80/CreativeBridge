@@ -1,38 +1,45 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, update } from "firebase/database"; // Firebase functions যোগ করা হয়েছে
+import { getDatabase, ref, update } from "firebase/database";
 
 const ProfilePage = ({ onBack }) => {
   const { user, setUser, stories, setStories } = useContext(AppContext);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && user) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const newPhoto = reader.result;
+        const userKey = user.email.replace(/\./g, ','); // Firebase key format
+        const db = getDatabase();
 
-        // ১. লোকাল স্টেট এবং স্টোরেজ আপডেট
+        // ১. Local State এবং Storage আপডেট
         const updatedUser = { ...user, profilePic: newPhoto };
         setUser(updatedUser);
         localStorage.setItem('activeUser', JSON.stringify(updatedUser));
 
-        // ২. লোকাল স্টোরি স্টেট আপডেট
-        if (stories && stories.length > 0) {
-          const updatedStories = stories.map(s => 
-            s.writerName === user.name ? { ...s, writerPic: newPhoto } : s
-          );
-          setStories(updatedStories);
+        // ২. Firebase 'users' node-এ permanent save (যাতে logout করলেও না হারায়)
+        const userRef = ref(db, `users/${userKey}`);
+        update(userRef, { profilePic: newPhoto });
 
-          // ৩. Firebase Realtime Database আপডেট (যাতে অন্য সবাই নতুন ছবি দেখে)
-          const db = getDatabase();
+        // ৩. Firebase 'stories' node-এ update (যাতে সবাই নতুন ছবি দেখে)
+        if (stories && stories.length > 0) {
           stories.forEach(s => {
-            if (s.writerName === user.name && s.firebaseId) {
-              const storyRef = ref(db, `stories/${s.firebaseId}`);
+            // s.id holo firebase key
+            if (s.writerEmail === user.email) {
+              const storyRef = ref(db, `stories/${s.id}`);
               update(storyRef, { writerPic: newPhoto });
             }
           });
+          
+          // Local story list-ও আপডেট করে দিচ্ছি
+          const updatedStories = stories.map(s => 
+            s.writerEmail === user.email ? { ...s, writerPic: newPhoto } : s
+          );
+          setStories(updatedStories);
         }
+        alert("Profile Picture Updated Successfully!");
       };
       reader.readAsDataURL(file);
     }
@@ -49,7 +56,7 @@ const ProfilePage = ({ onBack }) => {
       <div style={profileCard}>
         <div style={imageWrapper}>
           <img 
-            src={user?.profilePic } 
+            src={user?.profilePic || "/icon.png"} 
             alt="Profile" 
             style={imageStyle} 
           />

@@ -15,13 +15,25 @@ export const AppProvider = ({ children }) => {
   const [requests, setRequests] = useState([]);
   const [activeStoryId, setActiveStoryId] = useState(null);
 
+  // --- Persistent User & Sync with DB ---
   useEffect(() => {
     if (user) {
       localStorage.setItem('activeUser', JSON.stringify(user));
+      
+      // Database theke user data sync kora (Chhobi/Profile update-er jonno)
+      const userKey = user.email.replace(/\./g, ',');
+      const userRef = ref(db, `users/${userKey}`);
+      const unsubscribeUser = onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setUser(prev => ({ ...prev, ...data }));
+        }
+      });
+      return () => unsubscribeUser();
     } else {
       localStorage.removeItem('activeUser');
     }
-  }, [user]);
+  }, [user?.email]); // Shudhu email change hole ba login hole trigger hobe
 
   useEffect(() => {
     const storiesRef = ref(db, 'stories');
@@ -40,7 +52,6 @@ export const AppProvider = ({ children }) => {
     return () => unsubscribe();
   }, [db]);
 
-  // --- DELETE STORY FUNCTION ---
   const deleteStory = async (storyId) => {
     if (window.confirm("Are you sure you want to delete this story?")) {
       try {
@@ -51,12 +62,9 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // --- SEND REQUEST FUNCTION ---
-  const sendRequest = async (ownerEmail, storyTitle) => {
+  const sendRequest = async (ownerEmail, storyTitle, storyId, type, note) => {
     if (!user) return alert("Please Login First!");
-    
-    // ownerEmail jodi null ba faka thake, tobe request fail hoy. Tai safe check:
-    const finalEmail = ownerEmail || "unknown_writer@mail.com";
+    const finalEmail = ownerEmail || "unknown@mail.com";
     
     try {
       const ownerKey = finalEmail.replace(/\./g, ',');
@@ -64,13 +72,15 @@ export const AppProvider = ({ children }) => {
       await set(newRequestRef, {
         fromEmail: user.email,
         fromName: user.name,
-        storyTitle: storyTitle || "Untitled Story",
+        storyId: storyId || "",
+        requestType: type || "general",
+        note: note || "",
+        storyTitle: storyTitle || "Untitled",
         status: 'pending',
         timestamp: Date.now()
       });
       alert("Request Sent Successfully!");
     } catch (error) {
-      console.error("Firebase Error:", error);
       alert("Request failed!");
     }
   };

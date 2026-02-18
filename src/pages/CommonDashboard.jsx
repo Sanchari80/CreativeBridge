@@ -3,7 +3,6 @@ import { AppContext } from '../context/AppContext';
 import { getDatabase, ref, onValue } from "firebase/database";
 
 const CommonDashboard = () => {
-  // AppContext theke functions gulo neya holo
   const { 
     user, stories, setStories, requests, setRequests, 
     activeStoryId, setActiveStoryId, deleteStory, sendRequest 
@@ -22,7 +21,6 @@ const CommonDashboard = () => {
   const displayName = user?.name || user?.email?.split('@')[0] || "User";
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
-  // --- Real-time Stories Sync ---
   useEffect(() => {
     const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
     const storiesRef = ref(db, 'stories');
@@ -31,7 +29,7 @@ const CommonDashboard = () => {
       if (data) {
         const storyList = Object.entries(data).map(([key, value]) => ({
           ...value,
-          id: key // Firebase key-ke id hishebe set kora holo matching-er jonno
+          id: key 
         })).reverse();
         setStories(storyList);
       } else {
@@ -65,19 +63,22 @@ const CommonDashboard = () => {
     }
   };
 
-  // --- Handlers using AppContext Functions ---
-  const handleRequest = (type) => {
-    if (!requestModal) return;
-    const { story } = requestModal;
-    
-    // AppContext-er sendRequest call kora hocche
-    sendRequest(story.writerEmail || story.email, story.Name || story.title);
+  const handleRequest = () => {
+    if (!requestModal || !user) return;
+    const { story, type } = requestModal;
+    sendRequest(
+      story.writerEmail || story.email, 
+      story.Name || story.title, 
+      story.id,
+      type,
+      directorNote
+    );
     setRequestModal(null);
     setDirectorNote("");
   };
 
   const handleDelete = (storyId) => {
-    deleteStory(storyId); // AppContext theke asha delete function
+    deleteStory(storyId);
     setExpandedStory(null);
   };
 
@@ -87,90 +88,46 @@ const CommonDashboard = () => {
     return s.genre === selectedCategory; 
   });
 
-  if (expandedStory && activeStoryId === null) {
-    const s = stories.find(item => item.id === expandedStory);
-    if (s) {
-      const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
-      const checkAccess = (type) => requests?.find(r => r.storyId === s.id && r.fromEmail === user?.email && r.status === 'approved');
-      
-      const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
-      const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
-
-      return (
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-          <button onClick={() => setExpandedStory(null)} style={backBtnStyle}>← Back to Dashboard</button>
-          <div style={cardWrapper}>
-            <div style={profileHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                <div style={avatarWrapper}>
-                  <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
-                </div>
-                <div>
-                  <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
-                  <span style={tagStyle}>{s.genre || "Creator"}</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
-                  {savedStories.includes(s.id) ? "⭐" : "☆"}
-                </button>
-                {isOwner && (
-                  <button onClick={() => handleDelete(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
-                )}
-              </div>
-            </div>
-            <h2 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '22px' }}>{s.Name || "Untitled Story"}</h2>
-            <p style={loglineStyle}>{s.logline}</p>
-            <div style={detailsBox}>
-              <div style={{ marginBottom: '15px' }}>
-                <h5 style={labelStyle}>Synopsis</h5>
-                {canSeeSynopsis ? <p style={{ fontSize: '14px', color: '#444' }}>{s.synopsis}</p> : <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request</button></div>}
-              </div>
-              <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                <h5 style={labelStyle}>Full Story</h5>
-                {canSeeFullStory ? (s.fullStoryFile ? <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a> : "No file") : <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request</button></div>}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-  }
-
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
+      
+      {/* MODAL: Eita ekhon shobar opore render hobe */}
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h3 style={{marginTop: 0}}>Request {requestModal.type}</h3>
+            <h3 style={{marginTop: 0, color: '#2d3436'}}>Request {requestModal.type === 'synopsis' ? 'Synopsis' : 'Full Story'}</h3>
+            <p style={{fontSize: '12px', color: '#636e72'}}>Sending request for: <b>{requestModal.story.Name}</b></p>
+            
             <textarea 
               style={textareaStyle} 
-              placeholder="Write a note to the writer..." 
+              placeholder="Write a note to the writer (e.g., Why you want to read this?)" 
               value={directorNote} 
               onChange={(e) => setDirectorNote(e.target.value)}
             />
+            
             <div style={{display: 'flex', gap: '10px'}}>
-              <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
+              <button onClick={() => { setRequestModal(null); setDirectorNote(""); }} style={cancelBtn}>Cancel</button>
               <button onClick={handleRequest} style={confirmBtn}>Send Request</button>
             </div>
           </div>
         </div>
       )}
 
-      <div style={categoryTabWrapper}>
-        {categories.map(cat => (
-          <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ ...categoryBtn, background: selectedCategory === cat ? '#2d3436' : '#fff', color: selectedCategory === cat ? '#fff' : '#2d3436' }}>
-            {cat === "Saved" ? `⭐ ${cat}` : cat}
-          </button>
-        ))}
-      </div>
+      {/* Baki Dashboard Logic */}
+      {expandedStory && activeStoryId === null ? (
+        // --- EXPANDED VIEW ---
+        (() => {
+          const s = stories.find(item => item.id === expandedStory);
+          if (!s) return null;
+          const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
+          const checkAccess = (type) => requests?.find(r => r.storyId === s.id && r.fromEmail === user?.email && r.status === 'approved');
+          const canSeeSynopsis = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
+          const canSeeFullStory = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
 
-      <div className="main-content" style={contentWrapperStyle}>
-        <div className="story-grid" style={gridStyle}>
-          {filteredStories.map(s => {
-            const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
-            return (
-              <div key={s.id} id={`story-${s.id}`} style={cardWrapper}>
+          return (
+            <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+              <button onClick={() => setExpandedStory(null)} style={backBtnStyle}>← Back to Dashboard</button>
+              <div style={cardWrapper}>
                 <div style={profileHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div style={avatarWrapper}>
@@ -190,19 +147,104 @@ const CommonDashboard = () => {
                     )}
                   </div>
                 </div>
-                <h4 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '16px' }}>{s.Name || "Untitled"}</h4>
-                <p style={{ ...loglineStyle, fontSize: '15px', minHeight: '40px' }}>{s.logline}</p>
-                <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
+                
+                <h2 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '22px' }}>{s.Name || "Untitled Story"}</h2>
+                <p style={loglineStyle}>{s.logline}</p>
+                
+                <div style={detailsBox}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <h5 style={labelStyle}>Synopsis</h5>
+                    {canSeeSynopsis ? (
+                      <p style={{ fontSize: '14px', color: '#444' }}>{s.synopsis}</p>
+                    ) : (
+                      <div style={lockedBox}>
+                        <span>🔒 Locked (Approved Director Only)</span>
+                        <button onClick={() => setRequestModal({ story: s, type: 'synopsis' })} style={smallReqBtn}>Request Access</button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                    <h5 style={labelStyle}>Full Story / Script</h5>
+                    {canSeeFullStory ? (
+                      s.fullStoryFile ? <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a> : "No script uploaded"
+                    ) : (
+                      <div style={lockedBox}>
+                        <span>🔒 Script Locked</span>
+                        <button onClick={() => setRequestModal({ story: s, type: 'fullStory' })} style={smallReqBtn}>Request Script</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isOwner && user.role === 'Director' && (
+                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginTop: '10px' }}>
+                      <h5 style={labelStyle}>Contact & Portfolio</h5>
+                      {checkAccess('fullStory') ? (
+                        <div style={{fontSize: '13px'}}>
+                          <p>📧 Email: {s.writerEmail}</p>
+                          {s.portfolio && <a href={s.portfolio} target="_blank" rel="noreferrer">🌐 View Portfolio</a>}
+                        </div>
+                      ) : (
+                        <p style={{fontSize: '12px', color: '#888'}}><i>Contact details are hidden until request is approved.</i></p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
+            </div>
+          );
+        })()
+      ) : (
+        // --- GRID VIEW ---
+        <>
+          <div style={categoryTabWrapper}>
+            {categories.map(cat => (
+              <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ ...categoryBtn, background: selectedCategory === cat ? '#2d3436' : '#fff', color: selectedCategory === cat ? '#fff' : '#2d3436' }}>
+                {cat === "Saved" ? `⭐ ${cat}` : cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="main-content" style={contentWrapperStyle}>
+            <div className="story-grid" style={gridStyle}>
+              {filteredStories.map(s => {
+                const isOwner = s.writerEmail === user?.email || s.writerName === displayName;
+                return (
+                  <div key={s.id} id={`story-${s.id}`} style={cardWrapper}>
+                    <div style={profileHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                        <div style={avatarWrapper}>
+                          <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || "/icon.png")} alt="p" style={avatarImg} />
+                        </div>
+                        <div>
+                          <strong style={{ display: 'block', fontSize: '15px', color: '#2d3436' }}>{s.writerName}</strong>
+                          <span style={tagStyle}>{s.genre || "Creator"}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <button onClick={() => toggleSaveStory(s.id)} style={{ ...deleteBtn, opacity: 1 }}>
+                          {savedStories.includes(s.id) ? "⭐" : "☆"}
+                        </button>
+                        {isOwner && (
+                          <button onClick={() => handleDelete(s.id)} style={{ ...deleteBtn, color: '#e74c3c' }}>🗑️</button>
+                        )}
+                      </div>
+                    </div>
+                    <h4 style={{ margin: '0 0 5px 0', color: '#4834d4', fontSize: '16px' }}>{s.Name || "Untitled"}</h4>
+                    <p style={{ ...loglineStyle, fontSize: '15px', minHeight: '40px' }}>{s.logline}</p>
+                    <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
-// --- Styles ---
+// Styles (unchanged)
 const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
 const categoryTabWrapper = { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '20px', marginBottom: '20px', scrollbarWidth: 'none' };
 const categoryBtn = { padding: '8px 18px', borderRadius: '20px', border: '1px solid #ddd', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: '0.3s', whiteSpace: 'nowrap' };
@@ -221,32 +263,8 @@ const viewBtn = { width: '100%', padding: '12px', background: '#2d3436', color: 
 const detailsBox = { marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #eee' };
 const labelStyle = { margin: '0 0 8px 0', fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '1px' };
 const downloadLink = { display: 'inline-block', marginTop: '15px', color: '#4834d4', fontWeight: 'bold', textDecoration: 'none', fontSize: '14px' };
-
-// --- Niche tomar deya updated style gulo ---
-const modalOverlay = { 
-  position: 'fixed', 
-  top: 0, 
-  left: 0, 
-  width: '100%', 
-  height: '100%', 
-  background: 'rgba(0,0,0,0.7)', 
-  display: 'flex', 
-  justifyContent: 'center', 
-  alignItems: 'center', 
-  zIndex: 9999, 
-  backdropFilter: 'blur(5px)' 
-};
-
-const modalContent = { 
-  background: '#fff', 
-  padding: '30px', 
-  borderRadius: '20px', 
-  width: '90%', 
-  maxWidth: '400px', 
-  boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-  animation: 'fadeIn 0.3s ease' 
-};
-
+const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
+const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s ease' };
 const textareaStyle = { width: '100%', height: '120px', padding: '15px', borderRadius: '12px', border: '1px solid #ddd', marginBottom: '20px', resize: 'none', fontSize: '14px', outline: 'none' };
 const cancelBtn = { flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#f1f2f6', cursor: 'pointer', fontWeight: '600' };
 const confirmBtn = { flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#2d3436', color: '#fff', cursor: 'pointer', fontWeight: '600' };
