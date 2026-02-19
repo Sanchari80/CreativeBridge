@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from './context/AppContext';
-import AuthPage from './pages/Authpage'; 
+import AuthPage from './pages/AuthPage'; 
 import CommonDashboard from './pages/CommonDashboard';
 import PostForm from './pages/PostForm';
 import ProfilePage from './pages/ProfilePage'; 
@@ -83,15 +83,12 @@ function App() {
     </div>
   );
 
-  // --- ১. AUTH CHECK: User na thakle shudhu AuthPage render hobe ---
-  if (!user && !localStorage.getItem('activeUser')) {
+  // --- ১. AUTH CHECK: User না থাকলে সরাসরি AuthPage এ পাঠাবে ---
+  if (!user) {
     return <AuthPage />; 
   }
 
-  // --- ২. Loading State: User login state check houyar somoy screen khali thakbe na ---
-  if (!user) return null;
-
-  // --- ৩. LOGGED IN UI: User thakle video bg shoho dashboard asbe ---
+  // --- ২. LOGGED IN UI ---
   return (
     <div className="app-container" style={appContainerStyle}>
       <VideoBackground />

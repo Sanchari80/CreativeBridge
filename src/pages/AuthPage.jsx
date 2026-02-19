@@ -1,19 +1,13 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { getDatabase, ref, set, get, child } from "firebase/database";
 
-// ১. এখানে LandingPage কেটে AuthPage করো
 const AuthPage = () => { 
   const { setUser } = useContext(AppContext);
   const [view, setView] = useState('login'); 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '', pic: null });
 
   const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
-
-  useEffect(() => {
-    const activeSession = localStorage.getItem('activeUser');
-    if (activeSession) setUser(JSON.parse(activeSession));
-  }, [setUser]);
 
   const handleAction = async () => {
     const db = getDatabase(undefined, dbUrl);
@@ -83,7 +77,7 @@ const AuthPage = () => {
   );
 };
 
-// Styles (বাকি সব এক থাকবে)
+// Styles
 const container = { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f2f5', fontFamily: "'Segoe UI', sans-serif" };
 const content = { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' };
 const authCard = { width: '100%', maxWidth: '400px', padding: '40px', borderRadius: '25px', background: 'white', boxShadow: '0 25px 50px rgba(0,0,0,0.1)', textAlign: 'center', position: 'relative' };
@@ -91,5 +85,4 @@ const inputStyle = { width: '100%', padding: '14px', margin: '10px 0', border: '
 const actionBtn = { width: '100%', padding: '15px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', marginTop: '15px' };
 const backBtn = { position: 'absolute', top: '20px', left: '20px', background: 'none', border: 'none', color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' };
 
-// ২. এখানেও LandingPage কেটে AuthPage করো
 export default AuthPage;

@@ -6,7 +6,6 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
 
-  // Initial load-e localstorage theke user neya
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('activeUser');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -18,7 +17,8 @@ export const AppProvider = ({ children }) => {
 
   // --- 1. LocalStorage & Database Sync ---
   useEffect(() => {
-    if (!user) {
+    // ইউজার অথবা ইমেইল না থাকলে কোড এখানেই থেমে যাবে, ক্র্যাশ করবে না
+    if (!user || !user.email) {
       localStorage.removeItem('activeUser');
       return;
     }
@@ -31,7 +31,6 @@ export const AppProvider = ({ children }) => {
     const unsubscribeUser = onValue(userRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Strict check jate unnecessary re-render ba loop na hoy
         if (JSON.stringify(data) !== JSON.stringify(user)) {
           setUser(prev => ({ ...prev, ...data }));
         }
@@ -39,7 +38,7 @@ export const AppProvider = ({ children }) => {
     });
 
     return () => unsubscribeUser();
-  }, [user?.email]); // Shudhu email change holei effect trigger hobe
+  }, [user?.email]); 
 
   // --- 2. Sync Stories ---
   useEffect(() => {
