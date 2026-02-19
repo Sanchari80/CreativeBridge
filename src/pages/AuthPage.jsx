@@ -78,9 +78,19 @@ const AuthPage = () => {
 };
 
 // Styles
-const container = { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f0f2f5', fontFamily: "'Segoe UI', sans-serif" };
+const container = { 
+  minHeight: '100vh', 
+  display: 'flex', 
+  flexDirection: 'column', 
+  // তোমার দেওয়া ইমেজ পাথটি এখানে বসানো হয়েছে
+  backgroundImage: "url('/auth background.png')",
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  fontFamily: "'Segoe UI', sans-serif" 
+};
 const content = { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' };
-const authCard = { width: '100%', maxWidth: '400px', padding: '40px', borderRadius: '25px', background: 'white', boxShadow: '0 25px 50px rgba(0,0,0,0.1)', textAlign: 'center', position: 'relative' };
+const authCard = { width: '100%', maxWidth: '400px', padding: '40px', borderRadius: '25px', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', boxShadow: '0 25px 50px rgba(0,0,0,0.1)', textAlign: 'center', position: 'relative' };
 const inputStyle = { width: '100%', padding: '14px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '12px', boxSizing: 'border-box' };
 const actionBtn = { width: '100%', padding: '15px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', marginTop: '15px' };
 const backBtn = { position: 'absolute', top: '20px', left: '20px', background: 'none', border: 'none', color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' };
