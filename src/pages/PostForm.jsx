@@ -1,6 +1,8 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, push, set } from "firebase/database";
+import { ref, push, set } from "firebase/database";
+// App.jsx থেকে db ইম্পোর্ট করো
+import { db } from '../App.jsx'; 
 
 const PostForm = ({ closeForm }) => {
   const { user } = useContext(AppContext);
@@ -23,7 +25,7 @@ const PostForm = ({ closeForm }) => {
       setFormData(prev => ({ 
         ...prev, 
         contactInfo: user.email,
-        portfolio: user.portfolio || "" // User profile theke portfolio niye asha
+        portfolio: user.portfolio || "" 
       }));
     }
   }, [user]);
@@ -31,8 +33,6 @@ const PostForm = ({ closeForm }) => {
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Note: Full file database-e direct pathano jay na. 
-      // Ekhonkar moto file name save hobe, download kaj korbe na storage chara.
       setFormData({ ...formData, fullStoryFile: file, fileName: file.name });
     }
   };
@@ -44,21 +44,20 @@ const PostForm = ({ closeForm }) => {
     if (!formData.logline?.trim()) return alert("Logline is required!");
     if (!formData.contactInfo?.trim()) return alert("Contact Info is required!");
 
-    const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
+    // এখানে আলাদা getDatabase এর বদলে App.jsx এর db ব্যবহার করা হয়েছে
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
 
-    // file object bad diye database-er data ready kora
     const { fullStoryFile, ...otherData } = formData;
 
     const newStory = {
       ...otherData,
       writerId: user?.id || Date.now(),
       writerName: user?.name || "Anonymous",
-      writerEmail: user?.email, // Eita must thaka lagbe request system-er jonno
+      writerEmail: user?.email, 
       writerPic: user?.profilePic || "/icon.png",
       writerProfession: user?.profession || "Writer",
-      fullStoryFile: "", // Eikhane pore Storage URL boshbe
+      fullStoryFile: "", 
       createdAt: new Date().toISOString(),
       timestamp: Date.now()
     };
@@ -136,7 +135,7 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-// Styles (Ager gulo-i thakbe)
+// Styles (Same as before)
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' };
 const modalContent = { background: 'white', padding: '20px', borderRadius: '20px', width: '95%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' };
 const inputStyle = { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '10px', border: '1px solid #eee', background: '#f9f9f9', boxSizing: 'border-box', outline: 'none', fontSize: '14px' };

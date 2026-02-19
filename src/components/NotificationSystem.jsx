@@ -1,18 +1,18 @@
 import React, { useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, onValue, update } from "firebase/database";
+import { ref, onValue, update } from "firebase/database";
+// App.jsx থেকে db ইম্পোর্ট করো
+import { db } from '../App.jsx'; 
 
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
   
-  // Safe Email Key (Firebase doesn't like dots)
   const userKey = user?.email?.replace(/\./g, ',');
-  const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   useEffect(() => {
     if (!user) return;
 
-    const db = getDatabase(undefined, dbUrl);
+    // আলাদা করে getDatabase কল করার আর প্রয়োজন নেই
     const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
@@ -37,12 +37,11 @@ const NotificationSystem = ({ onBack }) => {
     });
 
     return () => unsubscribe();
-  }, [setRequests, user]); // Added user to dependency
+  }, [setRequests, user]);
 
   const updateStatus = (req, newStatus) => {
-    const db = getDatabase(undefined, dbUrl);
+    // শেয়ারড db ব্যবহার করে আপডেট
     const updates = {};
-    // Update path correction
     updates[`/requests/${req.ownerPath}/${req.firebaseKey}/status`] = newStatus;
     
     update(ref(db), updates)
@@ -50,13 +49,10 @@ const NotificationSystem = ({ onBack }) => {
       .catch((err) => alert("Error: " + err.message));
   };
 
-  // Notification Filtering Logic
   const myNotifications = requests.filter(req => {
     if (user.role === 'Writer') {
-      // Writer tar nijer email path er shob notification dekhbe
       return req.ownerPath === userKey;
     } else {
-      // Director shudhu tar pathano approved/declined results dekhbe
       return req.fromEmail === user?.email && (req.status === 'approved' || req.status === 'declined');
     }
   });
@@ -119,7 +115,7 @@ const NotificationSystem = ({ onBack }) => {
   );
 };
 
-// Styles (Same as yours, added scroll smooth)
+// Styles (Same as yours)
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto', padding: '5px' };
 const notifCard = { padding: '15px', borderRadius: '12px', marginBottom: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };

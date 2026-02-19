@@ -1,6 +1,8 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, update } from "firebase/database";
+import { ref, update } from "firebase/database";
+// App.jsx থেকে db ইম্পোর্ট করো
+import { db } from '../App.jsx'; 
 
 const ProfilePage = ({ onBack }) => {
   const { user, setUser, stories, setStories } = useContext(AppContext);
@@ -12,10 +14,9 @@ const ProfilePage = ({ onBack }) => {
       reader.onloadend = async () => {
         const newPhoto = reader.result;
         const userKey = user.email.replace(/\./g, ','); 
-        const db = getDatabase();
 
         try {
-          // ১. Firebase 'users' node-এ permanent save
+          // ১. এখানে শেয়ারড 'db' ব্যবহার করা হয়েছে
           const userRef = ref(db, `users/${userKey}`);
           await update(userRef, { profilePic: newPhoto });
 
@@ -24,7 +25,7 @@ const ProfilePage = ({ onBack }) => {
           setUser(updatedUser);
           localStorage.setItem('activeUser', JSON.stringify(updatedUser));
 
-          // ৩. Firebase 'stories' node-এ update (যাতে সবাই নতুন ছবি দেখে)
+          // ৩. Firebase 'stories' node-এ update
           if (stories && stories.length > 0) {
             const updatePromises = stories.map(async (s) => {
               if (s.writerEmail === user.email) {
@@ -36,7 +37,6 @@ const ProfilePage = ({ onBack }) => {
             
             await Promise.all(updatePromises);
 
-            // Local story list-ও আপডেট
             const updatedStories = stories.map(s => 
               s.writerEmail === user.email ? { ...s, writerPic: newPhoto } : s
             );
@@ -98,7 +98,7 @@ const ProfilePage = ({ onBack }) => {
   );
 };
 
-// --- Styles (Hubuhu Same) ---
+// --- Styles (Same as yours) ---
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const containerStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' };
 const profileCard = { background: 'rgba(255, 255, 255, 0.9)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', width: '100%', maxWidth: '500px', textAlign: 'center' };

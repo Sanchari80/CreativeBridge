@@ -1,6 +1,8 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, onValue } from "firebase/database";
+import { ref, onValue } from "firebase/database";
+// শুধু এই একটি লাইন নতুন যোগ করা হয়েছে db শেয়ার করার জন্য
+import { db } from '../App.jsx'; 
 
 const CommonDashboard = () => {
   const { 
@@ -22,7 +24,7 @@ const CommonDashboard = () => {
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
   useEffect(() => {
-    const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
+    // এখানে আলাদা getDatabase এর বদলে শেয়ারড db ব্যবহার করা হয়েছে
     const storiesRef = ref(db, 'stories');
     const unsubscribe = onValue(storiesRef, (snapshot) => {
       const data = snapshot.val();
@@ -110,7 +112,6 @@ const CommonDashboard = () => {
                     )}
                   </div>
 
-                  {/* Writer's Portfolio/Info for Directors */}
                   {!isOwner && user.role === 'Director' && (
                     <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
                       <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
@@ -150,7 +151,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- STYLES (Hubuhu same thakbe) ---
+// --- STYLES (Hubuhu same) ---
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
 const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
 const cardWrapper = { background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', marginBottom: '20px' };
