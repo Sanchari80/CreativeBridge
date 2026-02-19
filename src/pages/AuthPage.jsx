@@ -1,16 +1,21 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-import { getDatabase, ref, set, get, child } from "firebase/database";
+// App.jsx থেকে db ইম্পোর্ট করো, আলাদা করে getDatabase লাগবে না
+import { db } from '../App.jsx'; 
+import { ref, set, get, child } from "firebase/database";
 
 const AuthPage = () => { 
   const { setUser } = useContext(AppContext);
   const [view, setView] = useState('login'); 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '', pic: null });
 
-  const dbUrl = "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/";
+  // এই লাইনটি ডিলিট করে দিয়েছি কারণ db আমরা সরাসরি ইম্পোর্ট করছি
+  // const dbUrl = "..."; 
 
   const handleAction = async () => {
-    const db = getDatabase(undefined, dbUrl);
+    // FATAL ERROR বন্ধ করতে নিচের লাইনটি মুছে দেওয়া হয়েছে
+    // const db = getDatabase(undefined, dbUrl); 
+    
     const emailInput = form.email ? form.email.replace(/\s+/g, '').toLowerCase() : "";
     const passwordInput = form.password ? form.password.trim() : "";
     const emailKey = emailInput.replace(/\./g, ',');
@@ -77,12 +82,11 @@ const AuthPage = () => {
   );
 };
 
-// Styles
+// Styles (আগে যা ছিল তাই আছে)
 const container = { 
   minHeight: '100vh', 
   display: 'flex', 
   flexDirection: 'column', 
-  // তোমার দেওয়া ইমেজ পাথটি এখানে বসানো হয়েছে
   backgroundImage: "url('/auth background.png')",
   backgroundSize: 'cover',
   backgroundPosition: 'center',
