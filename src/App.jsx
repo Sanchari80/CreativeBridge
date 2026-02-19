@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from './context/AppContext';
-import AuthPage from './pages/AuthPage'; 
+import AuthPage from './pages/AuthPage.jsx';
 import CommonDashboard from './pages/CommonDashboard';
 import PostForm from './pages/PostForm';
 import ProfilePage from './pages/ProfilePage'; 
