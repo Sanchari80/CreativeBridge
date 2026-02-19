@@ -1,11 +1,11 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { getDatabase, ref, onValue, remove, push, set } from "firebase/database";
+import { ref, onValue, remove, push, set } from "firebase/database"; // getDatabase সরিয়ে দেওয়া হয়েছে
 
 export const AppContext = createContext();
 
-export const AppProvider = ({ children }) => {
-  const db = getDatabase(undefined, "https://creativebridge-88c8a-default-rtdb.asia-southeast1.firebasedatabase.app/");
-
+// এখানে db-কে প্রপস হিসেবে নেওয়া হচ্ছে যাতে ডবল ইনিশিয়ালাইজেশন না হয়
+export const AppProvider = ({ children, db }) => {
+  
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('activeUser');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -17,7 +17,6 @@ export const AppProvider = ({ children }) => {
 
   // --- 1. LocalStorage & Database Sync ---
   useEffect(() => {
-    // ইউজার অথবা ইমেইল না থাকলে কোড এখানেই থেমে যাবে, ক্র্যাশ করবে না
     if (!user || !user.email) {
       localStorage.removeItem('activeUser');
       return;
@@ -38,7 +37,7 @@ export const AppProvider = ({ children }) => {
     });
 
     return () => unsubscribeUser();
-  }, [user?.email]); 
+  }, [user?.email, db]); 
 
   // --- 2. Sync Stories ---
   useEffect(() => {

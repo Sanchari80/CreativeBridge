@@ -21,7 +21,8 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+// FATAL ERROR ঠিক করতে এখানে export বসানো হয়েছে
+export const db = getDatabase(app);
 
 function App() {
   const { user, setUser, requests, setRequests } = useContext(AppContext); 
@@ -83,7 +84,7 @@ function App() {
     </div>
   );
 
-  // --- ১. AUTH CHECK: User না থাকলে সরাসরি AuthPage এ পাঠাবে ---
+  // --- ১. AUTH CHECK ---
   if (!user) {
     return <AuthPage />; 
   }
