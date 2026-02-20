@@ -7,12 +7,12 @@ import { db } from '../App.jsx';
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
   
-  const userKey = user?.email?.replace(/\./g, ',');
+  // ইমেইলকে সবসময় lowercase করে key তৈরি করা নিরাপদ
+  const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
 
   useEffect(() => {
     if (!user) return;
 
-    // আলাদা করে getDatabase কল করার আর প্রয়োজন নেই
     const reqRef = ref(db, 'requests');
     
     const unsubscribe = onValue(reqRef, (snapshot) => {
@@ -40,7 +40,6 @@ const NotificationSystem = ({ onBack }) => {
   }, [setRequests, user]);
 
   const updateStatus = (req, newStatus) => {
-    // শেয়ারড db ব্যবহার করে আপডেট
     const updates = {};
     updates[`/requests/${req.ownerPath}/${req.firebaseKey}/status`] = newStatus;
     
@@ -49,11 +48,16 @@ const NotificationSystem = ({ onBack }) => {
       .catch((err) => alert("Error: " + err.message));
   };
 
+  // Notification Filtering Logic (Updated: Writer & Director both see history)
   const myNotifications = requests.filter(req => {
+    const currentUserEmail = user?.email?.toLowerCase();
+    
     if (user.role === 'Writer') {
-      return req.ownerPath === userKey;
+      // রাইটার তার নিজের কী-এর রিকোয়েস্টগুলো দেখবে
+      return req.ownerPath?.toLowerCase() === userKey;
     } else {
-      return req.fromEmail === user?.email && (req.status === 'approved' || req.status === 'declined');
+      // ডিরেক্টর তার পাঠানো সব রিকোয়েস্ট (Pending/Approved/Declined) হিস্ট্রি হিসেবে দেখবে
+      return req.fromEmail?.toLowerCase() === currentUserEmail;
     }
   });
 
@@ -86,7 +90,10 @@ const NotificationSystem = ({ onBack }) => {
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span>Your request for <strong>{req.storyTitle}</strong> was <strong>{req.status}</strong>!</span>
+                    <span>
+                      Your request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>
+                      {req.status === 'pending' ? '...' : '!'}
+                    </span>
                     {req.status === 'approved' && (
                       <button 
                         onClick={() => handleViewStory(req.storyId)}
@@ -115,7 +122,7 @@ const NotificationSystem = ({ onBack }) => {
   );
 };
 
-// Styles (Same as yours)
+// Styles (Hubuhu same)
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto', padding: '5px' };
 const notifCard = { padding: '15px', borderRadius: '12px', marginBottom: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };

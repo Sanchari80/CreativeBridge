@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, onValue } from "firebase/database";
-// শুধু এই একটি লাইন নতুন যোগ করা হয়েছে db শেয়ার করার জন্য
+// শুধু এই একটি লাইন নতুন যোগ করা হয়েছে db শেয়ার করার জন্য
 import { db } from '../App.jsx'; 
 
 const CommonDashboard = () => {
@@ -24,7 +24,7 @@ const CommonDashboard = () => {
   const categories = ["All", "Thriller", "Romance", "Drama", "Action", "Comedy", "Horror", "Sci-Fi", "Saved"];
 
   useEffect(() => {
-    // এখানে আলাদা getDatabase এর বদলে শেয়ারড db ব্যবহার করা হয়েছে
+    // এখানে আলাদা getDatabase এর বদলে শেয়ারড db ব্যবহার করা হয়েছে
     const storiesRef = ref(db, 'stories');
     const unsubscribe = onValue(storiesRef, (snapshot) => {
       const data = snapshot.val();
@@ -116,8 +116,17 @@ const CommonDashboard = () => {
                     <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
                       <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
                       <div style={{fontSize: '13px'}}>
-                         <p>📧 Email: {checkAccess('fullStory') ? (s.writerEmail || s.email) : "Locked"}</p>
-                         {s.portfolio && <p>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>}
+                        {/* Writer's Contact Info Section */}
+                        {(!s.isContactLocked || checkAccess('fullStory') || checkAccess('synopsis')) ? (
+                          <p>📞 Contact: {s.contactInfo || "No contact info shared"}</p>
+                        ) : (
+                          <div style={lockedBox}>
+                            <span>🔒 Contact Locked</span>
+                            <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Contact</button>
+                          </div>
+                        )}
+                        <p>📧 Email: {checkAccess('fullStory') ? (s.writerEmail || s.email) : "Locked"}</p>
+                        {s.portfolio && <p>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>}
                       </div>
                     </div>
                   )}
