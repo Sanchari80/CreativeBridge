@@ -21,7 +21,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// FATAL ERROR ঠিক করতে এখানে export বসানো হয়েছে
 export const db = getDatabase(app);
 
 function App() {
@@ -84,12 +83,12 @@ function App() {
     </div>
   );
 
-  // --- ১. AUTH CHECK ---
   if (!user) {
     return <AuthPage />; 
   }
 
-  // --- ২. LOGGED IN UI ---
+  const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
+
   return (
     <div className="app-container" style={appContainerStyle}>
       <VideoBackground />
@@ -102,10 +101,30 @@ function App() {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={iconBtnStyle} title="Notifications" onClick={() => setShowNotifications(!showNotifications)}>
-            <span style={{ fontSize: '18px' }}>🔔</span>
-            {requests?.some(r => (user.role === 'Writer' && r.status === 'pending' && r.writerName === user.name)) && <span style={badgeStyle}></span>}
-          </div>
+          
+          {/* আপনার দেওয়া নোটিফিকেশন বাটন কোড এখানে */}
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)} 
+            style={{ position: 'relative', background: '#f1f2f6', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            🔔
+            {user?.role === 'Writer' && requests.filter(r => r.status === 'pending' && r.ownerPath === userKey).length > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-5px',
+                right: '-5px',
+                background: '#ff4757',
+                color: 'white',
+                borderRadius: '50%',
+                padding: '2px 6px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                border: '2px solid white'
+              }}>
+                {requests.filter(r => r.status === 'pending' && r.ownerPath === userKey).length}
+              </span>
+            )}
+          </button>
 
           {user.role === 'Writer' && (
             <button onClick={() => setShowPostForm(true)} style={postBtnStyle}>+ Post Story</button>
@@ -153,13 +172,11 @@ const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRad
 const notifPanelContainer = { position: 'absolute', top: '75px', right: '5%', width: '320px', background: 'white', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 1001, padding: '15px', border: '1px solid #eee' };
 const notifHeader = { display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #f0f0f0', marginBottom: '10px' };
 const closeBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999' };
-const badgeStyle = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: '#ff4757', borderRadius: '50%', border: '2px solid white' };
 const appContainerStyle = { display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' };
 const videoWrapper = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, overflow: 'hidden' };
 const videoBgStyle = { width: '100%', height: '100%', objectFit: 'cover' };
 const overlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(255, 255, 255, 0.7)' };
 const navStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 5%', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 15px rgba(0,0,0,0.08)', position: 'sticky', top: 0, zIndex: 100 };
-const iconBtnStyle = { cursor: 'pointer', padding: '8px', background: '#f1f2f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' };
 const postBtnStyle = { padding: '10px 22px', background: '#2d3436', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
 const logoutBtnStyle = { padding: '8px 18px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' };
 const mainStyle = { padding: '40px 5%', flex: 1, position: 'relative', zIndex: 1 };

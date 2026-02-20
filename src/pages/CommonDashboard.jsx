@@ -148,14 +148,24 @@ const CommonDashboard = () => {
                   <div style={{borderTop: '1px solid #eee', paddingTop: '15px', marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Full Story / Script</h5>
                     {hasFullStoryAccess ? (
-                      // ফিক্স: মালিক বা এপ্রুভড ডিরেক্টর ফাইল লিঙ্ক দেখবে
-                      (s.fullStoryFile || s.fullStoryPath) ? (
-                        <a href={s.fullStoryFile || s.fullStoryPath} target="_blank" rel="noreferrer" style={downloadLink}>
-                          📄 {s.fileName || "View Script"}
+                      // চেক করবে লিঙ্ক আছে কি না, থাকলে <a> ট্যাগ দিয়ে ওপেন করবে
+                      s.fullStoryFile ? (
+                        <a 
+                          href={s.fullStoryFile.startsWith('http') ? s.fullStoryFile : `https://${s.fullStoryFile}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          style={downloadLink}
+                        >
+                          🔗 View Full Story / Script
                         </a>
-                      ) : "No file uploaded"
+                      ) : "No link provided"
                     ) : (
-                      <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Script</button></div>
+                      <div style={lockedBox}>
+                        <span>🔒 Locked</span>
+                        <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>
+                          Request Script
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -217,7 +227,7 @@ const CommonDashboard = () => {
   );
 };
 
-// --- STYLES (Exactly same as original) ---
+// --- STYLES ---
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
 const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
 const cardWrapper = { background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', marginBottom: '20px' };

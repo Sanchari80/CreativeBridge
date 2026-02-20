@@ -1,7 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, push, set } from "firebase/database";
-// App.jsx থেকে db ইম্পোর্ট করো
 import { db } from '../App.jsx'; 
 
 const PostForm = ({ closeForm }) => {
@@ -10,8 +9,7 @@ const PostForm = ({ closeForm }) => {
     Name: '',
     logline: '',
     synopsis: '',
-    fullStoryFile: null,
-    fileName: '',
+    fullStoryFile: '', // এখন এটি ফাইল নয়, ড্রাইভ লিঙ্ক সেভ করবে
     genre: 'Action',
     portfolio: '', 
     contactInfo: '', 
@@ -30,13 +28,6 @@ const PostForm = ({ closeForm }) => {
     }
   }, [user]);
 
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({ ...formData, fullStoryFile: file, fileName: file.name });
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     
@@ -44,20 +35,16 @@ const PostForm = ({ closeForm }) => {
     if (!formData.logline?.trim()) return alert("Logline is required!");
     if (!formData.contactInfo?.trim()) return alert("Contact Info is required!");
 
-    // এখানে আলাদা getDatabase এর বদলে App.jsx এর db ব্যবহার করা হয়েছে
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
 
-    const { fullStoryFile, ...otherData } = formData;
-
     const newStory = {
-      ...otherData,
+      ...formData,
       writerId: user?.id || Date.now(),
       writerName: user?.name || "Anonymous",
       writerEmail: user?.email, 
       writerPic: user?.profilePic || "/icon.png",
       writerProfession: user?.profession || "Writer",
-      fullStoryFile: "", 
       createdAt: new Date().toISOString(),
       timestamp: Date.now()
     };
@@ -106,14 +93,18 @@ const PostForm = ({ closeForm }) => {
 
           <div style={sectionBox}>
             <div style={flexSpace}>
-              <label style={labelStyle}>📄 Full Story File (Optional):</label>
+              <label style={labelStyle}>🔗 Full Story Drive/Doc Link:</label>
               <label style={lockToggle}>
                 <input type="checkbox" checked={formData.isFullStoryLocked} onChange={e => setFormData({...formData, isFullStoryLocked: e.target.checked})} />
                 {formData.isFullStoryLocked ? "🔒 Locked" : "🔓 Public"}
               </label>
             </div>
-            <input type="file" accept=".pdf,.doc,.docx" onChange={handleFile} style={{fontSize: '12px', marginTop: '5px'}} />
-            {formData.fileName && <div style={{fontSize: '11px', color: '#2ecc71'}}>Selected: {formData.fileName}</div>}
+            <textarea 
+              placeholder="Paste Google Drive or Google Docs link here..." 
+              value={formData.fullStoryFile} 
+              onChange={e => setFormData({...formData, fullStoryFile: e.target.value})} 
+              style={{...inputStyle, height: '50px', resize: 'none', fontSize: '12px'}} 
+            />
           </div>
 
           <div style={sectionBox}>
@@ -135,7 +126,7 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-// Styles (Same as before)
+// Styles
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' };
 const modalContent = { background: 'white', padding: '20px', borderRadius: '20px', width: '95%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' };
 const inputStyle = { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '10px', border: '1px solid #eee', background: '#f9f9f9', boxSizing: 'border-box', outline: 'none', fontSize: '14px' };
