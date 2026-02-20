@@ -56,13 +56,20 @@ const NotificationSystem = ({ onBack }) => {
     });
   };
 
-  // নোটিফিকেশন ডিলিট করার ফাংশন
   const deleteNotification = (req) => {
     if(window.confirm("Delete this notification?")) {
       remove(ref(db, `requests/${req.ownerPath}/${req.firebaseKey}`))
         .then(() => alert("Deleted!"))
         .catch(e => alert("Error: " + e.message));
     }
+  };
+
+  // রিকোয়েস্ট টাইপ টেক্সট ফরম্যাট করার জন্য হেল্পার
+  const getRequestTypeText = (type) => {
+    if (type === 'fullStory') return 'Full Script';
+    if (type === 'synopsis') return 'Synopsis';
+    // যদি অন্য কোনো নাম থাকে (যেমন 'screenplay'), সেটিও ডায়নামিক দেখাবে
+    return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Request';
   };
 
   const myNotifications = requests.filter(req => {
@@ -90,7 +97,6 @@ const NotificationSystem = ({ onBack }) => {
               background: req.status === 'pending' ? '#fff9db' : '#f9f9f9',
               position: 'relative'
             }}>
-              {/* ডিলিট বাটন */}
               <button 
                 onClick={() => deleteNotification(req)} 
                 style={{ position: 'absolute', right: '10px', top: '10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px' }}
@@ -99,12 +105,12 @@ const NotificationSystem = ({ onBack }) => {
               <div style={{ fontSize: '13px', marginBottom: '8px', paddingRight: '20px' }}>
                 {user.role === 'Writer' ? (
                   <>
-                    <strong>{req.fromName}</strong> requested for <strong>{req.type === 'fullStory' ? 'Full Script' : 'Synopsis'}</strong> of your story <strong>"{req.storyTitle}"</strong>.
+                    <strong>{req.fromName}</strong> requested for <strong>{getRequestTypeText(req.type)}</strong> of your story <strong>"{req.storyTitle}"</strong>.
                     <div style={{fontSize: '11px', color: '#666', marginTop: '4px'}}>Status: <b style={{textTransform: 'capitalize'}}>{req.status}</b></div>
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span>Your <strong>{req.type === 'fullStory' ? 'Full Script' : 'Synopsis'}</strong> request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>!</span>
+                    <span>Your <strong>{getRequestTypeText(req.type)}</strong> request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>!</span>
                     {req.status === 'approved' && (
                       <button onClick={() => { setActiveStoryId(req.storyId); setView('dashboard'); }} style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}>View Story</button>
                     )}
@@ -128,7 +134,6 @@ const NotificationSystem = ({ onBack }) => {
   );
 };
 
-// স্টাইল সেকশন (আগের মতোই রাখা হয়েছে)
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto', padding: '5px' };
 const notifCard = { padding: '15px', borderRadius: '12px', marginBottom: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
