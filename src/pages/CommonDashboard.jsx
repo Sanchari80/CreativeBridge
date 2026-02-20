@@ -147,7 +147,12 @@ const CommonDashboard = () => {
                   <div style={{borderTop: '1px solid #eee', paddingTop: '15px', marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Full Story / Script</h5>
                     {hasFullStoryAccess ? (
-                      s.fullStoryFile ? <a href={s.fullStoryFile} download={s.fileName || "script"} style={downloadLink} target="_blank" rel="noreferrer">📄 {s.fileName || "Download Script"}</a> : "No file uploaded"
+                      // এখানে ফিক্স করা হয়েছে: s.fullStoryPath এবং s.fullStoryFile দুটোই চেক করবে
+                      (s.fullStoryFile || s.fullStoryPath) ? (
+                        <a href={s.fullStoryFile || s.fullStoryPath} target="_blank" rel="noreferrer" style={downloadLink}>
+                          📄 {s.fileName || "View Script"}
+                        </a>
+                      ) : "No file uploaded"
                     ) : (
                       <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Script</button></div>
                     )}
@@ -211,7 +216,6 @@ const CommonDashboard = () => {
   );
 };
 
-// --- STYLES (Hubuhu same) ---
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
 const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
 const cardWrapper = { background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', marginBottom: '20px' };
