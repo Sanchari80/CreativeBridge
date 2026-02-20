@@ -45,7 +45,6 @@ const CommonDashboard = () => {
     }
   }, [activeStoryId, setActiveStoryId]);
 
-  // স্টোরি সেভ করার ফাংশনটি তোমার কোডে মিসিং ছিল, তাই এটা যোগ করা হয়েছে জাস্ট লজিক মেইনটেইন করতে
   const toggleSave = (id) => {
     let newSaved = [...savedStories];
     if (newSaved.includes(id)) {
@@ -73,7 +72,7 @@ const CommonDashboard = () => {
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
       
-      {/* Category Bar Render (যাতে জেনার ফিল্টার কাজ করে) */}
+      {/* Category Bar */}
       <div style={{ display: 'flex', gap: '10px', padding: '15px', overflowX: 'auto', background: '#fff' }}>
         {categories.map(cat => (
           <button 
@@ -92,7 +91,7 @@ const CommonDashboard = () => {
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
-            <h3 style={{marginTop: 0}}>Request {requestModal.type}</h3>
+            <h3 style={{marginTop: 0}}>Request {requestModal.type === 'fullStory' ? 'Script Access' : 'Synopsis Access'}</h3>
             <textarea style={textareaStyle} placeholder="Note to writer..." value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} />
             <div style={{display: 'flex', gap: '10px'}}>
               <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
@@ -106,22 +105,29 @@ const CommonDashboard = () => {
         (() => {
           const s = stories.find(item => item.id === expandedStory);
           if (!s) return null;
-          const isOwner = s.writerEmail === user?.email;
+          const isOwner = s.writerEmail === user?.email || s.email === user?.email;
           const checkAccess = (type) => requests?.find(r => r.storyId === s.id && r.fromEmail === user?.email && r.status === 'approved');
+          
           const hasSynopsisAccess = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
           const hasFullStoryAccess = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
+          const hasContactAccess = !s.isContactLocked || checkAccess('fullStory') || checkAccess('synopsis') || isOwner;
 
           return (
             <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-              <button onClick={() => setExpandedStory(null)} style={backBtnStyle}>← Back to Dashboard</button>
+              <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '20px'}}>
+                <button onClick={() => setExpandedStory(null)} style={backBtnStyle}>← Back to Dashboard</button>
+                {isOwner && (
+                  <button onClick={() => { deleteStory(s.id); setExpandedStory(null); }} style={{...backBtnStyle, background: '#ff4757', color: '#fff'}}>Delete Story</button>
+                )}
+              </div>
+              
               <div style={cardWrapper}>
                 <div style={profileHeader}>
                   <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || s.profilePic || "/icon.png")} alt="p" style={avatarImg} />
                   <div style={{marginLeft: '12px', flex: 1}}>
-                    <strong style={{display: 'block'}}>{s.writerName}</strong>
+                    <strong style={{display: 'block'}}>{s.writerName || "Unknown Writer"}</strong>
                     <span style={tagStyle}>{s.genre}</span>
                   </div>
-                  {/* Saved Heart Button */}
                   <button onClick={() => toggleSave(s.id)} style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px'}}>
                     {savedStories.includes(s.id) ? '❤️' : '🤍'}
                   </button>
@@ -133,7 +139,7 @@ const CommonDashboard = () => {
                 <div style={detailsBox}>
                   <div style={{marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Synopsis / Outline</h5>
-                    {hasSynopsisAccess ? <p style={{fontSize: '14px'}}>{s.synopsis || "No synopsis provided."}</p> : (
+                    {hasSynopsisAccess ? <p style={{fontSize: '14px', whiteSpace: 'pre-wrap'}}>{s.synopsis}</p> : (
                       <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'synopsis'})} style={smallReqBtn}>Request Access</button></div>
                     )}
                   </div>
@@ -141,30 +147,31 @@ const CommonDashboard = () => {
                   <div style={{borderTop: '1px solid #eee', paddingTop: '15px', marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Full Story / Script</h5>
                     {hasFullStoryAccess ? (
-                      // PostForm থেকে আসা fileName এবং fullStoryFile এর রেন্ডারিং
-                      s.fileName ? <a href={s.fullStoryFile || "#"} download={s.fileName} style={downloadLink}>📄 {s.fileName}</a> : "No file uploaded"
+                      s.fullStoryFile ? <a href={s.fullStoryFile} download={s.fileName || "script"} style={downloadLink} target="_blank" rel="noreferrer">📄 {s.fileName || "Download Script"}</a> : "No file uploaded"
                     ) : (
                       <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Script</button></div>
                     )}
                   </div>
 
-                  {!isOwner && user.role === 'Director' && (
-                    <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
-                      <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
-                      <div style={{fontSize: '13px'}}>
-                        {(!s.isContactLocked || checkAccess('fullStory') || checkAccess('synopsis')) ? (
+                  <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
+                    <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
+                    <div style={{fontSize: '13px'}}>
+                      {hasContactAccess ? (
+                        <>
                           <p>📞 Contact: {s.contactInfo || "No contact info shared"}</p>
-                        ) : (
-                          <div style={lockedBox}>
-                            <span>🔒 Contact Locked</span>
-                            <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Contact</button>
-                          </div>
-                        )}
-                        <p>📧 Email: {checkAccess('fullStory') ? (s.writerEmail || s.email) : "Locked"}</p>
-                        {s.portfolio && <p>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>}
-                      </div>
+                          <p>📧 Email: {s.writerEmail || s.email}</p>
+                        </>
+                      ) : (
+                        <div style={lockedBox}>
+                          <span>🔒 Contact Locked</span>
+                          <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Contact</button>
+                        </div>
+                      )}
+                      {s.portfolio && (
+                        <p style={{marginTop: '10px'}}>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -173,7 +180,7 @@ const CommonDashboard = () => {
       ) : (
         <div style={gridStyle}>
           {filteredStories.map(s => {
-            const isOwner = s.writerEmail === user?.email;
+            const isOwner = s.writerEmail === user?.email || s.email === user?.email;
             return (
               <div key={s.id} style={cardWrapper}>
                 <div style={profileHeader}>
@@ -182,14 +189,19 @@ const CommonDashboard = () => {
                     <strong>{s.writerName}</strong>
                     <div style={tagStyle}>{s.genre}</div>
                   </div>
-                  {/* Grid Heart Button */}
                   <button onClick={() => toggleSave(s.id)} style={{background: 'none', border: 'none', cursor: 'pointer'}}>
                     {savedStories.includes(s.id) ? '❤️' : '🤍'}
                   </button>
                 </div>
                 <h4 style={{color: '#4834d4'}}>{s.Name}</h4>
                 <p style={{...loglineStyle, fontSize: '14px', height: '40px', overflow: 'hidden'}}>{s.logline}</p>
-                <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
+                
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <button onClick={() => setExpandedStory(s.id)} style={{...viewBtn, flex: 2}}>View Details</button>
+                  {isOwner && (
+                    <button onClick={() => { if(window.confirm("Delete this story?")) deleteStory(s.id) }} style={{...viewBtn, flex: 1, background: '#ff4757'}}>Delete</button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -212,7 +224,7 @@ const detailsBox = { marginTop: '20px', padding: '15px', background: '#f8f9fa', 
 const labelStyle = { margin: '0 0 8px 0', fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase' };
 const lockedBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #eee' };
 const smallReqBtn = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' };
-const backBtnStyle = { marginBottom: '20px', padding: '8px 15px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' };
+const backBtnStyle = { padding: '8px 15px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: '#f1f2f6' };
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', padding: '20px' };
 const textareaStyle = { width: '100%', height: '100px', padding: '10px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '15px' };
 const cancelBtn = { flex: 1, padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer' };
