@@ -1,17 +1,18 @@
 import React, { useContext, useEffect, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, onValue, update } from "firebase/database";
-// App.jsx থেকে db ইম্পোর্ট করো
 import { db } from '../App.jsx'; 
 
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
   
-  // সাউন্ড ফাইলগুলোর জন্য রেফারেন্স
+  // সাউন্ড ফাইল রেফারেন্স (Public ফোল্ডার থেকে)
   const notifAudio = useRef(new Audio('/Notification.mp3'));
   const approveAudio = useRef(new Audio('/approve.mp3'));
+  
+  // আগের রিকোয়েস্ট সংখ্যা ট্র্যাক করার জন্য
+  const prevRequestsCount = useRef(0);
 
-  // ইমেইলকে সবসময় lowercase করে key তৈরি করা নিরাপদ
   const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
 
   useEffect(() => {
@@ -35,19 +36,22 @@ const NotificationSystem = ({ onBack }) => {
           }
         });
 
-        // নতুন ডাটা আসলে সাউন্ড প্লে করার লজিক
-        if (allReqs.length > requests.length) {
+        // সাউন্ড লজিক: যদি নতুন কোনো রিকোয়েস্ট আসে
+        if (allReqs.length > prevRequestsCount.current) {
           const latestReq = allReqs[allReqs.length - 1];
-          // যদি রাইটার নতুন রিকোয়েস্ট পায়
-          if (user.role === 'Writer' && latestReq.ownerPath === userKey) {
-            notifAudio.current.play().catch(e => console.log("Audio play failed"));
+
+          // ১. রাইটার হিসেবে নতুন রিকোয়েস্ট পেলে
+          if (user.role === 'Writer' && latestReq.ownerPath?.toLowerCase() === userKey) {
+            notifAudio.current.play().catch(e => console.log("Sound play blocked by browser"));
           }
-          // যদি ডিরেক্টরের রিকোয়েস্ট এপ্রুভ হয়
-          if (user.role === 'Director' && latestReq.fromEmail === user.email && latestReq.status === 'approved') {
-            approveAudio.current.play().catch(e => console.log("Audio play failed"));
+          
+          // ২. ডিরেক্টর/ইউজার হিসেবে রিকোয়েস্ট এপ্রুভড হলে
+          if (latestReq.fromEmail?.toLowerCase() === user.email?.toLowerCase() && latestReq.status === 'approved') {
+            approveAudio.current.play().catch(e => console.log("Sound play blocked by browser"));
           }
         }
 
+        prevRequestsCount.current = allReqs.length;
         setRequests(allReqs);
       } else {
         setRequests([]);
@@ -55,7 +59,7 @@ const NotificationSystem = ({ onBack }) => {
     });
 
     return () => unsubscribe();
-  }, [setRequests, user, userKey, requests.length]);
+  }, [user, userKey, setRequests]);
 
   const updateStatus = (req, newStatus) => {
     const updates = {};
@@ -63,14 +67,15 @@ const NotificationSystem = ({ onBack }) => {
     
     update(ref(db), updates)
       .then(() => {
-        // এপ্রুভ করার সময় সাউন্ড প্লে
-        if(newStatus === 'approved') approveAudio.current.play().catch(e => {});
+        // এপ্রুভ করার সাথে সাথে রাইটারের নিজের এন্ডেও সাউন্ড হবে
+        if(newStatus === 'approved') {
+            approveAudio.current.play().catch(e => {});
+        }
         alert(`Request ${newStatus}!`);
       })
       .catch((err) => alert("Error: " + err.message));
   };
 
-  // Notification Filtering Logic (Same as yours)
   const myNotifications = requests.filter(req => {
     const currentUserEmail = user?.email?.toLowerCase();
     if (user.role === 'Writer') {
@@ -89,7 +94,6 @@ const NotificationSystem = ({ onBack }) => {
     <div className="notification-wrapper">
       <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={onBack} style={backBtnStyle}>← Back</button>
-        {/* পেন্ডিং রিকোয়েস্ট থাকলে কাউন্ট দেখাবে */}
         {user.role === 'Writer' && myNotifications.filter(r => r.status === 'pending').length > 0 && (
           <span style={badgeStyle}>{myNotifications.filter(r => r.status === 'pending').length} New</span>
         )}
@@ -99,7 +103,6 @@ const NotificationSystem = ({ onBack }) => {
         {myNotifications.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No notifications found</p>
         ) : (
-          // .reverse() করে নতুনগুলো উপরে আনা হয়েছে
           [...myNotifications].reverse().map(req => (
             <div key={req.firebaseKey} style={{
               ...notifCard, 
@@ -118,10 +121,11 @@ const NotificationSystem = ({ onBack }) => {
                       Your request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>
                       {req.status === 'pending' ? '...' : '!'}
                     </span>
+                    {/* View Story Button - এপ্রুভ হলে অবশ্যই দেখাবে */}
                     {req.status === 'approved' && (
                       <button 
                         onClick={() => handleViewStory(req.storyId)}
-                        style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}
+                        style={{ ...actionBtn, background: '#2d3436', width: 'fit-content', marginTop: '5px' }}
                       >
                         View Story
                       </button>
@@ -146,7 +150,6 @@ const NotificationSystem = ({ onBack }) => {
   );
 };
 
-// Styles (Hubuhu same + New Badge Style)
 const backBtnStyle = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' };
 const listStyle = { display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto', padding: '5px' };
 const notifCard = { padding: '15px', borderRadius: '12px', marginBottom: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };

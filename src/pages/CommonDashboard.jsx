@@ -110,6 +110,7 @@ const CommonDashboard = () => {
           
           const hasSynopsisAccess = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
           const hasFullStoryAccess = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
+          // Contact Access logic (approval required if locked)
           const hasContactAccess = !s.isContactLocked || checkAccess('fullStory') || checkAccess('synopsis') || isOwner;
 
           return (
@@ -147,7 +148,7 @@ const CommonDashboard = () => {
                   <div style={{borderTop: '1px solid #eee', paddingTop: '15px', marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Full Story / Script</h5>
                     {hasFullStoryAccess ? (
-                      // এখানে ফিক্স করা হয়েছে: s.fullStoryPath এবং s.fullStoryFile দুটোই চেক করবে
+                      // ফিক্স: মালিক বা এপ্রুভড ডিরেক্টর ফাইল লিঙ্ক দেখবে
                       (s.fullStoryFile || s.fullStoryPath) ? (
                         <a href={s.fullStoryFile || s.fullStoryPath} target="_blank" rel="noreferrer" style={downloadLink}>
                           📄 {s.fileName || "View Script"}
@@ -165,15 +166,15 @@ const CommonDashboard = () => {
                         <>
                           <p>📞 Contact: {s.contactInfo || "No contact info shared"}</p>
                           <p>📧 Email: {s.writerEmail || s.email}</p>
+                          {s.portfolio && (
+                            <p style={{marginTop: '10px'}}>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>
+                          )}
                         </>
                       ) : (
                         <div style={lockedBox}>
-                          <span>🔒 Contact Locked</span>
-                          <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Contact</button>
+                          <span>🔒 Contact & Portfolio Locked</span>
+                          <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Access</button>
                         </div>
-                      )}
-                      {s.portfolio && (
-                        <p style={{marginTop: '10px'}}>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>
                       )}
                     </div>
                   </div>
@@ -216,6 +217,7 @@ const CommonDashboard = () => {
   );
 };
 
+// --- STYLES (Exactly same as original) ---
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
 const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
 const cardWrapper = { background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', marginBottom: '20px' };
