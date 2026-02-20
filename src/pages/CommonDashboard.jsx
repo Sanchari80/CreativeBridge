@@ -45,6 +45,18 @@ const CommonDashboard = () => {
     }
   }, [activeStoryId, setActiveStoryId]);
 
+  // স্টোরি সেভ করার ফাংশনটি তোমার কোডে মিসিং ছিল, তাই এটা যোগ করা হয়েছে জাস্ট লজিক মেইনটেইন করতে
+  const toggleSave = (id) => {
+    let newSaved = [...savedStories];
+    if (newSaved.includes(id)) {
+      newSaved = newSaved.filter(item => item !== id);
+    } else {
+      newSaved.push(id);
+    }
+    setSavedStories(newSaved);
+    localStorage.setItem('savedStories', JSON.stringify(newSaved));
+  };
+
   const handleRequest = () => {
     if (!requestModal || !user) return;
     const { story, type } = requestModal;
@@ -53,11 +65,30 @@ const CommonDashboard = () => {
     setDirectorNote("");
   };
 
-  const filteredStories = stories.filter(s => selectedCategory === "Saved" ? savedStories.includes(s.id) : selectedCategory === "All" || s.genre === selectedCategory);
+  const filteredStories = stories.filter(s => 
+    selectedCategory === "Saved" ? savedStories.includes(s.id) : 
+    selectedCategory === "All" || s.genre === selectedCategory
+  );
 
   return (
     <div className="dashboard-wrapper" style={{ position: 'relative' }}>
       
+      {/* Category Bar Render (যাতে জেনার ফিল্টার কাজ করে) */}
+      <div style={{ display: 'flex', gap: '10px', padding: '15px', overflowX: 'auto', background: '#fff' }}>
+        {categories.map(cat => (
+          <button 
+            key={cat} 
+            onClick={() => setSelectedCategory(cat)}
+            style={{
+              padding: '8px 16px', borderRadius: '20px', border: '1px solid #eee', cursor: 'pointer',
+              background: selectedCategory === cat ? '#2d3436' : '#fff', color: selectedCategory === cat ? '#fff' : '#2d3436'
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       {requestModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
@@ -86,10 +117,14 @@ const CommonDashboard = () => {
               <div style={cardWrapper}>
                 <div style={profileHeader}>
                   <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || s.profilePic || "/icon.png")} alt="p" style={avatarImg} />
-                  <div style={{marginLeft: '12px'}}>
+                  <div style={{marginLeft: '12px', flex: 1}}>
                     <strong style={{display: 'block'}}>{s.writerName}</strong>
                     <span style={tagStyle}>{s.genre}</span>
                   </div>
+                  {/* Saved Heart Button */}
+                  <button onClick={() => toggleSave(s.id)} style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px'}}>
+                    {savedStories.includes(s.id) ? '❤️' : '🤍'}
+                  </button>
                 </div>
 
                 <h2 style={{color: '#4834d4'}}>{s.Name}</h2>
@@ -98,7 +133,7 @@ const CommonDashboard = () => {
                 <div style={detailsBox}>
                   <div style={{marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Synopsis / Outline</h5>
-                    {hasSynopsisAccess ? <p style={{fontSize: '14px'}}>{s.synopsis}</p> : (
+                    {hasSynopsisAccess ? <p style={{fontSize: '14px'}}>{s.synopsis || "No synopsis provided."}</p> : (
                       <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'synopsis'})} style={smallReqBtn}>Request Access</button></div>
                     )}
                   </div>
@@ -106,7 +141,8 @@ const CommonDashboard = () => {
                   <div style={{borderTop: '1px solid #eee', paddingTop: '15px', marginBottom: '20px'}}>
                     <h5 style={labelStyle}>Full Story / Script</h5>
                     {hasFullStoryAccess ? (
-                      s.fullStoryFile ? <a href={s.fullStoryFile} download style={downloadLink}>📄 Download Script</a> : "No file uploaded"
+                      // PostForm থেকে আসা fileName এবং fullStoryFile এর রেন্ডারিং
+                      s.fileName ? <a href={s.fullStoryFile || "#"} download={s.fileName} style={downloadLink}>📄 {s.fileName}</a> : "No file uploaded"
                     ) : (
                       <div style={lockedBox}><span>🔒 Locked</span><button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Script</button></div>
                     )}
@@ -116,7 +152,6 @@ const CommonDashboard = () => {
                     <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
                       <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
                       <div style={{fontSize: '13px'}}>
-                        {/* Writer's Contact Info Section */}
                         {(!s.isContactLocked || checkAccess('fullStory') || checkAccess('synopsis')) ? (
                           <p>📞 Contact: {s.contactInfo || "No contact info shared"}</p>
                         ) : (
@@ -143,13 +178,17 @@ const CommonDashboard = () => {
               <div key={s.id} style={cardWrapper}>
                 <div style={profileHeader}>
                   <img src={isOwner ? (user?.profilePic || "/icon.png") : (s.writerPic || s.profilePic || "/icon.png")} alt="p" style={avatarImg} />
-                  <div style={{marginLeft: '12px'}}>
+                  <div style={{marginLeft: '12px', flex: 1}}>
                     <strong>{s.writerName}</strong>
                     <div style={tagStyle}>{s.genre}</div>
                   </div>
+                  {/* Grid Heart Button */}
+                  <button onClick={() => toggleSave(s.id)} style={{background: 'none', border: 'none', cursor: 'pointer'}}>
+                    {savedStories.includes(s.id) ? '❤️' : '🤍'}
+                  </button>
                 </div>
                 <h4 style={{color: '#4834d4'}}>{s.Name}</h4>
-                <p style={{...loglineStyle, fontSize: '14px'}}>{s.logline}</p>
+                <p style={{...loglineStyle, fontSize: '14px', height: '40px', overflow: 'hidden'}}>{s.logline}</p>
                 <button onClick={() => setExpandedStory(s.id)} style={viewBtn}>View Details</button>
               </div>
             );
