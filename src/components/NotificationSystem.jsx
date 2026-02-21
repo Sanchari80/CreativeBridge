@@ -66,12 +66,13 @@ const NotificationSystem = ({ onBack }) => {
 
   // রিকোয়েস্ট টাইপ টেক্সট ফরম্যাট করার জন্য হেল্পার
   const getRequestTypeText = (type) => {
-    if (type === 'fullStory') return 'Full Script';
-    if (type === 'synopsis') return 'Synopsis';
-    // যদি অন্য কোনো নাম থাকে (যেমন 'screenplay'), সেটিও ডায়নামিক দেখাবে
-    return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Request';
-  };
-
+  if (!type || type.toLowerCase() === 'request') return 'Access'; 
+  if (type === 'fullStory') return 'Full Script';
+  if (type === 'synopsis') return 'Synopsis';
+  
+  // অন্য কিছু থাকলে সেটাকে সুন্দর করে দেখাবে
+  return type.charAt(0).toUpperCase() + type.slice(1);
+};
   const myNotifications = requests.filter(req => {
     const email = user?.email?.toLowerCase();
     return user.role === 'Writer' ? req.ownerPath?.toLowerCase() === userKey : req.fromEmail?.toLowerCase() === email;
