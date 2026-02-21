@@ -1,9 +1,8 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { ref, onValue, remove, push, set } from "firebase/database"; // getDatabase সরিয়ে দেওয়া হয়েছে
+import { ref, onValue, remove, push, set } from "firebase/database"; 
 
 export const AppContext = createContext();
 
-// এখানে db-কে প্রপস হিসেবে নেওয়া হচ্ছে যাতে ডবল ইনিশিয়ালাইজেশন না হয়
 export const AppProvider = ({ children, db }) => {
   
   const [user, setUser] = useState(() => {
@@ -69,6 +68,16 @@ export const AppProvider = ({ children, db }) => {
 
   const sendRequest = async (ownerEmail, storyTitle, storyId, type, note) => {
     if (!user) return alert("Please Login First!");
+
+    // ডবল রিকোয়েস্ট আটকানোর লজিক
+    const alreadyRequested = requests.some(req => 
+      req.storyId === storyId && 
+      req.fromEmail?.toLowerCase() === user.email?.toLowerCase() &&
+      req.requestType === type
+    );
+
+    if (alreadyRequested) return alert("Already Requested!");
+
     const finalEmail = ownerEmail || "unknown@mail.com";
     
     try {

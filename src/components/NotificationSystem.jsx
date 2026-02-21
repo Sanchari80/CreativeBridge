@@ -64,15 +64,17 @@ const NotificationSystem = ({ onBack }) => {
     }
   };
 
-  // রিকোয়েস্ট টাইপ টেক্সট ফরম্যাট করার জন্য হেল্পার
-  const getRequestTypeText = (type) => {
-  if (!type || type.toLowerCase() === 'request') return 'Access'; 
-  if (type === 'fullStory') return 'Full Script';
-  if (type === 'synopsis') return 'Synopsis';
-  
-  // অন্য কিছু থাকলে সেটাকে সুন্দর করে দেখাবে
-  return type.charAt(0).toUpperCase() + type.slice(1);
-};
+  // রিকোয়েস্ট টাইপ টেক্সট ফরম্যাট করার জন্য হেল্পার
+  const getRequestTypeText = (req) => {
+    if (req.type) {
+      if (req.type === 'fullStory') return 'Full Script';
+      if (req.type === 'synopsis') return 'Synopsis';
+      if (req.type === 'contact') return 'Contact Details';
+      return req.type.charAt(0).toUpperCase() + req.type.slice(1);
+    }
+    return 'Access';
+  };
+
   const myNotifications = requests.filter(req => {
     const email = user?.email?.toLowerCase();
     return user.role === 'Writer' ? req.ownerPath?.toLowerCase() === userKey : req.fromEmail?.toLowerCase() === email;
@@ -106,12 +108,12 @@ const NotificationSystem = ({ onBack }) => {
               <div style={{ fontSize: '13px', marginBottom: '8px', paddingRight: '20px' }}>
                 {user.role === 'Writer' ? (
                   <>
-                    <strong>{req.fromName}</strong> requested for <strong>{getRequestTypeText(req.type)}</strong> of your story <strong>"{req.storyTitle}"</strong>.
+                    <strong>{req.fromName}</strong> requested for <strong>{getRequestTypeText(req)}</strong> of your story <strong>"{req.storyTitle}"</strong>.
                     <div style={{fontSize: '11px', color: '#666', marginTop: '4px'}}>Status: <b style={{textTransform: 'capitalize'}}>{req.status}</b></div>
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span>Your <strong>{getRequestTypeText(req.type)}</strong> request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>!</span>
+                    <span>Your <strong>{getRequestTypeText(req)}</strong> request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>!</span>
                     {req.status === 'approved' && (
                       <button onClick={() => { setActiveStoryId(req.storyId); setView('dashboard'); }} style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}>View Story</button>
                     )}
