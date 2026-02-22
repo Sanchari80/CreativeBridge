@@ -1,8 +1,10 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-// App.jsx থেকে db ইম্পোর্ট করো, আলাদা করে getDatabase লাগবে না
+// App.jsx থেকে db ইম্পোর্ট করো
 import { db } from '../App.jsx'; 
 import { ref, set, get, child } from "firebase/database";
+// Firebase Auth থেকে প্রয়োজনীয় ফাংশন ইম্পোর্ট
+import { getAuth, sendPasswordResetEmail } from "firebase/auth";
 
 const AuthPage = () => { 
   const { setUser } = useContext(AppContext);
@@ -34,19 +36,20 @@ const AuthPage = () => {
     }
   };
 
-  // পাসওয়ার্ড রিসেট করার নতুন ফাংশন
+  // পাসওয়ার্ড রিসেট লিঙ্ক পাঠানোর অফিশিয়াল ফাংশন
   const handleResetPassword = async () => {
-    const emailPrompt = prompt("আপনার ইমেলটি দিন:");
+    const emailPrompt = prompt("আপনার রেজিস্টার্ড ইমেলটি দিন (পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হবে):");
     if (!emailPrompt) return;
     
-    const emailKey = emailPrompt.replace(/\s+/g, '').toLowerCase().replace(/\./g, ',');
-    const snapshot = await get(child(ref(db), `users/${emailKey}`));
-    
-    if (snapshot.exists()) {
-      const foundUser = snapshot.val();
-      alert(`আপনার পাসওয়ার্ড হলো: ${foundUser.password}`);
-    } else {
-      alert("এই ইমেল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি!");
+    const auth = getAuth();
+    const emailInput = emailPrompt.replace(/\s+/g, '').toLowerCase();
+
+    try {
+      await sendPasswordResetEmail(auth, emailInput);
+      alert("আপনার ইমেলে একটি পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন!");
+    } catch (error) {
+      console.error(error);
+      alert("ইমেল পাঠানো যায়নি! ইমেলটি সঠিক কি না নিশ্চিত করুন।");
     }
   };
 
@@ -77,9 +80,9 @@ const AuthPage = () => {
           <input placeholder="Email" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
           <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
           
-          {/* পাসওয়ার্ড ভুলে গেলে রিসেট করার বাটন */}
+          {/* পাসওয়ার্ড রিসেট বাটন */}
           {view === 'login' && (
-            <div style={{ textAlign: 'right', width: '100%' }}>
+            <div style={{ textAlign: 'right', width: '100%', marginBottom: '10px' }}>
               <span onClick={handleResetPassword} style={{ fontSize: '12px', color: '#6c5ce7', cursor: 'pointer', fontWeight: '500' }}>
                 Forgot Password?
               </span>

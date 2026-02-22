@@ -56,15 +56,23 @@ const CommonDashboard = () => {
     localStorage.setItem('savedStories', JSON.stringify(newSaved));
   };
 
-  if (!directorNote.trim()) return alert("দয়া করে আপনার পোর্টফোলিও ডিটেইলস বা একটি নোট লিখুন!");
+  
 
-  const handleRequest = () => {
-    if (!requestModal || !user) return;
-    const { story, type } = requestModal;
-    sendRequest(story.writerEmail || story.email, story.Name || story.title, story.id, type, directorNote);
-    setRequestModal(null);
-    setDirectorNote("");
-  };
+ const handleRequest = () => {
+  // ১. এই চেকটি ফাংশনের ভেতরে থাকতে হবে
+  if (!directorNote.trim()) {
+    return alert("Send your portfolio link or identity for verification!");
+  }
+
+  if (!requestModal || !user) return;
+  
+  const { story, type } = requestModal;
+  
+  sendRequest(story.writerEmail || story.email, story.Name || story.title, story.id, type, directorNote);
+  
+  setRequestModal(null);
+  setDirectorNote("");
+};
 
   const filteredStories = stories.filter(s => 
     selectedCategory === "Saved" ? savedStories.includes(s.id) : 
@@ -89,14 +97,13 @@ const CommonDashboard = () => {
           </button>
         ))}
       </div>
-
-     {requestModal && (
+{requestModal && (
   <div style={modalOverlay}>
     <div style={modalContent}>
       <h3 style={{marginTop: 0}}>Request {requestModal.type === 'fullStory' ? 'Script Access' : 'Synopsis Access'}</h3>
       <textarea 
         style={textareaStyle} 
-        placeholder="Send your portfolio details to the writer (Required)..." 
+        placeholder="Send your portfolio link or identity for verification (Required)..." 
         value={directorNote} 
         onChange={(e) => setDirectorNote(e.target.value)} 
         required
@@ -105,7 +112,11 @@ const CommonDashboard = () => {
         <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
         <button 
           onClick={() => {
-            if (!directorNote.trim()) return alert("নোট লেখা বাধ্যতামূলক!");
+            // ১. এখানে নোট চেক করবে
+            if (!directorNote.trim()) {
+              return alert("Send your portfolio link or identity for verification!");
+            }
+            // ২. নোট থাকলে ফাংশন রান করবে
             handleRequest();
           }} 
           style={confirmBtn}
