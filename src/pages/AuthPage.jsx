@@ -3,8 +3,8 @@ import { AppContext } from '../context/AppContext';
 // App.jsx থেকে db ইম্পোর্ট করো
 import { db } from '../App.jsx'; 
 import { ref, set, get, child } from "firebase/database";
-// Firebase Auth থেকে প্রয়োজনীয় ফাংশন ইম্পোর্ট
-import { getAuth, sendPasswordResetEmail } from "firebase/auth";
+// Firebase Auth থেকে প্রয়োজনীয় ফাংশন ইম্পোর্ট
+import { getAuth, sendPasswordResetEmail, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 const AuthPage = () => { 
   const { setUser } = useContext(AppContext);
@@ -12,33 +12,58 @@ const AuthPage = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '', pic: null });
 
   const handleAction = async () => {
+    const auth = getAuth();
     const emailInput = form.email ? form.email.replace(/\s+/g, '').toLowerCase() : "";
     const passwordInput = form.password ? form.password.trim() : "";
     const emailKey = emailInput.replace(/\./g, ',');
 
     if (view === 'login') {
-      const snapshot = await get(child(ref(db), `users/${emailKey}`));
-      if (snapshot.exists()) {
-        const foundUser = snapshot.val();
-        if (foundUser.password === passwordInput) {
+      try {
+        // Firebase Auth দিয়ে লগইন চেষ্টা
+        await signInWithEmailAndPassword(auth, emailInput, passwordInput);
+        
+        const snapshot = await get(child(ref(db), `users/${emailKey}`));
+        if (snapshot.exists()) {
+          const foundUser = snapshot.val();
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
-        } else { alert("ভুল পাসওয়ার্ড!"); }
-      } else { alert("অ্যাকাউন্ট পাওয়া যায়নি!"); }
+        } else {
+          alert("অ্যাকাউন্ট ডাটাবেসে পাওয়া যায়নি!");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("লগইন ব্যর্থ! ইমেল বা পাসওয়ার্ড ভুল।");
+      }
     } else {
+      // SIGN UP লজিক
       if (!form.name || !emailInput || !passwordInput || !form.profession) {
         return alert("সব ঘর পূরণ কর!");
       }
-      const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
-      await set(ref(db, `users/${emailKey}`), newUser);
-      localStorage.setItem('activeUser', JSON.stringify(newUser));
-      setUser(newUser);
+
+      try {
+        // এই লাইনটি ইউজারকে Firebase Authentication লিস্টে অ্যাড করবে
+        await createUserWithEmailAndPassword(auth, emailInput, passwordInput);
+
+        // এরপর আপনার আগের মতো ডাটাবেসে ডাটা সেভ হবে
+        const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
+        await set(ref(db, `users/${emailKey}`), newUser);
+        
+        localStorage.setItem('activeUser', JSON.stringify(newUser));
+        setUser(newUser);
+        alert("অ্যাকাউন্ট তৈরি হয়েছে!");
+      } catch (error) {
+        if (error.code === 'auth/email-already-in-use') {
+          alert("এই ইমেল দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে!");
+        } else {
+          alert("সাইন-আপ সমস্যা: " + error.message);
+        }
+      }
     }
   };
 
-  // পাসওয়ার্ড রিসেট লিঙ্ক পাঠানোর অফিশিয়াল ফাংশন
+  // পাসওয়ার্ড রিসেট লিঙ্ক পাঠানোর অফিশিয়াল ফাংশন
   const handleResetPassword = async () => {
-    const emailPrompt = prompt("আপনার রেজিস্টার্ড ইমেলটি দিন (পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হবে):");
+    const emailPrompt = prompt("আপনার রেজিস্টার্ড ইমেলটি দিন (পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হবে):");
     if (!emailPrompt) return;
     
     const auth = getAuth();
@@ -46,10 +71,10 @@ const AuthPage = () => {
 
     try {
       await sendPasswordResetEmail(auth, emailInput);
-      alert("আপনার ইমেলে একটি পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন!");
+      alert("আপনার ইমেলে একটি পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন!");
     } catch (error) {
       console.error(error);
-      alert("ইমেল পাঠানো যায়নি! ইমেলটি সঠিক কি না নিশ্চিত করুন।");
+      alert("ইমেল পাঠানো যায়নি! ইমেলটি সঠিক কি না নিশ্চিত করুন।");
     }
   };
 
@@ -80,7 +105,7 @@ const AuthPage = () => {
           <input placeholder="Email" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
           <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
           
-          {/* পাসওয়ার্ড রিসেট বাটন */}
+          {/* পাসওয়ার্ড রিসেট বাটন */}
           {view === 'login' && (
             <div style={{ textAlign: 'right', width: '100%', marginBottom: '10px' }}>
               <span onClick={handleResetPassword} style={{ fontSize: '12px', color: '#6c5ce7', cursor: 'pointer', fontWeight: '500' }}>
@@ -104,7 +129,7 @@ const AuthPage = () => {
   );
 };
 
-// Styles (আগে যা ছিল তাই আছে)
+// Styles
 const container = { 
   minHeight: '100vh', 
   display: 'flex', 
