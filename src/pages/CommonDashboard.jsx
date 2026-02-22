@@ -56,6 +56,8 @@ const CommonDashboard = () => {
     localStorage.setItem('savedStories', JSON.stringify(newSaved));
   };
 
+  if (!directorNote.trim()) return alert("দয়া করে আপনার পোর্টফোলিও ডিটেইলস বা একটি নোট লিখুন!");
+
   const handleRequest = () => {
     if (!requestModal || !user) return;
     const { story, type } = requestModal;
@@ -88,18 +90,32 @@ const CommonDashboard = () => {
         ))}
       </div>
 
-      {requestModal && (
-        <div style={modalOverlay}>
-          <div style={modalContent}>
-            <h3 style={{marginTop: 0}}>Request {requestModal.type === 'fullStory' ? 'Script Access' : 'Synopsis Access'}</h3>
-            <textarea style={textareaStyle} placeholder="Note to writer..." value={directorNote} onChange={(e) => setDirectorNote(e.target.value)} />
-            <div style={{display: 'flex', gap: '10px'}}>
-              <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
-              <button onClick={handleRequest} style={confirmBtn}>Send Request</button>
-            </div>
-          </div>
-        </div>
-      )}
+     {requestModal && (
+  <div style={modalOverlay}>
+    <div style={modalContent}>
+      <h3 style={{marginTop: 0}}>Request {requestModal.type === 'fullStory' ? 'Script Access' : 'Synopsis Access'}</h3>
+      <textarea 
+        style={textareaStyle} 
+        placeholder="Send your portfolio details to the writer (Required)..." 
+        value={directorNote} 
+        onChange={(e) => setDirectorNote(e.target.value)} 
+        required
+      />
+      <div style={{display: 'flex', gap: '10px'}}>
+        <button onClick={() => setRequestModal(null)} style={cancelBtn}>Cancel</button>
+        <button 
+          onClick={() => {
+            if (!directorNote.trim()) return alert("নোট লেখা বাধ্যতামূলক!");
+            handleRequest();
+          }} 
+          style={confirmBtn}
+        >
+          Send Request
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {expandedStory ? (
         (() => {

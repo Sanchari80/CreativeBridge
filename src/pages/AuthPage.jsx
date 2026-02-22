@@ -9,13 +9,7 @@ const AuthPage = () => {
   const [view, setView] = useState('login'); 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Writer', profession: '', pic: null });
 
-  // এই লাইনটি ডিলিট করে দিয়েছি কারণ db আমরা সরাসরি ইম্পোর্ট করছি
-  // const dbUrl = "..."; 
-
   const handleAction = async () => {
-    // FATAL ERROR বন্ধ করতে নিচের লাইনটি মুছে দেওয়া হয়েছে
-    // const db = getDatabase(undefined, dbUrl); 
-    
     const emailInput = form.email ? form.email.replace(/\s+/g, '').toLowerCase() : "";
     const passwordInput = form.password ? form.password.trim() : "";
     const emailKey = emailInput.replace(/\./g, ',');
@@ -37,6 +31,22 @@ const AuthPage = () => {
       await set(ref(db, `users/${emailKey}`), newUser);
       localStorage.setItem('activeUser', JSON.stringify(newUser));
       setUser(newUser);
+    }
+  };
+
+  // পাসওয়ার্ড রিসেট করার নতুন ফাংশন
+  const handleResetPassword = async () => {
+    const emailPrompt = prompt("আপনার ইমেলটি দিন:");
+    if (!emailPrompt) return;
+    
+    const emailKey = emailPrompt.replace(/\s+/g, '').toLowerCase().replace(/\./g, ',');
+    const snapshot = await get(child(ref(db), `users/${emailKey}`));
+    
+    if (snapshot.exists()) {
+      const foundUser = snapshot.val();
+      alert(`আপনার পাসওয়ার্ড হলো: ${foundUser.password}`);
+    } else {
+      alert("এই ইমেল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি!");
     }
   };
 
@@ -67,6 +77,15 @@ const AuthPage = () => {
           <input placeholder="Email" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
           <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
           
+          {/* পাসওয়ার্ড ভুলে গেলে রিসেট করার বাটন */}
+          {view === 'login' && (
+            <div style={{ textAlign: 'right', width: '100%' }}>
+              <span onClick={handleResetPassword} style={{ fontSize: '12px', color: '#6c5ce7', cursor: 'pointer', fontWeight: '500' }}>
+                Forgot Password?
+              </span>
+            </div>
+          )}
+
           <button onClick={handleAction} style={actionBtn}>
             {view === 'login' ? 'Enter Dashboard' : 'Join Now'}
           </button>

@@ -5,7 +5,8 @@ import { ref, update } from "firebase/database";
 import { db } from '../App.jsx'; 
 
 const ProfilePage = ({ onBack }) => {
-  const { user, setUser, stories, setStories } = useContext(AppContext);
+  // ১. এখানে requests যোগ করা হয়েছে
+  const { user, setUser, stories, setStories, requests } = useContext(AppContext);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -16,7 +17,7 @@ const ProfilePage = ({ onBack }) => {
         const userKey = user.email.replace(/\./g, ','); 
 
         try {
-          // ১. এখানে শেয়ারড 'db' ব্যবহার করা হয়েছে
+          // ১. এখানে শেয়ারড 'db' ব্যবহার করা হয়েছে
           const userRef = ref(db, `users/${userKey}`);
           await update(userRef, { profilePic: newPhoto });
 
@@ -42,6 +43,24 @@ const ProfilePage = ({ onBack }) => {
             );
             setStories(updatedStories);
           }
+
+          // ৪. Firebase 'requests' নোডে পাঠানো রিকোয়েস্টগুলোর ছবি আপডেট (নতুন যুক্ত করা হয়েছে)
+          if (requests && requests.length > 0) {
+            const requestUpdatePromises = requests.map(async (r) => {
+              // যদি আমি রিকোয়েস্ট পাঠিয়ে থাকি (Director হিসেবে), তবে fromPic আপডেট হবে
+              if (r.fromEmail === user.email) {
+                return update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`), { fromPic: newPhoto });
+              }
+              // যদি রিকোয়েস্টটি আমার গল্পের জন্য হয় (Writer হিসেবে), তবে writerPic আপডেট হবে
+              if (r.ownerPath?.replace(/,/g, '.') === user.email.toLowerCase()) {
+                return update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`), { writerPic: newPhoto });
+              }
+              return null;
+            });
+            
+            await Promise.all(requestUpdatePromises);
+          }
+
           alert("Profile Picture Updated Successfully!");
         } catch (error) {
           console.error(error);

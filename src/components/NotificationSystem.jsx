@@ -8,7 +8,6 @@ const NotificationSystem = ({ onBack }) => {
   const prevRequestsCount = useRef(0);
   const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
 
-  // সাউন্ড ফাংশন
   const playSound = (src) => {
     const audio = new Audio(src);
     audio.play().catch(e => console.log("Sound play blocked"));
@@ -64,21 +63,19 @@ const NotificationSystem = ({ onBack }) => {
     }
   };
 
-  // রিকোয়েস্ট টাইপ টেক্সট ফরম্যাট করার জন্য হেল্পার
   const getRequestTypeText = (req) => {
-    if (req.type) {
-      if (req.type === 'fullStory') return 'Full Script';
-      if (req.type === 'synopsis') return 'Synopsis';
-      if (req.type === 'contact') return 'Contact Details';
-      return req.type.charAt(0).toUpperCase() + req.type.slice(1);
-    }
-    return 'Access';
+    if (req.requestType === "fullStory") return "Full Script";
+    if (req.requestType === "synopsis") return "Synopsis";
+    if (req.requestType === "contact") return "Contact Details";
   };
 
   const myNotifications = requests.filter(req => {
     const email = user?.email?.toLowerCase();
     return user.role === 'Writer' ? req.ownerPath?.toLowerCase() === userKey : req.fromEmail?.toLowerCase() === email;
   });
+
+  // ছবির জন্য ছোট স্টাইল (ফন্ট সাইজের সাথে সামঞ্জস্যপূর্ণ)
+  const miniPicStyle = { width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', verticalAlign: 'middle', border: '1px solid #ddd' };
 
   return (
     <div className="notification-wrapper">
@@ -105,20 +102,26 @@ const NotificationSystem = ({ onBack }) => {
                 style={{ position: 'absolute', right: '10px', top: '10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px' }}
               >🗑️</button>
 
-              <div style={{ fontSize: '13px', marginBottom: '8px', paddingRight: '20px' }}>
-                {user.role === 'Writer' ? (
-                  <>
-                    <strong>{req.fromName}</strong> requested for <strong>{getRequestTypeText(req)}</strong> of your story <strong>"{req.storyTitle}"</strong>.
-                    <div style={{fontSize: '11px', color: '#666', marginTop: '4px'}}>Status: <b style={{textTransform: 'capitalize'}}>{req.status}</b></div>
-                  </>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span>Your <strong>{getRequestTypeText(req)}</strong> request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>!</span>
-                    {req.status === 'approved' && (
-                      <button onClick={() => { setActiveStoryId(req.storyId); setView('dashboard'); }} style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}>View Story</button>
-                    )}
-                  </div>
-                )}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: '13px', flex: 1 }}>
+                  {user.role === 'Writer' ? (
+                    <>
+                      <img src={req.fromPic || "/icon.png"} alt="p" style={miniPicStyle} />
+                      {" "}<strong>{req.fromName}</strong> requested for <strong>{getRequestTypeText(req)}</strong> of your story <strong>"{req.storyTitle}"</strong>.
+                      <div style={{fontSize: '11px', color: '#666', marginTop: '4px'}}>Status: <b style={{textTransform: 'capitalize'}}>{req.status}</b></div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span>
+                        {req.status === 'approved' && <img src={req.writerPic || "/icon.png"} alt="p" style={miniPicStyle} />}
+                        {" "}Your <strong>{getRequestTypeText(req)}</strong> request for <strong>{req.storyTitle}</strong> is <strong>{req.status}</strong>!
+                      </span>
+                      {req.status === 'approved' && (
+                        <button onClick={() => { setActiveStoryId(req.storyId); setView('dashboard'); }} style={{ ...actionBtn, background: '#2d3436', width: 'fit-content' }}>View Story</button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               
               {req.note && <p style={noteStyle}>Note: "{req.note}"</p>}
