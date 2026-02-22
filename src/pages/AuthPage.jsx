@@ -1,9 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-// App.jsx থেকে db ইম্পোর্ট করো
 import { db } from '../App.jsx'; 
 import { ref, set, get, child } from "firebase/database";
-// Firebase Auth থেকে প্রয়োজনীয় ফাংশন ইম্পোর্ট
 import { getAuth, sendPasswordResetEmail, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 const AuthPage = () => { 
@@ -19,7 +17,6 @@ const AuthPage = () => {
 
     if (view === 'login') {
       try {
-        // Firebase Auth দিয়ে লগইন চেষ্টা
         await signInWithEmailAndPassword(auth, emailInput, passwordInput);
         
         const snapshot = await get(child(ref(db), `users/${emailKey}`));
@@ -35,16 +32,19 @@ const AuthPage = () => {
         alert("লগইন ব্যর্থ! ইমেল বা পাসওয়ার্ড ভুল।");
       }
     } else {
-      // SIGN UP লজিক
+      // SIGN UP লজিক - এখানে শর্ত যোগ করা হয়েছে
       if (!form.name || !emailInput || !passwordInput || !form.profession) {
         return alert("সব ঘর পূরণ কর!");
       }
 
+      // পাসওয়ার্ডের দৈর্ঘ্য চেক করার শর্ত
+      if (passwordInput.length < 6) {
+        return alert("নিরাপত্তার জন্য পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টারের হতে হবে!");
+      }
+
       try {
-        // এই লাইনটি ইউজারকে Firebase Authentication লিস্টে অ্যাড করবে
         await createUserWithEmailAndPassword(auth, emailInput, passwordInput);
 
-        // এরপর আপনার আগের মতো ডাটাবেসে ডাটা সেভ হবে
         const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now() };
         await set(ref(db, `users/${emailKey}`), newUser);
         
@@ -61,7 +61,6 @@ const AuthPage = () => {
     }
   };
 
-  // পাসওয়ার্ড রিসেট লিঙ্ক পাঠানোর অফিশিয়াল ফাংশন
   const handleResetPassword = async () => {
     const emailPrompt = prompt("আপনার রেজিস্টার্ড ইমেলটি দিন (পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হবে):");
     if (!emailPrompt) return;
@@ -105,7 +104,6 @@ const AuthPage = () => {
           <input placeholder="Email" type="email" style={inputStyle} onChange={e => setForm({...form, email: e.target.value})} />
           <input placeholder="Password" type="password" style={inputStyle} onChange={e => setForm({...form, password: e.target.value})} />
           
-          {/* পাসওয়ার্ড রিসেট বাটন */}
           {view === 'login' && (
             <div style={{ textAlign: 'right', width: '100%', marginBottom: '10px' }}>
               <span onClick={handleResetPassword} style={{ fontSize: '12px', color: '#6c5ce7', cursor: 'pointer', fontWeight: '500' }}>
@@ -129,7 +127,6 @@ const AuthPage = () => {
   );
 };
 
-// Styles
 const container = { 
   minHeight: '100vh', 
   display: 'flex', 
