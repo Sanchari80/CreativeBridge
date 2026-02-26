@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, onValue, update, remove } from "firebase/database";
 import { db } from '../App.jsx'; 
 
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
+  const [expandedNoteId, setExpandedNoteId] = useState(null); // নতুন স্টেট যোগ করা হয়েছে
   const prevRequestsCount = useRef(0);
   const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
 
@@ -74,7 +75,6 @@ const NotificationSystem = ({ onBack }) => {
     return user.role === 'Writer' ? req.ownerPath?.toLowerCase() === userKey : req.fromEmail?.toLowerCase() === email;
   });
 
-  // ছবির জন্য ছোট স্টাইল (ফন্ট সাইজের সাথে সামঞ্জস্যপূর্ণ)
   const miniPicStyle = { width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', verticalAlign: 'middle', border: '1px solid #ddd' };
 
   return (
@@ -102,7 +102,11 @@ const NotificationSystem = ({ onBack }) => {
                 style={{ position: 'absolute', right: '10px', top: '10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px' }}
               >🗑️</button>
 
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              {/* Profile & Info Section - টাচ করলে নোট এক্সপ্যান্ড হবে */}
+              <div 
+                style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}
+                onClick={() => setExpandedNoteId(expandedNoteId === req.firebaseKey ? null : req.firebaseKey)}
+              >
                 <div style={{ fontSize: '13px', flex: 1 }}>
                   {user.role === 'Writer' ? (
                     <>
@@ -124,7 +128,22 @@ const NotificationSystem = ({ onBack }) => {
                 </div>
               </div>
               
-              {req.note && <p style={noteStyle}>Note: "{req.note}"</p>}
+              {/* Expandable Note Section */}
+              {req.note && (
+                <div style={{
+                  ...noteStyle,
+                  maxHeight: expandedNoteId === req.firebaseKey ? '500px' : '35px', 
+                  overflow: 'hidden',
+                  transition: 'max-height 0.3s ease-in-out',
+                  cursor: 'pointer',
+                  whiteSpace: expandedNoteId === req.firebaseKey ? 'pre-wrap' : 'nowrap',
+                  textOverflow: 'ellipsis'
+                }}
+                onClick={() => setExpandedNoteId(expandedNoteId === req.firebaseKey ? null : req.firebaseKey)}
+                >
+                  <strong>Note:</strong> "{req.note}"
+                </div>
+              )}
 
               {user.role === 'Writer' && req.status === 'pending' && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
