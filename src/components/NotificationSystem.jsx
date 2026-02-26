@@ -5,7 +5,7 @@ import { db } from '../App.jsx';
 
 const NotificationSystem = ({ onBack }) => {
   const { user, requests, setRequests, setView, setActiveStoryId } = useContext(AppContext); 
-  const [expandedNoteId, setExpandedNoteId] = useState(null); // নতুন স্টেট যোগ করা হয়েছে
+  const [expandedNoteId, setExpandedNoteId] = useState(null); // নতুন স্টেট যোগ করা হয়েছে
   const prevRequestsCount = useRef(0);
   const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
 
@@ -136,8 +136,9 @@ const NotificationSystem = ({ onBack }) => {
                   overflow: 'hidden',
                   transition: 'max-height 0.3s ease-in-out',
                   cursor: 'pointer',
+                  // এই লাইনগুলো পরিবর্তন করা হয়েছে যাতে এক্সপ্যান্ড কাজ করে
                   whiteSpace: expandedNoteId === req.firebaseKey ? 'pre-wrap' : 'nowrap',
-                  textOverflow: 'ellipsis'
+                  textOverflow: expandedNoteId === req.firebaseKey ? 'clip' : 'ellipsis'
                 }}
                 onClick={() => setExpandedNoteId(expandedNoteId === req.firebaseKey ? null : req.firebaseKey)}
                 >

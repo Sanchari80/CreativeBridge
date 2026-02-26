@@ -25,21 +25,21 @@ const AuthPage = () => {
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
         } else {
-          alert("অ্যাকাউন্ট ডাটাবেসে পাওয়া যায়নি!");
+          alert("The account is not found in database");
         }
       } catch (error) {
         console.error(error);
-        alert("লগইন ব্যর্থ! ইমেল বা পাসওয়ার্ড ভুল।");
+        alert("Login failed: " + error.message);
       }
     } else {
       // SIGN UP লজিক - এখানে শর্ত যোগ করা হয়েছে
       if (!form.name || !emailInput || !passwordInput || !form.profession) {
-        return alert("সব ঘর পূরণ কর!");
+        return alert("Please fill all the fields!");
       }
 
       // পাসওয়ার্ডের দৈর্ঘ্য চেক করার শর্ত
       if (passwordInput.length < 6) {
-        return alert("নিরাপত্তার জন্য পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টারের হতে হবে!");
+        return alert("For security, password must be at least 6 characters long!");
       }
 
       try {
@@ -50,19 +50,19 @@ const AuthPage = () => {
         
         localStorage.setItem('activeUser', JSON.stringify(newUser));
         setUser(newUser);
-        alert("অ্যাকাউন্ট তৈরি হয়েছে!");
+        alert("Account created successfully!");
       } catch (error) {
         if (error.code === 'auth/email-already-in-use') {
-          alert("এই ইমেল দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে!");
+          alert("An account with this email already exists!");
         } else {
-          alert("সাইন-আপ সমস্যা: " + error.message);
+          alert("Sign-up failed: " + error.message);
         }
       }
     }
   };
 
   const handleResetPassword = async () => {
-    const emailPrompt = prompt("আপনার রেজিস্টার্ড ইমেলটি দিন (পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হবে):");
+    const emailPrompt = prompt("Please send your email to reset your password");
     if (!emailPrompt) return;
     
     const auth = getAuth();
@@ -70,10 +70,10 @@ const AuthPage = () => {
 
     try {
       await sendPasswordResetEmail(auth, emailInput);
-      alert("আপনার ইমেলে একটি পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন!");
+      alert("We have sent a password reset link to your email!");
     } catch (error) {
       console.error(error);
-      alert("ইমেল পাঠানো যায়নি! ইমেলটি সঠিক কি না নিশ্চিত করুন।");
+      alert("We couldn't send the reset email. Please check the email address and try again.");
     }
   };
 
