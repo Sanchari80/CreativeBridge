@@ -100,7 +100,12 @@ const CommonDashboard = () => {
 {requestModal && (
   <div style={modalOverlay}>
     <div style={modalContent}>
-      <h3 style={{marginTop: 0}}>Request {requestModal.type === 'fullStory' ? 'Script Access' : 'Synopsis Access'}</h3>
+    <h3 style={{marginTop: 0}}>
+  Request {
+    requestModal.type === 'fullStory' ? 'Script Access' : 
+    requestModal.type === 'synopsis' ? 'Synopsis Access' : 'Contact Access'
+  }
+</h3>
       <textarea 
         style={textareaStyle} 
         placeholder="Send your portfolio link or identity for verification (Required)..." 
@@ -133,13 +138,24 @@ const CommonDashboard = () => {
           const s = stories.find(item => item.id === expandedStory);
           if (!s) return null;
           const isOwner = s.writerEmail === user?.email || s.email === user?.email;
-          const checkAccess = (type) => requests?.find(r => r.storyId === s.id && r.fromEmail === user?.email && r.status === 'approved');
-          
-          const hasSynopsisAccess = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
-          const hasFullStoryAccess = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
-          // Contact Access logic (approval required if locked)
-          const hasContactAccess = !s.isContactLocked || checkAccess('fullStory') || checkAccess('synopsis') || isOwner;
+          // --- এই অংশটুকু পরিবর্তন করুন ---
+                   // ১. চেক এক্সেস ফাংশন (এটি রিকোয়েস্ট টাইপ অনুযায়ী কাজ করবে)
+const checkAccess = (type) => requests?.find(r => 
+  r.storyId === s.id && 
+  r.fromEmail === user?.email && 
+  r.status === 'approved' &&
+  r.requestType === type 
+);
 
+// ২. প্রতিটি ফিল্ড এখন সম্পূর্ণ আলাদা (Independent)
+// সিনোপসিস শুধু সিনোপসিস অ্যাপ্রুভ হলেই খুলবে
+const hasSynopsisAccess = !s.isSynopsisLocked || checkAccess('synopsis') || isOwner;
+
+// স্ক্রিপ্ট শুধু স্ক্রিপ্ট অ্যাপ্রুভ হলেই খুলবে
+const hasFullStoryAccess = !s.isFullStoryLocked || checkAccess('fullStory') || isOwner;
+
+// কন্টাক্ট ইনফো এখন শুধু কন্টাক্ট রিকোয়েস্ট অ্যাপ্রুভ হলেই খুলবে (আগের মতো অটো খুলবে না)
+const hasContactAccess = !s.isContactLocked || checkAccess('contact') || isOwner;
           return (
             <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '20px'}}>
@@ -195,26 +211,41 @@ const CommonDashboard = () => {
                       </div>
                     )}
                   </div>
-
-                  <div style={{borderTop: '1px solid #eee', paddingTop: '15px'}}>
-                    <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
-                    <div style={{fontSize: '13px'}}>
-                      {hasContactAccess ? (
-                        <>
-                          <p>📞 Contact: {s.contactInfo || "No contact info shared"}</p>
-                          <p>📧 Email: {s.writerEmail || s.email}</p>
-                          {s.portfolio && (
-                            <p style={{marginTop: '10px'}}>🌐 Portfolio: <a href={s.portfolio} target="_blank" rel="noreferrer" style={{color: '#6c5ce7', textDecoration: 'none'}}>{s.portfolio}</a></p>
-                          )}
-                        </>
-                      ) : (
-                        <div style={lockedBox}>
-                          <span>🔒 Contact & Portfolio Locked</span>
-                          <button onClick={() => setRequestModal({story: s, type: 'fullStory'})} style={smallReqBtn}>Request Access</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+<div style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
+  <h5 style={labelStyle}>Writer's Info & Portfolio</h5>
+  <div style={{ fontSize: '13px' }}>
+    {hasContactAccess ? (
+      <div className="unlocked-info">
+        {/* ইমেইল প্রদর্শন */}
+        <p>📧 Email: {s.contactEmail || s.writerEmail || s.email}</p>
+        
+        {/* ফোন নম্বর থাকলে তবেই দেখাবে */}
+        {s.contactPhone && (
+          <p>📞 Contact: {s.contactPhone}</p>
+        )}
+        
+        {/* পোর্টফোলিও লিঙ্ক */}
+        {s.portfolio && (
+          <p style={{ marginTop: '10px' }}>
+            🌐 Portfolio: <a href={s.portfolio.startsWith('http') ? s.portfolio : `https://${s.portfolio}`} target="_blank" rel="noreferrer" style={{ color: '#6c5ce7', textDecoration: 'none' }}>{s.portfolio}</a>
+          </p>
+        )}
+        
+        {/* যদি ইমেইল ও ফোন কিছুই না থাকে */}
+        {!s.contactEmail && !s.contactPhone && !s.portfolio && (
+          <p>📞 Contact: No contact info shared</p>
+        )}
+      </div>
+    ) : (
+      <div style={lockedBox}>
+        <span>🔒 Contact & Portfolio Locked</span>
+        <button onClick={() => setRequestModal({ story: s, type: 'contact' })} style={smallReqBtn}>
+          Request Contact
+        </button>
+      </div>
+    )}
+  </div>
+</div>
                 </div>
               </div>
             </div>

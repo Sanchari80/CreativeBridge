@@ -67,37 +67,41 @@ export const AppProvider = ({ children, db }) => {
   };
 
   const sendRequest = async (ownerEmail, storyTitle, storyId, type, note) => {
-    if (!user) return alert("Please Login First!");
+  if (!user) return alert("Please Login First!");
 
-    // ডবল রিকোয়েস্ট আটকানোর লজিক
-    const alreadyRequested = requests.some(req => 
-      req.storyId === storyId && 
-      req.fromEmail?.toLowerCase() === user.email?.toLowerCase() &&
-      req.requestType === type
-    );
+  // ডবল রিকোয়েস্ট আটকানোর লজিক
+  const alreadyRequested = requests.some(req => 
+    req.storyId === storyId && 
+    req.fromEmail?.toLowerCase() === user.email?.toLowerCase() &&
+    req.requestType === type
+  );
 
-    if (alreadyRequested) return alert("Already Requested!");
+  if (alreadyRequested) return alert("Already Requested!");
 
-    const finalEmail = ownerEmail || "unknown@mail.com";
+  const finalEmail = ownerEmail || "unknown@mail.com";
+  
+  try {
+    const ownerKey = finalEmail.replace(/\./g, ',');
+    const newRequestRef = push(ref(db, `requests/${ownerKey}`));
     
-    try {
-      const ownerKey = finalEmail.replace(/\./g, ',');
-      const newRequestRef = push(ref(db, `requests/${ownerKey}`));
-      await set(newRequestRef, {
-        fromEmail: user.email,
-        fromName: user.name,
-        storyId: storyId || "",
-        requestType: type || "general",
-        note: note || "",
-        storyTitle: storyTitle || "Untitled",
-        status: 'pending',
-        timestamp: Date.now()
-      });
-      alert("Request Sent Successfully!");
-    } catch (error) {
-      alert("Request failed!");
-    }
-  };
+    // --- এখানে fromPic এবং fromName নিশ্চিত করা হয়েছে ---
+    await set(newRequestRef, {
+      fromEmail: user.email,
+      fromName: user.name || user.email.split('@')[0], // নাম না থাকলে ইমেইল থেকে নেবে
+      fromPic: user.profilePic || "/icon.png",        // এই লাইনটি ছবি পাঠাবে
+      storyId: storyId || "",
+      requestType: type || "general",
+      note: note || "",
+      storyTitle: storyTitle || "Untitled",
+      status: 'pending',
+      timestamp: Date.now()
+    });
+    
+    alert("Request Sent Successfully!");
+  } catch (error) {
+    alert("Request failed!");
+  }
+};
 
   const logout = () => {
     localStorage.removeItem('activeUser');

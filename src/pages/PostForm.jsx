@@ -9,20 +9,21 @@ const PostForm = ({ closeForm }) => {
     Name: '',
     logline: '',
     synopsis: '',
-    fullStoryFile: '', // এখন এটি ফাইল নয়, ড্রাইভ লিঙ্ক সেভ করবে
+    fullStoryFile: '', 
     genre: 'Action',
     portfolio: '', 
-    contactInfo: '', 
+    contactEmail: '', // ইমেইল আলাদা
+    contactPhone: '', // ফোন আলাদা
     isSynopsisLocked: false, 
     isFullStoryLocked: true,
     isContactLocked: true 
   });
 
   useEffect(() => {
-    if (user?.email) {
+    if (user) {
       setFormData(prev => ({ 
         ...prev, 
-        contactInfo: user.email,
+        // ইমেইল অটো-ফিল বন্ধ রাখা হয়েছে আপনার অনুরোধে
         portfolio: user.portfolio || "" 
       }));
     }
@@ -33,7 +34,11 @@ const PostForm = ({ closeForm }) => {
     
     if (!formData.Name?.trim()) return alert("Story Name is required!");
     if (!formData.logline?.trim()) return alert("Logline is required!");
-    if (!formData.contactInfo?.trim()) return alert("Contact Info is required!");
+    
+    // ভ্যালিডেশন: ইমেইল অথবা ফোন যেকোনো একটি অবশ্যই দিতে হবে
+    if (!formData.contactEmail?.trim() && !formData.contactPhone?.trim()) {
+      return alert("Please provide at least an Email or Phone number!");
+    }
 
     const storiesRef = ref(db, 'stories');
     const newStoryRef = push(storiesRef); 
@@ -116,7 +121,20 @@ const PostForm = ({ closeForm }) => {
               </label>
             </div>
             <input placeholder="Portfolio URL..." value={formData.portfolio} onChange={e => setFormData({...formData, portfolio: e.target.value})} style={inputStyle} />
-            <input placeholder="Email or Phone..." value={formData.contactInfo} onChange={e => setFormData({...formData, contactInfo: e.target.value})} style={inputStyle} />
+            
+            {/* এখানে আলাদা দুটি ফিল্ড দেওয়া হলো */}
+            <input 
+              placeholder="Contact Email..." 
+              value={formData.contactEmail} 
+              onChange={e => setFormData({...formData, contactEmail: e.target.value})} 
+              style={inputStyle} 
+            />
+            <input 
+              placeholder="Phone / WhatsApp..." 
+              value={formData.contactPhone} 
+              onChange={e => setFormData({...formData, contactPhone: e.target.value})} 
+              style={inputStyle} 
+            />
           </div>
 
           <button type="submit" style={btnStyle}>Publish Story</button>
@@ -126,7 +144,7 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-// Styles
+// Styles (আপনার দেওয়া স্টাইলগুলো হুবহু রাখা হয়েছে)
 const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' };
 const modalContent = { background: 'white', padding: '20px', borderRadius: '20px', width: '95%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' };
 const inputStyle = { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '10px', border: '1px solid #eee', background: '#f9f9f9', boxSizing: 'border-box', outline: 'none', fontSize: '14px' };
