@@ -1,10 +1,21 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, update } from "firebase/database";
 import { db, TALENT_ROLES } from "../App";
 
 const Navbar = ({ view, setView, setShowNotifications, showNotifications, setShowPostForm, handleLogout, liveVisitors, isAdmin }) => {
   const { user, requests, talentRequests } = useContext(AppContext);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobile,  setIsMobile]  = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  // menu খোলা থাকলে view change এ বন্ধ হবে
+  const go = (v) => { setView(v); setMenuOpen(false); };
 
   const userKey  = user?.email?.toLowerCase().replace(/\./g, ',');
   const isWriter = user?.role === 'Writer';
@@ -20,6 +31,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
 
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
+    setMenuOpen(false);
     if (!showNotifications && isHirer) {
       hirerUnreadStory.forEach(r  => update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`),       { read: true }));
       hirerUnreadTalent.forEach(r => update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
@@ -30,168 +42,248 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
   const catEmoji = { Writer:'✍️', Singer:'🎤', Painter:'🎨', Actor:'🎬', Dancer:'💃', Hirer:'🔍', 'Looking for new stories':'🔍' };
   const c = catColor[user?.role] || '#636e72';
 
-  return (
-    <nav style={{
-      display: 'flex',
-      flexDirection: 'row',       /* ← এটাই key */
-      flexWrap: 'nowrap',         /* ← কখনো wrap হবে না */
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 4%',
-      height: 64,
-      minHeight: 64,
-      background: 'rgba(255,255,255,0.95)',
-      backdropFilter: 'blur(28px)',
-      WebkitBackdropFilter: 'blur(28px)',
-      borderBottom: '1px solid rgba(201,168,76,0.2)',
-      boxShadow: '0 4px 30px rgba(0,0,0,0.1)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 200,
-      width: '100%',
-      boxSizing: 'border-box',
-      overflow: 'hidden',
-    }}>
+  // ── Mobile Action Items (column) ──────────────────────────────
+  const MobileActions = () => (
+    <>
+      {/* Backdrop */}
+      <div onClick={()=>setMenuOpen(false)} style={{
+        position:'fixed', inset:0, background:'rgba(0,0,0,0.4)',
+        zIndex:299, backdropFilter:'blur(3px)',
+      }}/>
 
-      {/* ── Logo (left, shrink হবে না) ── */}
-      <div
-        onClick={() => setView('dashboard')}
-        style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', flexShrink:0 }}
-      >
-        <img src="/icon.png" alt="icon" style={{ width:38, height:38, borderRadius:10, boxShadow:'0 4px 14px rgba(201,168,76,0.3)', flexShrink:0 }} />
-        <span style={{ fontFamily:"'Playfair Display',serif", fontWeight:800, fontSize:'1.2rem', background:'linear-gradient(135deg,#1a1a2c,#5846E4)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', whiteSpace:'nowrap' }}>
-          Creative Bridge
-        </span>
-        <span style={{ display:'flex', alignItems:'center', gap:5, background:'#e8f5e9', border:'1px solid #c8e6c9', padding:'3px 10px', borderRadius:20, fontSize:11, color:'#2e7d32', fontWeight:700, whiteSpace:'nowrap', marginLeft:4 }}>
-          <span style={{ width:6, height:6, background:'#4caf50', borderRadius:'50%', display:'inline-block', flexShrink:0 }}/>
-          {liveVisitors} Live
-        </span>
-      </div>
-
-      {/* ── Actions (right, overflow-x scroll — কখনো নিচে নামবে না) ── */}
+      {/* Right-side column panel */}
       <div style={{
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'nowrap',       /* ← কখনো wrap হবে না */
-        alignItems: 'center',
-        gap: 6,
-        overflowX: 'auto',        /* ← জায়গা না থাকলে scroll */
-        flexShrink: 1,
-        minWidth: 0,
-        paddingLeft: 10,
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
+        position:'fixed', top:0, right:0,
+        width:220, height:'100vh',
+        background:'rgba(255,255,255,0.97)',
+        backdropFilter:'blur(24px)',
+        boxShadow:'-8px 0 40px rgba(0,0,0,0.18)',
+        zIndex:300,
+        display:'flex', flexDirection:'column',
+        padding:'72px 16px 24px',
+        gap:8,
+        overflowY:'auto',
       }}>
+        {/* Close button */}
+        <button onClick={()=>setMenuOpen(false)} style={{
+          position:'absolute', top:16, right:16,
+          background:'#f1f2f6', border:'none', borderRadius:'50%',
+          width:36, height:36, cursor:'pointer', fontSize:16, fontWeight:700,
+        }}>✕</button>
+
+        {/* Profile info at top */}
+        <div onClick={()=>go('profile')} style={{
+          display:'flex', alignItems:'center', gap:10,
+          padding:'10px 12px', borderRadius:14,
+          background:'linear-gradient(135deg,rgba(108,92,231,0.08),rgba(201,168,76,0.08))',
+          border:'1px solid rgba(108,92,231,0.15)', cursor:'pointer', marginBottom:8,
+        }}>
+          <img src={user?.profilePic||'/icon.png'} alt="" style={{width:40,height:40,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(201,168,76,0.35)'}}/>
+          <div>
+            <div style={{fontWeight:700,fontSize:13,color:'#1a1a2c'}}>{user?.name}</div>
+            <div style={{fontSize:10,color:'#636e72'}}>{user?.profession||user?.role}</div>
+          </div>
+        </div>
 
         {/* Role badge */}
-        <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, background:c+'18', color:c, border:`1px solid ${c}33`, whiteSpace:'nowrap', flexShrink:0 }}>
+        <span style={{fontSize:11,fontWeight:700,padding:'6px 12px',borderRadius:20,background:c+'18',color:c,border:`1px solid ${c}33`,textAlign:'center'}}>
           {catEmoji[user?.role]||'👤'} {user?.role}
         </span>
 
-        {/* Dashboard */}
-        <Btn active={view==='dashboard'} onClick={()=>setView('dashboard')}>🏠 Dashboard</Btn>
+        {/* Divider */}
+        <div style={{height:1,background:'#f0f0f0',margin:'4px 0'}}/>
 
-        {/* My Work */}
-        {isTalent && <Btn active={view==='mywork'} onClick={()=>setView('mywork')}>🗂 My Work</Btn>}
+        {/* Nav items */}
+        <ColBtn active={view==='dashboard'} onClick={()=>go('dashboard')}>🏠 Dashboard</ColBtn>
+        {isTalent && <ColBtn active={view==='mywork'} onClick={()=>go('mywork')}>🗂 My Work</ColBtn>}
+        {isHirer  && <ColBtn active={view==='hire'}   onClick={()=>go('hire')}   color="#6c5ce7">🔍 Hire View</ColBtn>}
+        {isAdmin  && <ColBtn active={view==='admin'}  onClick={()=>go('admin')}  color="#e17055">🛡️ Admin</ColBtn>}
 
-        {/* Hire View */}
-        {isHirer && (
-          <Btn active={view==='hire'} onClick={()=>setView('hire')} color="#6c5ce7">🔍 Hire</Btn>
-        )}
+        {/* Divider */}
+        <div style={{height:1,background:'#f0f0f0',margin:'4px 0'}}/>
 
-        {/* Admin */}
-        {isAdmin && (
-          <Btn active={view==='admin'} onClick={()=>setView('admin')} color="#e17055">🛡️</Btn>
-        )}
-
-        {/* Bell */}
-        <button
-          onClick={handleNotificationClick}
-          style={{ position:'relative', background:'#f8f8fc', border:'none', fontSize:18, cursor:'pointer', width:38, height:38, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'transform 0.2s' }}
-        >
-          🔔
-          {notifCount > 0 && (
-            <span style={{ position:'absolute', top:-3, right:-3, background:'#ff4757', color:'#fff', borderRadius:'50%', padding:'1px 5px', fontSize:9, fontWeight:800, border:'2px solid #fff', lineHeight:1.4 }}>
-              {notifCount}
-            </span>
-          )}
+        {/* Notification */}
+        <button onClick={handleNotificationClick} style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'10px 14px', borderRadius:12, border:'1.5px solid #eee',
+          background:'#f8f8fc', cursor:'pointer', fontWeight:600, fontSize:13,
+        }}>
+          <span>🔔 Notifications</span>
+          {notifCount>0&&<span style={{background:'#ff4757',color:'#fff',borderRadius:'50%',padding:'1px 6px',fontSize:10,fontWeight:800}}>{notifCount}</span>}
         </button>
 
         {/* Post / Upload */}
         {isWriter && (
-          <button onClick={()=>setShowPostForm(true)} style={actionBtnStyle('linear-gradient(135deg,#2d3436,#1a2025)')}>
-            + Post
+          <button onClick={()=>{setShowPostForm(true);setMenuOpen(false);}} style={colActionBtn('linear-gradient(135deg,#2d3436,#1a2025)')}>
+            ✍️ + Post Story
           </button>
         )}
         {isTalent && (
-          <button onClick={()=>setShowPostForm(true)} style={actionBtnStyle('linear-gradient(135deg,#6c5ce7,#a29bfe)')}>
-            + Upload
+          <button onClick={()=>{setShowPostForm(true);setMenuOpen(false);}} style={colActionBtn('linear-gradient(135deg,#6c5ce7,#a29bfe)')}>
+            🎵 + Upload Work
           </button>
         )}
 
-        {/* Profile */}
-        <div
-          onClick={()=>setView('profile')}
-          style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', flexShrink:0, padding:'2px 6px', borderRadius:12 }}
-        >
-          <div style={{ textAlign:'right', lineHeight:1.2 }}>
-            <div style={{ fontWeight:700, fontSize:13, color:'#1a1a2c', whiteSpace:'nowrap', maxWidth:90, overflow:'hidden', textOverflow:'ellipsis' }}>{user?.name}</div>
-            <div style={{ fontSize:10, color:'#636e72', whiteSpace:'nowrap' }}>{user?.profession||user?.role}</div>
-          </div>
-          <img src={user?.profilePic||'/icon.png'} alt="" style={{ width:34, height:34, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(201,168,76,0.35)', flexShrink:0 }}/>
+        {/* Logout */}
+        <div style={{marginTop:'auto',paddingTop:16,borderTop:'1px solid #f0f0f0'}}>
+          <button onClick={()=>{handleLogout();setMenuOpen(false);}} style={colActionBtn('linear-gradient(135deg,#ff4757,#ff6b81)')}>
+            ⏻ Logout
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  // ── MOBILE NAVBAR ──────────────────────────────────────────────
+  if (isMobile) return (
+    <>
+      <nav style={{
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        padding:'0 4%', height:58,
+        background:'rgba(255,255,255,0.96)',
+        backdropFilter:'blur(28px)', WebkitBackdropFilter:'blur(28px)',
+        borderBottom:'1px solid rgba(201,168,76,0.2)',
+        boxShadow:'0 4px 20px rgba(0,0,0,0.08)',
+        position:'sticky', top:0, zIndex:200, width:'100%', boxSizing:'border-box',
+      }}>
+        {/* Logo */}
+        <div onClick={()=>go('dashboard')} style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',flexShrink:0}}>
+          <img src="/icon.png" alt="icon" style={{width:34,height:34,borderRadius:8,boxShadow:'0 3px 10px rgba(201,168,76,0.3)'}}/>
+          <span style={{fontFamily:"'Playfair Display',serif",fontWeight:800,fontSize:'1.05rem',background:'linear-gradient(135deg,#1a1a2c,#5846E4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',whiteSpace:'nowrap'}}>
+            Creative Bridge
+          </span>
         </div>
 
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          style={{ ...actionBtnStyle('linear-gradient(135deg,#ff4757,#ff6b81)'), padding:'8px 12px', flexShrink:0 }}
-        >
-          ⏻
+        {/* Right side: bell + live + hamburger */}
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {/* Live badge */}
+          <span style={{display:'flex',alignItems:'center',gap:4,background:'#e8f5e9',border:'1px solid #c8e6c9',padding:'3px 8px',borderRadius:20,fontSize:10,color:'#2e7d32',fontWeight:700}}>
+            <span style={{width:5,height:5,background:'#4caf50',borderRadius:'50%',display:'inline-block'}}/>
+            {liveVisitors}
+          </span>
+
+          {/* Bell */}
+          <button onClick={handleNotificationClick} style={{position:'relative',background:'#f8f8fc',border:'none',fontSize:16,cursor:'pointer',width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            🔔
+            {notifCount>0&&<span style={{position:'absolute',top:-2,right:-2,background:'#ff4757',color:'#fff',borderRadius:'50%',padding:'1px 4px',fontSize:8,fontWeight:800,border:'1.5px solid #fff'}}>{notifCount}</span>}
+          </button>
+
+          {/* Hamburger */}
+          <button onClick={()=>setMenuOpen(true)} style={{
+            background:'linear-gradient(135deg,#2d3436,#1a2025)',
+            border:'none', borderRadius:10, width:38, height:38,
+            display:'flex', flexDirection:'column', alignItems:'center',
+            justifyContent:'center', gap:4, cursor:'pointer', flexShrink:0,
+          }}>
+            {[0,1,2].map(i=>(
+              <span key={i} style={{width:16,height:2,background:'#fff',borderRadius:2,display:'block'}}/>
+            ))}
+          </button>
+        </div>
+      </nav>
+
+      {menuOpen && <MobileActions />}
+    </>
+  );
+
+  // ── DESKTOP NAVBAR (আগের মতো) ─────────────────────────────────
+  return (
+    <nav style={{
+      display:'flex', flexDirection:'row', flexWrap:'nowrap',
+      alignItems:'center', justifyContent:'space-between',
+      padding:'0 4%', height:64, minHeight:64,
+      background:'rgba(255,255,255,0.95)',
+      backdropFilter:'blur(28px)', WebkitBackdropFilter:'blur(28px)',
+      borderBottom:'1px solid rgba(201,168,76,0.2)',
+      boxShadow:'0 4px 30px rgba(0,0,0,0.1)',
+      position:'sticky', top:0, zIndex:200,
+      width:'100%', boxSizing:'border-box', overflow:'hidden',
+    }}>
+      {/* Logo */}
+      <div onClick={()=>setView('dashboard')} style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',flexShrink:0}}>
+        <img src="/icon.png" alt="icon" style={{width:38,height:38,borderRadius:10,boxShadow:'0 4px 14px rgba(201,168,76,0.3)',flexShrink:0}}/>
+        <span style={{fontFamily:"'Playfair Display',serif",fontWeight:800,fontSize:'1.2rem',background:'linear-gradient(135deg,#1a1a2c,#5846E4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',whiteSpace:'nowrap'}}>
+          Creative Bridge
+        </span>
+        <span style={{display:'flex',alignItems:'center',gap:5,background:'#e8f5e9',border:'1px solid #c8e6c9',padding:'3px 10px',borderRadius:20,fontSize:11,color:'#2e7d32',fontWeight:700,whiteSpace:'nowrap',marginLeft:4}}>
+          <span style={{width:6,height:6,background:'#4caf50',borderRadius:'50%',display:'inline-block',flexShrink:0}}/>
+          {liveVisitors} Live
+        </span>
+      </div>
+
+      {/* Actions */}
+      <div style={{display:'flex',flexDirection:'row',flexWrap:'nowrap',alignItems:'center',gap:6,overflowX:'auto',flexShrink:1,minWidth:0,paddingLeft:10,scrollbarWidth:'none',msOverflowStyle:'none'}}>
+        <span style={{fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:20,background:c+'18',color:c,border:`1px solid ${c}33`,whiteSpace:'nowrap',flexShrink:0}}>
+          {catEmoji[user?.role]||'👤'} {user?.role}
+        </span>
+        <Btn active={view==='dashboard'} onClick={()=>setView('dashboard')}>🏠 Dashboard</Btn>
+        {isTalent && <Btn active={view==='mywork'} onClick={()=>setView('mywork')}>🗂 My Work</Btn>}
+        {isHirer   && <Btn active={view==='hire'}  onClick={()=>setView('hire')}  color="#6c5ce7">🔍 Hire</Btn>}
+        {isAdmin   && <Btn active={view==='admin'} onClick={()=>setView('admin')} color="#e17055">🛡️</Btn>}
+
+        <button onClick={handleNotificationClick} style={{position:'relative',background:'#f8f8fc',border:'none',fontSize:18,cursor:'pointer',width:38,height:38,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'transform 0.2s'}}>
+          🔔
+          {notifCount>0&&<span style={{position:'absolute',top:-3,right:-3,background:'#ff4757',color:'#fff',borderRadius:'50%',padding:'1px 5px',fontSize:9,fontWeight:800,border:'2px solid #fff',lineHeight:1.4}}>{notifCount}</span>}
         </button>
+
+        {isWriter && <button onClick={()=>setShowPostForm(true)} style={actionBtnStyle('linear-gradient(135deg,#2d3436,#1a2025)')}>+ Post</button>}
+        {isTalent && <button onClick={()=>setShowPostForm(true)} style={actionBtnStyle('linear-gradient(135deg,#6c5ce7,#a29bfe)')}>+ Upload</button>}
+
+        <div onClick={()=>setView('profile')} style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',flexShrink:0,padding:'2px 6px',borderRadius:12}}>
+          <div style={{textAlign:'right',lineHeight:1.2}}>
+            <div style={{fontWeight:700,fontSize:13,color:'#1a1a2c',whiteSpace:'nowrap',maxWidth:90,overflow:'hidden',textOverflow:'ellipsis'}}>{user?.name}</div>
+            <div style={{fontSize:10,color:'#636e72',whiteSpace:'nowrap'}}>{user?.profession||user?.role}</div>
+          </div>
+          <img src={user?.profilePic||'/icon.png'} alt="" style={{width:34,height:34,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(201,168,76,0.35)',flexShrink:0}}/>
+        </div>
+
+        <button onClick={handleLogout} style={{...actionBtnStyle('linear-gradient(135deg,#ff4757,#ff6b81)'),padding:'8px 12px',flexShrink:0}}>⏻</button>
       </div>
     </nav>
   );
 };
 
-/* ── Helper components & functions ── */
-
+/* ── Helpers ── */
 const Btn = ({ children, onClick, active, color = '#2d3436' }) => (
-  <button
-    onClick={onClick}
-    style={{
-      padding: '7px 13px',
-      background: active ? `linear-gradient(135deg,${color},${color}cc)` : '#fff',
-      color:  active ? '#fff' : color,
-      border: `1.5px solid ${active ? color : color+'44'}`,
-      borderRadius: 12,
-      cursor: 'pointer',
-      fontWeight: 700,
-      fontSize: 12,
-      whiteSpace: 'nowrap',
-      flexShrink: 0,
-      boxShadow: active ? `0 4px 14px ${color}44` : 'none',
-      transition: 'all 0.18s ease',
-      fontFamily: "'DM Sans',sans-serif",
-    }}
-  >
+  <button onClick={onClick} style={{
+    padding:'7px 13px',
+    background: active ? `linear-gradient(135deg,${color},${color}cc)` : '#fff',
+    color:  active ? '#fff' : color,
+    border: `1.5px solid ${active ? color : color+'44'}`,
+    borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:12,
+    whiteSpace:'nowrap', flexShrink:0,
+    boxShadow: active ? `0 4px 14px ${color}44` : 'none',
+    transition:'all 0.18s ease', fontFamily:"'DM Sans',sans-serif",
+  }}>
+    {children}
+  </button>
+);
+
+const ColBtn = ({ children, onClick, active, color = '#2d3436' }) => (
+  <button onClick={onClick} style={{
+    padding:'11px 14px', width:'100%', textAlign:'left',
+    background: active ? `linear-gradient(135deg,${color},${color}dd)` : '#f8f9fa',
+    color:  active ? '#fff' : '#2d3436',
+    border: `1.5px solid ${active ? color : '#eee'}`,
+    borderRadius:12, cursor:'pointer', fontWeight:600, fontSize:13,
+    boxShadow: active ? `0 4px 14px ${color}33` : 'none',
+    transition:'all 0.18s ease', fontFamily:"'DM Sans',sans-serif",
+  }}>
     {children}
   </button>
 );
 
 const actionBtnStyle = (bg) => ({
-  padding: '7px 14px',
-  background: bg,
-  color: '#fff',
-  border: 'none',
-  borderRadius: 12,
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: 12,
-  whiteSpace: 'nowrap',
-  flexShrink: 0,
-  boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-  transition: 'all 0.18s ease',
-  fontFamily: "'DM Sans',sans-serif",
+  padding:'7px 14px', background:bg, color:'#fff', border:'none',
+  borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:12,
+  whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 4px 14px rgba(0,0,0,0.2)',
+  transition:'all 0.18s ease', fontFamily:"'DM Sans',sans-serif",
+});
+
+const colActionBtn = (bg) => ({
+  padding:'11px 14px', width:'100%', background:bg, color:'#fff', border:'none',
+  borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13, textAlign:'left',
+  boxShadow:'0 4px 14px rgba(0,0,0,0.15)', fontFamily:"'DM Sans',sans-serif",
 });
 
 export default Navbar;

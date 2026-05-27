@@ -5,12 +5,12 @@ import { ref, set, get, child } from "firebase/database";
 import { getAuth, sendPasswordResetEmail, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 const ROLE_OPTIONS = [
-  { value: 'Writer',  emoji: '✍️', label: 'Writer',           desc: 'Script ও story লিখি' },
-  { value: 'Singer',  emoji: '🎤', label: 'Singer',           desc: 'গান গাই ও রেকর্ড করি' },
-  { value: 'Painter', emoji: '🎨', label: 'Painter/Designer', desc: 'ছবি আঁকি ও ডিজাইন করি' },
-  { value: 'Actor',   emoji: '🎬', label: 'Actor/Anchor',     desc: 'অভিনয় বা উপস্থাপনা করি' },
-  { value: 'Dancer',  emoji: '💃', label: 'Dancer',           desc: 'নৃত্য পরিবেশন করি' },
-  { value: 'Hirer',   emoji: '🔍', label: 'Hirer',            desc: 'Talent hire করতে চাই' },
+  { value: 'Writer',  emoji: '✍️', label: 'Writer',           desc: 'Write scripts and stories' },
+  { value: 'Singer',  emoji: '🎤', label: 'Singer',           desc: 'Sing songs and record music' },
+  { value: 'Painter', emoji: '🎨', label: 'Painter/Designer', desc: 'Draw pictures and design' },
+  { value: 'Actor',   emoji: '🎬', label: 'Actor/Anchor',     desc: 'Act or present on camera' },
+  { value: 'Dancer',  emoji: '💃', label: 'Dancer',           desc: 'Perform dances' },
+  { value: 'Hirer',   emoji: '🔍', label: 'Hirer',            desc: 'Hire talented individuals' },
 ];
 
 const AuthPage = () => {
@@ -45,10 +45,10 @@ const AuthPage = () => {
       }
 
     } else {
-      if (!form.name || !emailInput || !passwordInput || !form.profession) return alert("সব required field পূরণ করুন!");
-      if (passwordInput.length < 6) return alert("Password কমপক্ষে 6 character হতে হবে!");
-      if (!form.phone)   return alert("Phone number দিন!");
-      if (!form.address) return alert("Address দিন!");
+      if (!form.name || !emailInput || !passwordInput || !form.profession) return alert("All required fields must be filled!");
+      if (passwordInput.length < 6) return alert("Password must be at least 6 characters long!");
+      if (!form.phone)   return alert("Please enter your phone number!");
+      if (!form.address) return alert("Please enter your address!");
 
       try {
         await createUserWithEmailAndPassword(auth, emailInput, passwordInput);
@@ -59,7 +59,7 @@ const AuthPage = () => {
         alert("Account created successfully!");
       } catch (error) {
         if (error.code === 'auth/email-already-in-use') {
-          alert("এই email দিয়ে আগেই account আছে!");
+          alert("Email already in use. Please log in instead.");
         } else {
           alert("Sign-up failed: " + error.message);
         }
@@ -68,13 +68,13 @@ const AuthPage = () => {
   };
 
   const handleResetPassword = async () => {
-    const emailPrompt = prompt("Password reset এর জন্য email দিন:");
+    const emailPrompt = prompt("Enter your email:");
     if (!emailPrompt) return;
     try {
       await sendPasswordResetEmail(getAuth(), emailPrompt.trim().toLowerCase());
-      alert("Password reset link পাঠানো হয়েছে!");
+      alert("Password reset link send!");
     } catch (error) {
-      alert("Email পাঠানো যায়নি। Email টি চেক করুন।");
+      alert("Password reset failed: " + error.message);
     }
   };
 
@@ -97,7 +97,7 @@ const AuthPage = () => {
             <>
               {/* Role cards */}
               <p style={{ fontSize: '12px', color: '#636e72', marginBottom: '10px', fontWeight: '600', textAlign: 'left' }}>
-                আপনি কী হিসেবে যোগ দিচ্ছেন? *
+                What's your role? *
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '15px' }}>
                 {ROLE_OPTIONS.map(r => (
