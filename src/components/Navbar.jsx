@@ -1,93 +1,197 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, update } from "firebase/database";
-import { db } from "../App"; // আপনার db যেখানে এক্সপোর্ট করা আছে সেই পাথ অনুযায়ী দিন
+import { db, TALENT_ROLES } from "../App";
 
-const Navbar = ({ setView, setShowNotifications, showNotifications, setShowPostForm, handleLogout, liveVisitors }) => {
-  const { user, requests } = useContext(AppContext);
-  
-  // ইমেইল থেকে ডট সরিয়ে কি তৈরি করা (Writer এর ownerPath এর সাথে ম্যাচ করার জন্য)
-  const userKey = user?.email?.toLowerCase().replace(/\./g, ',');
-  // Director-এর unread requests আলাদা করা
-  const unreadApproved = requests.filter(r => 
-    r.status === 'approved' && r.fromEmail === user?.email && !r.read
-  );
+const Navbar = ({ view, setView, setShowNotifications, showNotifications, setShowPostForm, handleLogout, liveVisitors, isAdmin }) => {
+  const { user, requests, talentRequests } = useContext(AppContext);
 
-  // নোটিফিকেশন ক্লিক হ্যান্ডলার
+  const userKey  = user?.email?.toLowerCase().replace(/\./g, ',');
+  const isWriter = user?.role === 'Writer';
+  const isTalent = TALENT_ROLES.includes(user?.role);
+  const isHirer  = user?.role === 'Hirer' || user?.role === 'Looking for new stories';
+
+  const writerPending     = requests.filter(r => r.status === 'pending' && r.ownerPath === userKey).length;
+  const talentPending     = (talentRequests||[]).filter(r => r.status === 'pending' && r.ownerPath === userKey).length;
+  const hirerUnreadStory  = requests.filter(r => r.status === 'approved' && r.fromEmail === user?.email && !r.read);
+  const hirerUnreadTalent = (talentRequests||[]).filter(r => r.status === 'approved' && r.fromEmail === user?.email && !r.read);
+  const hirerTotal        = hirerUnreadStory.length + hirerUnreadTalent.length;
+  const notifCount        = isWriter ? writerPending : isTalent ? talentPending : isHirer ? hirerTotal : 0;
+
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
-    
-    // Director ক্লিক করলে Firebase-এ read: true আপডেট হবে
-    if (!showNotifications && user?.role === 'Director' && unreadApproved.length > 0) {
-      unreadApproved.forEach(req => {
-        const reqRef = ref(db, `requests/${req.ownerPath}/${req.firebaseKey}`);
-        update(reqRef, { read: true });
-      });
+    if (!showNotifications && isHirer) {
+      hirerUnreadStory.forEach(r  => update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`),       { read: true }));
+      hirerUnreadTalent.forEach(r => update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
     }
   };
 
-  // নোটিফিকেশন কাউন্ট লজিক (Writer এবং Director উভয়ের জন্য)
-  // নোটিফিকেশন কাউন্ট লজিক (Writer এবং Director উভয়ের জন্য)
-  const count = user?.role === 'Writer' 
-  ? requests.filter(r => r.status === 'pending' && r.ownerPath === userKey).length 
-  : unreadApproved.length; // সরাসরি unreadApproved.length ব্যবহার করুন
+  const catColor = { Writer:'#7B6CF6', Singer:'#00C48C', Painter:'#FF6B47', Actor:'#FFB830', Dancer:'#FF5CA8', Hirer:'#636e72', 'Looking for new stories':'#636e72' };
+  const catEmoji = { Writer:'✍️', Singer:'🎤', Painter:'🎨', Actor:'🎬', Dancer:'💃', Hirer:'🔍', 'Looking for new stories':'🔍' };
+  const c = catColor[user?.role] || '#636e72';
+
   return (
-    <nav className="navbar" style={navStyle}>
-      {/* Logo Section */}
-      <div className="logo-section" style={logoSectionStyle} onClick={() => setView('dashboard')}>
-        <img src="/icon.png" alt="App Icon" style={{ width: '35px', height: '35px' }} />
-        <h2 style={logoTextStyle}>Creative Bridge</h2>
-        <div style={liveBadgeStyle}><span style={pulseDot}></span>{liveVisitors} Live</div>
+    <nav style={{
+      display: 'flex',
+      flexDirection: 'row',       /* ← এটাই key */
+      flexWrap: 'nowrap',         /* ← কখনো wrap হবে না */
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 4%',
+      height: 64,
+      minHeight: 64,
+      background: 'rgba(255,255,255,0.95)',
+      backdropFilter: 'blur(28px)',
+      WebkitBackdropFilter: 'blur(28px)',
+      borderBottom: '1px solid rgba(201,168,76,0.2)',
+      boxShadow: '0 4px 30px rgba(0,0,0,0.1)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 200,
+      width: '100%',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+    }}>
+
+      {/* ── Logo (left, shrink হবে না) ── */}
+      <div
+        onClick={() => setView('dashboard')}
+        style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', flexShrink:0 }}
+      >
+        <img src="/icon.png" alt="icon" style={{ width:38, height:38, borderRadius:10, boxShadow:'0 4px 14px rgba(201,168,76,0.3)', flexShrink:0 }} />
+        <span style={{ fontFamily:"'Playfair Display',serif", fontWeight:800, fontSize:'1.2rem', background:'linear-gradient(135deg,#1a1a2c,#5846E4)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', whiteSpace:'nowrap' }}>
+          Creative Bridge
+        </span>
+        <span style={{ display:'flex', alignItems:'center', gap:5, background:'#e8f5e9', border:'1px solid #c8e6c9', padding:'3px 10px', borderRadius:20, fontSize:11, color:'#2e7d32', fontWeight:700, whiteSpace:'nowrap', marginLeft:4 }}>
+          <span style={{ width:6, height:6, background:'#4caf50', borderRadius:'50%', display:'inline-block', flexShrink:0 }}/>
+          {liveVisitors} Live
+        </span>
       </div>
-      
-      {/* Action Buttons & Profile */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        
-        {/* Notification Button */}
-       <button 
-  onClick={handleNotificationClick}  // এখানে handleNotificationClick দিন
-  style={notifBtnStyle}
->
+
+      {/* ── Actions (right, overflow-x scroll — কখনো নিচে নামবে না) ── */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'nowrap',       /* ← কখনো wrap হবে না */
+        alignItems: 'center',
+        gap: 6,
+        overflowX: 'auto',        /* ← জায়গা না থাকলে scroll */
+        flexShrink: 1,
+        minWidth: 0,
+        paddingLeft: 10,
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+      }}>
+
+        {/* Role badge */}
+        <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, background:c+'18', color:c, border:`1px solid ${c}33`, whiteSpace:'nowrap', flexShrink:0 }}>
+          {catEmoji[user?.role]||'👤'} {user?.role}
+        </span>
+
+        {/* Dashboard */}
+        <Btn active={view==='dashboard'} onClick={()=>setView('dashboard')}>🏠 Dashboard</Btn>
+
+        {/* My Work */}
+        {isTalent && <Btn active={view==='mywork'} onClick={()=>setView('mywork')}>🗂 My Work</Btn>}
+
+        {/* Hire View */}
+        {isHirer && (
+          <Btn active={view==='hire'} onClick={()=>setView('hire')} color="#6c5ce7">🔍 Hire</Btn>
+        )}
+
+        {/* Admin */}
+        {isAdmin && (
+          <Btn active={view==='admin'} onClick={()=>setView('admin')} color="#e17055">🛡️</Btn>
+        )}
+
+        {/* Bell */}
+        <button
+          onClick={handleNotificationClick}
+          style={{ position:'relative', background:'#f8f8fc', border:'none', fontSize:18, cursor:'pointer', width:38, height:38, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'transform 0.2s' }}
+        >
           🔔
-          {count > 0 && (
-            <span style={badgeStyle}>
-              {count}
+          {notifCount > 0 && (
+            <span style={{ position:'absolute', top:-3, right:-3, background:'#ff4757', color:'#fff', borderRadius:'50%', padding:'1px 5px', fontSize:9, fontWeight:800, border:'2px solid #fff', lineHeight:1.4 }}>
+              {notifCount}
             </span>
           )}
         </button>
 
-        {/* Writer specific: Post Story Button */}
-        {user.role === 'Writer' && (
-          <button onClick={() => setShowPostForm(true)} style={postBtnStyle}>+ Post Story</button>
+        {/* Post / Upload */}
+        {isWriter && (
+          <button onClick={()=>setShowPostForm(true)} style={actionBtnStyle('linear-gradient(135deg,#2d3436,#1a2025)')}>
+            + Post
+          </button>
+        )}
+        {isTalent && (
+          <button onClick={()=>setShowPostForm(true)} style={actionBtnStyle('linear-gradient(135deg,#6c5ce7,#a29bfe)')}>
+            + Upload
+          </button>
         )}
 
-        {/* Profile Section */}
-        <div style={profileContainerStyle} onClick={() => setView('profile')}>
-          <div style={{ textAlign: 'right', lineHeight: '1.2' }}>
-            <div style={{ fontWeight: 'bold', color: '#2d3436' }}>{user.name}</div>
-            <div style={{ fontSize: '0.75rem', color: '#636e72' }}>{user.role} Account</div>
+        {/* Profile */}
+        <div
+          onClick={()=>setView('profile')}
+          style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', flexShrink:0, padding:'2px 6px', borderRadius:12 }}
+        >
+          <div style={{ textAlign:'right', lineHeight:1.2 }}>
+            <div style={{ fontWeight:700, fontSize:13, color:'#1a1a2c', whiteSpace:'nowrap', maxWidth:90, overflow:'hidden', textOverflow:'ellipsis' }}>{user?.name}</div>
+            <div style={{ fontSize:10, color:'#636e72', whiteSpace:'nowrap' }}>{user?.profession||user?.role}</div>
           </div>
-          <img src={user.profilePic || "/icon.png"} alt="Profile" style={avatarStyle} />
+          <img src={user?.profilePic||'/icon.png'} alt="" style={{ width:34, height:34, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(201,168,76,0.35)', flexShrink:0 }}/>
         </div>
 
-        {/* Logout Button */}
-        <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          style={{ ...actionBtnStyle('linear-gradient(135deg,#ff4757,#ff6b81)'), padding:'8px 12px', flexShrink:0 }}
+        >
+          ⏻
+        </button>
       </div>
     </nav>
   );
 };
 
-// --- Styles ---
-const navStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 5%', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', boxShadow: '0 2px 15px rgba(0,0,0,0.08)', position: 'sticky', top: 0, zIndex: 100 };
-const logoSectionStyle = { display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' };
-const logoTextStyle = { margin: 0, color: '#2d3436', fontSize: '1.4rem', fontWeight: '800' };
-const liveBadgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', color: '#2e7d32', fontWeight: 'bold', marginLeft: '10px', border: '1px solid #c8e6c9' };
-const pulseDot = { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', boxShadow: '0 0 5px #4caf50' };
-const notifBtnStyle = { position: 'relative', background: '#f1f2f6', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const badgeStyle = { position: 'absolute', top: '-5px', right: '-5px', background: '#ff4757', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', border: '2px solid white' };
-const postBtnStyle = { padding: '10px 22px', background: '#2d3436', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
-const profileContainerStyle = { display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' };
-const avatarStyle = { width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #646cff' };
-const logoutBtnStyle = { padding: '8px 18px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' };
+/* ── Helper components & functions ── */
+
+const Btn = ({ children, onClick, active, color = '#2d3436' }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: '7px 13px',
+      background: active ? `linear-gradient(135deg,${color},${color}cc)` : '#fff',
+      color:  active ? '#fff' : color,
+      border: `1.5px solid ${active ? color : color+'44'}`,
+      borderRadius: 12,
+      cursor: 'pointer',
+      fontWeight: 700,
+      fontSize: 12,
+      whiteSpace: 'nowrap',
+      flexShrink: 0,
+      boxShadow: active ? `0 4px 14px ${color}44` : 'none',
+      transition: 'all 0.18s ease',
+      fontFamily: "'DM Sans',sans-serif",
+    }}
+  >
+    {children}
+  </button>
+);
+
+const actionBtnStyle = (bg) => ({
+  padding: '7px 14px',
+  background: bg,
+  color: '#fff',
+  border: 'none',
+  borderRadius: 12,
+  cursor: 'pointer',
+  fontWeight: 700,
+  fontSize: 12,
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+  boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+  transition: 'all 0.18s ease',
+  fontFamily: "'DM Sans',sans-serif",
+});
 
 export default Navbar;
