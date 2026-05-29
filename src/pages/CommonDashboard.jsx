@@ -855,6 +855,21 @@ const ProtImg=({src,title,height=130})=>{
   );
 };
 
+<button 
+  onClick={() => setView('dashboard')} 
+  style={{
+    padding: '10px 20px',
+    background: '#2d3436',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    marginTop: '15px'
+  }}
+>
+  ← Back to Dashboard
+</button>
 const Empty=({emoji,text})=>(
   <div style={{textAlign:'center',padding:'50px 20px',color:'#b2bec3'}}>
     <p style={{fontSize:40,margin:'0 0 10px'}}>{emoji}</p>
