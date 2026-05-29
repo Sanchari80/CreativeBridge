@@ -4,15 +4,122 @@ import { ref, onValue } from "firebase/database";
 import { db } from '../App.jsx';
 
 const TABS = [
-  { id:'following', label:'⭐ Following',  color:'#fdcb6e' },
-  { id:'writer',    label:'✍️ Writers',    color:'#4834d4' },
-  { id:'singer',    label:'🎤 Music',      color:'#00b894' },
-  { id:'painter',   label:'🎨 Art',        color:'#e17055' },
-  { id:'actor',     label:'🎬 Actors',     color:'#f39c12' },
-  { id:'dancer',    label:'💃 Dancers',    color:'#fd79a8' },
-  { id:'requests',  label:'📋 Requests',   color:'#6c5ce7' },
+  { id:'following', label:'⭐ Following', color:'#fdcb6e' },
+  { id:'writer',    label:'✍️ Writers',   color:'#4834d4' },
+  { id:'singer',    label:'🎤 Music',     color:'#00b894' },
+  { id:'painter',   label:'🎨 Art',       color:'#e17055' },
+  { id:'actor',     label:'🎬 Actors',    color:'#f39c12' },
+  { id:'dancer',    label:'💃 Dancers',   color:'#fd79a8' },
+  { id:'requests',  label:'📋 Requests',  color:'#6c5ce7' },
 ];
 const GENRES = ["All","Thriller","Romance","Drama","Action","Comedy","Horror","Sci-Fi","Saved"];
+
+// ── BidModal OUTSIDE component (fixes useState bug) ────────────────────────
+const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
+  const [tokens,  setTokens]  = useState(5);
+  const [step,    setStep]    = useState(1); // 1=select plan, 2=payment details
+  const myBid = bids?.find(b => b.workId === work.id && b.userEmail === user?.email && b.status !== 'rejected');
+
+  if (myBid) return (
+    <div style={moOverlay} onClick={onClose}>
+      <div style={moBox} onClick={e => e.stopPropagation()}>
+        <h3 style={{ marginTop:0 }}>💰 Bid Status</h3>
+        <p style={{ fontSize:14 }}>Status: <strong style={{ color: myBid.status==='approved'?'#2ecc71':'#f39c12', textTransform:'capitalize' }}>{myBid.status}</strong></p>
+        {myBid.status==='approved' && <p style={{ fontSize:13, color:'#2ecc71' }}>✅ Your work is now promoted!</p>}
+        {myBid.status==='pending'  && <p style={{ fontSize:13, color:'#636e72' }}>⏳ Awaiting admin approval.</p>}
+        <button onClick={onClose} style={{ ...submitBtn, marginTop:8 }}>Close</button>
+      </div>
+    </div>
+  );
+
+  const amount = tokens === 5 ? 500 : 200;
+
+  // Step 1: Choose plan
+  if (step === 1) return (
+    <div style={moOverlay} onClick={onClose}>
+      <div style={moBox} onClick={e => e.stopPropagation()}>
+        <h3 style={{ marginTop:0 }}>💰 Promote Your Work</h3>
+        <p style={{ fontSize:13, color:'#636e72', marginBottom:14 }}>"{work.title||work.Name}" — Will appear at the top of the dashboard.</p>
+
+        {/* Plan cards */}
+        <div style={{ display:'flex', gap:10, marginBottom:16 }}>
+          {[
+            { t:5, price:'৳500', label:'Top Priority', emoji:'🥇', color:'#fdcb6e' },
+            { t:2, price:'৳200', label:'2nd Priority',  emoji:'🥈', color:'#b2bec3' },
+          ].map(opt => (
+            <div key={opt.t} onClick={() => setTokens(opt.t)}
+              style={{ flex:1, padding:14, borderRadius:12, border:`2px solid ${tokens===opt.t?opt.color:'#eee'}`,
+                cursor:'pointer', textAlign:'center', background: tokens===opt.t?'#fffbee':'#fff',
+                transition:'all 0.15s' }}>
+              <div style={{ fontSize:24 }}>{opt.emoji}</div>
+              <div style={{ fontWeight:700, fontSize:14 }}>{opt.t} Tokens</div>
+              <div style={{ fontSize:13, color:'#2d3436', fontWeight:600 }}>{opt.price}</div>
+              <div style={{ fontSize:11, color:'#00b894', marginTop:4 }}>{opt.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background:'#f0f4ff', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#4834d4', marginBottom:14 }}>
+          ℹ️ Admin will review and approve your bid. Your work will then be featured at the top.
+        </div>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>Cancel</button>
+          <button onClick={() => setStep(2)} style={{ flex:1, padding:10, borderRadius:10, border:'none', background:'#2d3436', color:'#fff', cursor:'pointer', fontWeight:'bold' }}>
+            Next → Pay {amount}৳
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 2: Payment details
+  return (
+    <div style={moOverlay} onClick={onClose}>
+      <div style={{ ...moBox, maxWidth:460 }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ marginTop:0, textAlign:'center' }}>💳 Payment Details</h3>
+        <p style={{ fontSize:13, color:'#636e72', textAlign:'center', marginBottom:16 }}>
+          Send <strong style={{ color:'#2d3436', fontSize:16 }}>{amount}৳</strong> to one of the numbers below, then click Submit.
+        </p>
+
+        {/* Payment cards */}
+        <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+          <div style={{ flex:1, background:'linear-gradient(135deg,#e91e8c,#c2185b)', borderRadius:14, padding:'14px 12px', color:'#fff', textAlign:'center' }}>
+            <div style={{ fontSize:22, marginBottom:4 }}>📱</div>
+            <div style={{ fontWeight:800, fontSize:13, letterSpacing:1 }}>bKash</div>
+            <div style={{ fontSize:16, fontWeight:700, margin:'6px 0', letterSpacing:2 }}>01XXXXXXXXX</div>
+            <div style={{ fontSize:11, opacity:0.85 }}>Send Money → Personal</div>
+          </div>
+          <div style={{ flex:1, background:'linear-gradient(135deg,#f97316,#ea580c)', borderRadius:14, padding:'14px 12px', color:'#fff', textAlign:'center' }}>
+            <div style={{ fontSize:22, marginBottom:4 }}>📱</div>
+            <div style={{ fontWeight:800, fontSize:13, letterSpacing:1 }}>Nagad</div>
+            <div style={{ fontSize:16, fontWeight:700, margin:'6px 0', letterSpacing:2 }}>01XXXXXXXXX</div>
+            <div style={{ fontSize:11, opacity:0.85 }}>Send Money → Personal</div>
+          </div>
+        </div>
+
+        <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 14px', fontSize:12, color:'#636e72', marginBottom:14 }}>
+          <strong style={{ color:'#f39c12' }}>⚠️ Important:</strong> After sending payment, click <strong>"Submit Bid"</strong>. Admin will verify and approve within 24 hours.
+        </div>
+
+        {/* Amount reminder */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f0f4ff', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
+          <span style={{ fontSize:13, color:'#4834d4', fontWeight:600 }}>Plan: {tokens===5?'🥇 Top Priority':'🥈 2nd Priority'}</span>
+          <span style={{ fontSize:16, fontWeight:800, color:'#2d3436' }}>{amount}৳</span>
+        </div>
+
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={() => setStep(1)} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>← Back</button>
+          <button
+            onClick={() => { submitBid(category, work.id||work.Name, work.title||work.Name, tokens); onClose(); }}
+            style={{ flex:2, padding:10, borderRadius:10, border:'none', background:'linear-gradient(135deg,#2d3436,#1a2025)', color:'#fff', cursor:'pointer', fontWeight:'bold', fontSize:13 }}>
+            ✅ I've Paid — Submit Bid
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+// ──────────────────────────────────────────────────────────────────────────────
 
 export default function CommonDashboard() {
   const {
@@ -36,6 +143,7 @@ export default function CommonDashboard() {
   const [contactModal,    setContactModal]    = useState(null);
   const [contactMsg,      setContactMsg]      = useState('');
   const [bidModal,        setBidModal]        = useState(null);
+  const [allFollowers,    setAllFollowers]    = useState({});
 
   const isOwnProfile = e => e?.toLowerCase()===user?.email?.toLowerCase();
   const followedKeys   = Object.keys(follows||{});
@@ -71,7 +179,20 @@ export default function CommonDashboard() {
     }
   },[activeStoryId,setActiveStoryId]);
 
-  // Writer profiles from stories
+  useEffect(()=>{
+    const unsub=onValue(ref(db,'followers'),snap=>{
+      setAllFollowers(snap.val()||{});
+    });
+    return()=>unsub();
+  },[]);
+
+  const getFollowers=(email)=>{
+    if(!email) return [];
+    const key=email.replace(/\./g,',');
+    return Object.values(allFollowers[key]||{});
+  };
+  const getFollowerCount=(email)=>getFollowers(email).length;
+
   const writerProfiles = React.useMemo(()=>{
     const map={};
     stories.forEach(s=>{
@@ -92,7 +213,6 @@ export default function CommonDashboard() {
     return Object.values(map);
   },[stories]);
 
-  // Helpers
   const toggleSave=id=>{
     const n=savedStories.includes(id)?savedStories.filter(i=>i!==id):[...savedStories,id];
     setSavedStories(n); localStorage.setItem('savedStories',JSON.stringify(n));
@@ -123,31 +243,19 @@ export default function CommonDashboard() {
     )?.revealedContact||null;
   };
 
-  // ── FIXED: handleSendContact with proper error handling ──
   const handleSendContact=async()=>{
     if(!contactMsg.trim()) return alert("Please write your identity and purpose!");
     if(!contactModal) return;
-
-    const talentEmail = contactModal.email || contactModal.profile?.email;
-    const talentName  = contactModal.profile?.name || contactModal.name || 'Unknown';
-
-    if(!talentEmail){
-      return alert("Talent's email could not be found. Please try again.");
-    }
-
+    const talentEmail=contactModal.email||contactModal.profile?.email;
+    const talentName=contactModal.profile?.name||contactModal.name||'Unknown';
+    if(!talentEmail) return alert("Could not find talent email. Please try again.");
     try {
-      await sendTalentRequest(talentEmail, talentName, contactMsg);
-      setContactMsg('');
-      setContactModal(null);
-    } catch(e) {
-      alert("Request failed: " + (e?.message || 'Unknown error'));
-    }
+      await sendTalentRequest(talentEmail,talentName,contactMsg);
+      setContactMsg(''); setContactModal(null);
+    } catch(e) { alert("Request failed: "+(e?.message||'Unknown error')); }
   };
 
-  const openContactModal = (p) => {
-    if(!p) return;
-    setContactModal(p);
-  };
+  const openContactModal=(p)=>{ if(!p) return; setContactModal(p); };
 
   const getPromoTokens=(category,workId,emailKey)=>{
     const key=`${emailKey}_${workId}`;
@@ -208,13 +316,11 @@ export default function CommonDashboard() {
     const writerEmail=(s.writerEmail||s.email||'').toLowerCase();
     const iFollow=isFollowing(writerEmail);
     const promoT=getPromoTokens('writer',s.id,writerEmail.replace(/\./g,','));
-    // Writer profile for "View Profile" button
     const wProfile=writerProfiles.find(p=>p.email===writerEmail);
 
     return(
       <div style={{padding:16,maxWidth:800,margin:'0 auto'}}>
         {storyModal&&<StoryModal modal={storyModal} note={directorNote} setNote={setDirectorNote} onSend={handleStoryRequest} onClose={()=>{setStoryModal(null);setDirectorNote('');}}/>}
-
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
           <button onClick={()=>setExpandedStory(null)} style={backBtn}>← Back</button>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
@@ -225,11 +331,10 @@ export default function CommonDashboard() {
               </button>
             )}
             {!isOwner&&<button onClick={()=>iFollow?unfollowTalent(writerEmail):followTalent(writerEmail,s.writerName,s.writerPic||'/icon.png')} style={{...followBtn,background:iFollow?'#f1f2f6':'#fdcb6e'}}>{iFollow?'✓ Following':'+ Follow'}</button>}
-            {isOwner&&<button onClick={()=>setBidModal({work:{...s},category:'writer'})} style={{...followBtn,background:'#a29bfe',color:'#fff'}}>💰 Bid</button>}
+            {isOwner&&<button onClick={()=>setBidModal({work:{...s},category:'writer'})} style={{...followBtn,background:'#a29bfe',color:'#fff'}}>💰 Promote</button>}
             {isOwner&&<button onClick={()=>{deleteStory(s.id);setExpandedStory(null);}} style={{...followBtn,background:'#ff4757',color:'#fff'}}>Delete</button>}
           </div>
         </div>
-
         <div style={card}>
           <div style={{display:'flex',alignItems:'center',marginBottom:12}}>
             <img src={isOwner?(user?.profilePic||'/icon.png'):(s.writerPic||'/icon.png')} alt="" style={av45}/>
@@ -265,7 +370,7 @@ export default function CommonDashboard() {
   }
 
   // ═══════════════════════════════════════════════════
-  // TALENT / WRITER PROFILE DETAIL
+  // PROFILE DETAIL VIEW
   // ═══════════════════════════════════════════════════
   if(selectedProfile){
     const p=selectedProfile;
@@ -277,53 +382,40 @@ export default function CommonDashboard() {
     const name=p.profile?.name||p.name||'Unknown';
     const pic=p.profile?.profilePic||p.profilePic||'/icon.png';
     const writerStories=p.category==='writer'?stories.filter(s=>(s.writerEmail||s.email||'').toLowerCase()===p.email):[];
+    const followerList=getFollowers(p.email);
 
     return(
       <div style={{maxWidth:720,margin:'0 auto',padding:16}}>
-        {/* Contact Modal — must be here for selectedProfile view */}
         {contactModal&&(
-          <ContactModal
-            talent={contactModal}
-            msg={contactMsg}
-            setMsg={setContactMsg}
-            onSend={handleSendContact}
-            onClose={()=>{setContactModal(null);setContactMsg('');}}
-          />
+          <ContactModal talent={contactModal} msg={contactMsg} setMsg={setContactMsg}
+            onSend={handleSendContact} onClose={()=>{setContactModal(null);setContactMsg('');}}/>
         )}
-
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
           <button onClick={()=>setSelectedProfile(null)} style={backBtn}>← Back</button>
           {!isMe&&(
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={()=>iFollow?unfollowTalent(p.email):followTalent(p.email,name,pic)}
-                style={{...followBtn,background:iFollow?'#f1f2f6':'#fdcb6e'}}>
-                {iFollow?'✓ Following':'+ Follow'}
-              </button>
-            </div>
+            <button onClick={()=>iFollow?unfollowTalent(p.email):followTalent(p.email,name,pic)}
+              style={{...followBtn,background:iFollow?'#f1f2f6':'#fdcb6e'}}>
+              {iFollow?'✓ Following':'+ Follow'}
+            </button>
           )}
         </div>
-
         <div style={card}>
-          {/* Profile Header */}
           <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,flexWrap:'wrap'}}>
             <img src={pic} alt="" style={{width:76,height:76,borderRadius:'50%',objectFit:'cover',border:'3px solid #eee',flexShrink:0}}/>
             <div style={{flex:1}}>
               <h2 style={{margin:'0 0 4px',color:'#2d3436'}}>{name}</h2>
               <span style={{...chip,background:(tabObj?.color||'#eee')+'22',color:tabObj?.color,fontSize:12}}>{tabObj?.label}</span>
+              {followerList.length>0&&(
+                <span style={{display:'inline-block',marginLeft:8,fontSize:11,fontWeight:700,color:'#fdcb6e',background:'#fffbee',border:'1px solid #fdcb6e44',padding:'2px 8px',borderRadius:20}}>
+                  ⭐ {followerList.length} follower{followerList.length>1?'s':''}
+                </span>
+              )}
               {(p.profile?.address||p.address)&&<p style={{margin:'4px 0 0',fontSize:13,color:'#636e72'}}>📍 {p.profile?.address||p.address}</p>}
               {(p.profile?.profession||p.profession)&&<p style={{margin:'2px 0 0',fontSize:13,color:'#636e72'}}>💼 {p.profile?.profession||p.profession}</p>}
             </div>
-            {/* Contact Request Button */}
             {!isMe&&(
               <div>
-                {status===null&&(
-                  <button
-                    onClick={()=>openContactModal(p)}
-                    style={reqBtn}
-                  >
-                    📩 Send Contact Request
-                  </button>
-                )}
+                {status===null&&<button onClick={()=>openContactModal(p)} style={reqBtn}>📩 Contact</button>}
                 {status==='pending'&&<div style={pChip}>⏳ Request Pending</div>}
                 {status==='approved'&&<div style={aChip}>✅ Accepted</div>}
                 {status==='declined'&&<div style={dChip}>❌ Declined</div>}
@@ -334,7 +426,27 @@ export default function CommonDashboard() {
 
           {p.profile?.bio&&<p style={{fontSize:14,background:'#f8f9fa',padding:12,borderRadius:10,margin:'0 0 14px'}}>{p.profile.bio}</p>}
 
-          {/* Contact Info Section */}
+          {/* Followers */}
+          <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
+            <p style={secLbl}>Followers ({followerList.length})</p>
+            {followerList.length===0?(
+              <p style={{fontSize:13,color:'#b2bec3'}}>No followers yet.</p>
+            ):(
+              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                {followerList.map((f,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:7,background:'#f8f9fa',borderRadius:12,padding:'6px 10px',fontSize:12}}>
+                    <img src={f.followerPic||'/icon.png'} alt="" style={{width:28,height:28,borderRadius:'50%',objectFit:'cover',border:'1.5px solid #eee',flexShrink:0}}/>
+                    <div>
+                      <div style={{fontWeight:600,color:'#2d3436',lineHeight:1.2}}>{f.followerName||'User'}</div>
+                      <div style={{fontSize:10,color:'#636e72'}}>{f.followerRole||f.followerProfession||''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contact Info */}
           <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
             <p style={secLbl}>Contact Information</p>
             {(isMe||contact)?(
@@ -347,11 +459,7 @@ export default function CommonDashboard() {
             ):(
               <div style={lockedRow}>
                 <span style={{fontSize:13,color:'#636e72'}}>🔒 Contact info locked</span>
-                {status===null&&(
-                  <button onClick={()=>openContactModal(p)} style={smallReq}>
-                    Request Access
-                  </button>
-                )}
+                {status===null&&<button onClick={()=>openContactModal(p)} style={smallReq}>Request Access</button>}
                 {status==='pending'&&<span style={{fontSize:12,color:'#f39c12'}}>⏳ Waiting for approval...</span>}
               </div>
             )}
@@ -390,7 +498,7 @@ export default function CommonDashboard() {
           {/* Painter: Artworks */}
           {p.category==='painter'&&p.artworks&&(
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
-              <p style={secLbl}>Artworks 🔒 ({Object.keys(p.artworks).length})</p>
+              <p style={secLbl}>Artworks — Copyright Protected ({Object.keys(p.artworks).length})</p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8}}>
                 {Object.values(p.artworks).map((a,i)=><ProtImg key={i} src={a.fileUrl} title={a.title}/>)}
               </div>
@@ -415,69 +523,27 @@ export default function CommonDashboard() {
   }
 
   // ═══════════════════════════════════════════════════
-  // BID MODAL
-  // ═══════════════════════════════════════════════════
-  const BidModal=({work,category,onClose})=>{
-    const [tokens,setTokens]=useState(5);
-    const myBid=bids?.find(b=>b.workId===work.id&&b.userEmail===user?.email&&b.status!=='rejected');
-    if(myBid) return(
-      <div style={moOverlay} onClick={onClose}>
-        <div style={moBox} onClick={e=>e.stopPropagation()}>
-          <h3 style={{marginTop:0}}>💰 Bid Status</h3>
-          <p style={{fontSize:14}}>Status: <strong style={{color:myBid.status==='approved'?'#2ecc71':'#f39c12',textTransform:'capitalize'}}>{myBid.status}</strong></p>
-          {myBid.status==='approved'&&<p style={{fontSize:13,color:'#2ecc71'}}>✅ Your work is promoted!</p>}
-          {myBid.status==='pending'&&<p style={{fontSize:13,color:'#636e72'}}>⏳ Awaiting admin approval.</p>}
-          <button onClick={onClose} style={{...submitBtn,marginTop:8}}>Close</button>
-        </div>
-      </div>
-    );
-    return(
-      <div style={moOverlay} onClick={onClose}>
-        <div style={moBox} onClick={e=>e.stopPropagation()}>
-          <h3 style={{marginTop:0}}>💰 Promote Your Work</h3>
-          <p style={{fontSize:13,color:'#636e72',marginBottom:14}}>"{work.title||work.Name}" — Will be displayed at the top of the dashboard.</p>
-          <div style={{display:'flex',gap:10,marginBottom:16}}>
-            {[{t:5,price:'$5',label:'First priority',emoji:'🥇',active:'#fdcb6e'},{t:2,price:'$2',label:'Second priority',emoji:'🥈',active:'#b2bec3'}].map(opt=>(
-              <div key={opt.t} onClick={()=>setTokens(opt.t)} style={{flex:1,padding:14,borderRadius:12,border:`2px solid ${tokens===opt.t?opt.active:'#eee'}`,cursor:'pointer',textAlign:'center',background:tokens===opt.t?'#fffbee':'#fff'}}>
-                <div style={{fontSize:20}}>{opt.emoji}</div>
-                <div style={{fontWeight:700,fontSize:14}}>{opt.t} Tokens</div>
-                <div style={{fontSize:12,color:'#636e72'}}>{opt.price}</div>
-                <div style={{fontSize:11,color:'#00b894',marginTop:4}}>{opt.label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{background:'#fff9db',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#636e72',marginBottom:14}}>
-            ℹ️ Your bid will be reviewed by the admin. If approved, your work will be promoted on the dashboard for more visibility. You can only have one active bid per work.
-          </div>
-          <div style={{display:'flex',gap:10}}>
-            <button onClick={onClose} style={{flex:1,padding:10,borderRadius:10,border:'1px solid #eee',cursor:'pointer',background:'#f8f9fa'}}>Cancel</button>
-            <button onClick={()=>{submitBid(category,work.id||work.Name,work.title||work.Name,tokens);onClose();}} style={{flex:1,padding:10,borderRadius:10,border:'none',background:'#2d3436',color:'#fff',cursor:'pointer',fontWeight:'bold'}}>
-              Submit ({tokens===5?'5$':'2$'})
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ═══════════════════════════════════════════════════
   // MAIN BROWSE
   // ═══════════════════════════════════════════════════
   const tabCount={requests:myRequestedWorks.length,following:followedKeys.length};
 
   return(
     <div>
-      {bidModal&&<BidModal work={bidModal.work} category={bidModal.category} onClose={()=>setBidModal(null)}/>}
-      {contactModal&&(
-        <ContactModal
-          talent={contactModal}
-          msg={contactMsg}
-          setMsg={setContactMsg}
-          onSend={handleSendContact}
-          onClose={()=>{setContactModal(null);setContactMsg('');}}
+      {bidModal&&(
+        <BidModal
+          work={bidModal.work} category={bidModal.category}
+          onClose={()=>setBidModal(null)}
+          bids={bids} user={user} submitBid={submitBid}
         />
       )}
-      {storyModal&&<StoryModal modal={storyModal} note={directorNote} setNote={setDirectorNote} onSend={handleStoryRequest} onClose={()=>{setStoryModal(null);setDirectorNote('');}}/>}
+      {contactModal&&(
+        <ContactModal talent={contactModal} msg={contactMsg} setMsg={setContactMsg}
+          onSend={handleSendContact} onClose={()=>{setContactModal(null);setContactMsg('');}}/>
+      )}
+      {storyModal&&(
+        <StoryModal modal={storyModal} note={directorNote} setNote={setDirectorNote}
+          onSend={handleStoryRequest} onClose={()=>{setStoryModal(null);setDirectorNote('');}}/>
+      )}
 
       {/* Tab Bar */}
       <div style={{display:'flex',gap:6,overflowX:'auto',padding:'14px 14px 0',background:'rgba(255,255,255,0.85)'}}>
@@ -498,7 +564,7 @@ export default function CommonDashboard() {
       {/* FOLLOWING TAB */}
       {activeTab==='following'&&(
         <div style={{padding:16}}>
-          {followedKeys.length===0?<Empty emoji="⭐" text="No one followed yet"/>:(
+          {followedKeys.length===0?<Empty emoji="⭐" text="You haven't followed anyone yet."/>:(
             <div>
               {followingStories.length>0&&(
                 <div style={{marginBottom:20}}>
@@ -513,6 +579,7 @@ export default function CommonDashboard() {
                         onFollow={()=>isFollowing(wE)?unfollowTalent(wE):followTalent(wE,s.writerName,s.writerPic||'/icon.png')}
                         onViewProfile={wP&&!isOwnProfile(wE)?()=>setSelectedProfile(wP):null}
                         promoTokens={getPromoTokens('writer',s.id,wE.replace(/\./g,','))}
+                        followerCount={getFollowerCount(wE)}
                         onBid={isOwnProfile(wE)?()=>setBidModal({work:{...s},category:'writer'}):null}/>;
                     })}
                   </div>
@@ -527,7 +594,8 @@ export default function CommonDashboard() {
                         isFollowing={isFollowing} onView={()=>setSelectedProfile(p)}
                         onContact={()=>openContactModal(p)}
                         onFollow={()=>followTalent(p.email,p.profile?.name||p.name,p.profile?.profilePic||p.profilePic||'/icon.png')}
-                        onUnfollow={()=>unfollowTalent(p.email)}/>
+                        onUnfollow={()=>unfollowTalent(p.email)}
+                        followerCount={getFollowerCount(p.email)}/>
                     ))}
                   </div>
                 </div>
@@ -555,6 +623,7 @@ export default function CommonDashboard() {
                   onFollow={()=>isFollowing(wE)?unfollowTalent(wE):followTalent(wE,s.writerName,s.writerPic||'/icon.png')}
                   onViewProfile={wP&&!isOwner?()=>setSelectedProfile(wP):null}
                   promoTokens={getPromoTokens('writer',s.id,wE.replace(/\./g,','))}
+                  followerCount={getFollowerCount(wE)}
                   onBid={isOwner?()=>setBidModal({work:{...s},category:'writer'}):null}/>;
               })}
             </div>
@@ -572,16 +641,17 @@ export default function CommonDashboard() {
               const isOwner=isOwnProfile(w.uploaderEmail);
               const promoT=getPromoTokens(activeTab,w.id,w.emailKey);
               const reqSt=getReqStatus(w.uploaderEmail);
+              const fCount=getFollowerCount(w.uploaderEmail);
               return(
                 <div key={i} style={{...card,position:'relative'}}>
                   {promoT>0&&<span style={{position:'absolute',top:10,right:10,...(promoT===5?goldBadge:silverBadge)}}>{promoT===5?'🥇':'🥈'}</span>}
-                  {/* Profile row — click → profile */}
                   <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,cursor:'pointer'}}
                     onClick={()=>w.talentProfile&&setSelectedProfile(w.talentProfile)}>
                     <img src={w.uploaderPic||'/icon.png'} alt="" style={av45}/>
                     <div style={{flex:1}}>
                       <strong style={{fontSize:14,color:'#2d3436'}}>{w.uploaderName}</strong>
                       {w.talentProfile?.profile?.address&&<p style={{margin:'2px 0 0',fontSize:11,color:'#636e72'}}>📍 {w.talentProfile.profile.address.split(',')[0]}</p>}
+                      {fCount>0&&<p style={{margin:'2px 0 0',fontSize:11,color:'#fdcb6e',fontWeight:700}}>⭐ {fCount} follower{fCount>1?'s':''}</p>}
                     </div>
                   </div>
                   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{w.title}</div>
@@ -591,7 +661,7 @@ export default function CommonDashboard() {
                   {(activeTab==='actor'||activeTab==='dancer')&&w.fileUrl&&(
                     <div style={{background:'#f8f9fa',borderRadius:10,padding:'8px 12px',fontSize:12,color:'#636e72',marginBottom:8,cursor:'pointer'}}
                       onClick={()=>w.talentProfile&&setSelectedProfile(w.talentProfile)}>
-                      🎬 Click to view full video in profile
+                      🎬 Click profile to watch video
                     </div>
                   )}
                   <div style={{display:'flex',gap:6,alignItems:'center',marginTop:6,flexWrap:'wrap'}}>
@@ -603,14 +673,13 @@ export default function CommonDashboard() {
                         {reqSt===null&&<button onClick={()=>w.talentProfile&&openContactModal(w.talentProfile)} style={smallReq}>📩</button>}
                         {reqSt==='pending'&&<span style={pChip}>⏳</span>}
                         {reqSt==='approved'&&<span style={aChip}>✅</span>}
-                        <button
-                          onClick={()=>isFollowing(w.uploaderEmail)?unfollowTalent(w.uploaderEmail):followTalent(w.uploaderEmail,w.uploaderName,w.uploaderPic)}
+                        <button onClick={()=>isFollowing(w.uploaderEmail)?unfollowTalent(w.uploaderEmail):followTalent(w.uploaderEmail,w.uploaderName,w.uploaderPic)}
                           style={{...followBtn,padding:'6px 10px',fontSize:11,background:isFollowing(w.uploaderEmail)?'#f1f2f6':'#fdcb6e'}}>
                           {isFollowing(w.uploaderEmail)?'✓':'+ Follow'}
                         </button>
                       </>
                     )}
-                    {isOwner&&<button onClick={()=>setBidModal({work:w,category:activeTab})} style={{...followBtn,padding:'6px 10px',fontSize:11,background:'#a29bfe',color:'#fff'}}>💰 Bid</button>}
+                    {isOwner&&<button onClick={()=>setBidModal({work:w,category:activeTab})} style={{...followBtn,padding:'6px 10px',fontSize:11,background:'#a29bfe',color:'#fff'}}>💰 Promote</button>}
                   </div>
                 </div>
               );
@@ -622,7 +691,7 @@ export default function CommonDashboard() {
       {/* REQUESTS TAB */}
       {activeTab==='requests'&&(
         <div style={{padding:16}}>
-          {myRequestedWorks.length===0?<Empty emoji="📋" text="No requests found"/>:(
+          {myRequestedWorks.length===0?<Empty emoji="📋" text="No contact requests sent yet."/>:(
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
               {myRequestedWorks.map((r,i)=>(
                 <div key={i} style={{...card,borderLeft:`4px solid ${r.status==='approved'?'#2ecc71':r.status==='declined'?'#e74c3c':'#f39c12'}`}}>
@@ -647,7 +716,7 @@ export default function CommonDashboard() {
 }
 
 /* ── Sub Components ── */
-const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onViewProfile,promoTokens,onBid})=>{
+const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onViewProfile,promoTokens,followerCount,onBid})=>{
   const isOwner=s.writerEmail===user?.email||s.email===user?.email;
   const wEmail=(s.writerEmail||s.email||'').toLowerCase();
   const iF=isFollowing?isFollowing(wEmail):false;
@@ -655,7 +724,6 @@ const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onVie
     <div style={{...card,position:'relative'}}>
       {promoTokens>0&&<span style={{position:'absolute',top:10,right:10,...(promoTokens===5?goldBadge:silverBadge)}}>{promoTokens===5?'🥇':'🥈'}</span>}
       <div style={{display:'flex',alignItems:'center',marginBottom:10}}>
-        {/* Avatar — click → writer profile */}
         <img src={isOwner?(user?.profilePic||'/icon.png'):(s.writerPic||'/icon.png')} alt=""
           style={{...av45,cursor:onViewProfile?'pointer':'default'}}
           onClick={onViewProfile||undefined}/>
@@ -665,6 +733,7 @@ const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onVie
             {s.writerName}
           </strong>
           <div style={chip}>{s.genre}</div>
+          {followerCount>0&&<div style={{fontSize:10,color:'#fdcb6e',fontWeight:700,marginTop:2}}>⭐ {followerCount} followers</div>}
         </div>
         <div style={{display:'flex',gap:4}}>
           {!isOwner&&onFollow&&<button onClick={onFollow} style={{...followBtn,padding:'3px 8px',fontSize:10,background:iF?'#f1f2f6':'#fdcb6e'}}>{iF?'✓':'+ Follow'}</button>}
@@ -682,13 +751,13 @@ const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onVie
         <button onClick={onView} style={{...actionBtn,flex:2}}>View Details</button>
         {!isOwner&&onViewProfile&&<button onClick={onViewProfile} style={{...actionBtn,flex:1,background:'#4834d4'}}>Profile</button>}
         {isOwner&&onBid&&<button onClick={onBid} style={{...actionBtn,flex:1,background:'#a29bfe'}}>💰</button>}
-        {isOwner&&<button onClick={()=>{if(window.confirm("Delete?"))onDelete(s.id);}} style={{...actionBtn,flex:1,background:'#ff4757'}}>Del</button>}
+        {isOwner&&<button onClick={()=>{if(window.confirm("Delete this story?"))onDelete(s.id);}} style={{...actionBtn,flex:1,background:'#ff4757'}}>Del</button>}
       </div>
     </div>
   );
 };
 
-const TCard=({p,user,TABS,getReqStatus,isFollowing,onView,onContact,onFollow,onUnfollow})=>{
+const TCard=({p,user,TABS,getReqStatus,isFollowing,onView,onContact,onFollow,onUnfollow,followerCount})=>{
   const isMe=p.email?.toLowerCase()===user?.email?.toLowerCase();
   const catObj=TABS.find(t=>t.id===p.category);
   const status=getReqStatus(p.email);
@@ -703,6 +772,7 @@ const TCard=({p,user,TABS,getReqStatus,isFollowing,onView,onContact,onFollow,onU
         <div style={{flex:1}}>
           <strong style={{fontSize:15,color:'#2d3436'}}>{name}</strong>
           {addr&&<p style={{margin:'2px 0 0',fontSize:12,color:'#636e72'}}>📍 {addr}</p>}
+          {followerCount>0&&<p style={{margin:'2px 0 0',fontSize:11,color:'#fdcb6e',fontWeight:700}}>⭐ {followerCount} follower{followerCount>1?'s':''}</p>}
         </div>
         <span style={{...chip,background:(catObj?.color||'#eee')+'22',color:catObj?.color,fontSize:10}}>{catObj?.label?.split(' ')[0]}</span>
       </div>
@@ -732,11 +802,18 @@ const LS=({label,locked,onReq,reqLabel,children,div})=>(
   </div>
 );
 
+// Enter key support on textarea
 const StoryModal=({modal,note,setNote,onSend,onClose})=>(
   <div style={moOverlay}><div style={moBox}>
     <h3 style={{marginTop:0}}>Request {modal.type==='fullStory'?'Script':modal.type==='synopsis'?'Synopsis':'Contact'} Access</h3>
-    <textarea style={ta} placeholder="Send your portfolio link or identity for verification (Required)..." value={note} onChange={e=>setNote(e.target.value)}/>
-    <div style={{display:'flex',gap:10}}><button onClick={onClose} style={cancelB}>Cancel</button><button onClick={onSend} style={confirmB}>Send Request</button></div>
+    <textarea style={ta} placeholder="Send your portfolio link or identity for verification (Required)..."
+      value={note} onChange={e=>setNote(e.target.value)}
+      onKeyDown={e=>{if(e.key==='Enter'&&e.ctrlKey)onSend();}}/>
+    <p style={{fontSize:11,color:'#aaa',margin:'-10px 0 10px'}}>Ctrl + Enter to send</p>
+    <div style={{display:'flex',gap:10}}>
+      <button onClick={onClose} style={cancelB}>Cancel</button>
+      <button onClick={onSend} style={confirmB}>Send Request</button>
+    </div>
   </div></div>
 );
 
@@ -750,8 +827,11 @@ const ContactModal=({talent,msg,setMsg,onSend,onClose})=>(
         <div style={{fontSize:12,color:'#636e72'}}>{talent.profile?.profession||talent.profession||talent.category}</div>
       </div>
     </div>
-    <p style={{fontSize:12,color:'#636e72',margin:'0 0 8px'}}>Write your message (Required):</p>
-    <textarea style={ta} placeholder="Write your message here..." value={msg} onChange={e=>setMsg(e.target.value)}/>
+    <p style={{fontSize:12,color:'#636e72',margin:'0 0 8px'}}>Introduce yourself and state your purpose (Required):</p>
+    <textarea style={ta} placeholder="e.g. I'm a Film Director looking to collaborate..."
+      value={msg} onChange={e=>setMsg(e.target.value)}
+      onKeyDown={e=>{if(e.key==='Enter'&&e.ctrlKey)onSend();}}/>
+    <p style={{fontSize:11,color:'#aaa',margin:'-10px 0 10px'}}>Ctrl + Enter to send</p>
     <div style={{display:'flex',gap:10}}>
       <button onClick={onClose} style={cancelB}>Cancel</button>
       <button onClick={onSend} style={confirmB}>Send Request</button>
@@ -802,7 +882,7 @@ const linkS=     {color:'#4834d4',fontWeight:'bold',textDecoration:'none',fontSi
 const goldBadge= {background:'#fdcb6e',color:'#2d3436',padding:'3px 8px',borderRadius:20,fontSize:11,fontWeight:700};
 const silverBadge={background:'#b2bec3',color:'#fff',padding:'3px 8px',borderRadius:20,fontSize:11,fontWeight:700};
 const moOverlay= {position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(0,0,0,0.7)',display:'flex',justifyContent:'center',alignItems:'center',zIndex:9999,backdropFilter:'blur(5px)'};
-const moBox=     {background:'#fff',padding:26,borderRadius:20,width:'90%',maxWidth:420};
+const moBox=     {background:'#fff',padding:26,borderRadius:20,width:'90%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'};
 const ta=        {width:'100%',height:90,padding:10,borderRadius:10,border:'1px solid #ddd',marginBottom:14,boxSizing:'border-box',fontSize:13,resize:'none'};
 const cancelB=   {flex:1,padding:10,borderRadius:10,border:'1px solid #eee',cursor:'pointer',background:'#f8f9fa'};
 const confirmB=  {flex:1,padding:10,borderRadius:10,border:'none',background:'#2d3436',color:'#fff',cursor:'pointer',fontWeight:'bold'};

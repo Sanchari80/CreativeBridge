@@ -25,9 +25,9 @@ const AuthPage = () => {
 
   const handleAction = async () => {
     const auth = getAuth();
-    const emailInput = form.email.replace(/\s+/g, '').toLowerCase();
+    const emailInput    = form.email.replace(/\s+/g, '').toLowerCase();
     const passwordInput = form.password.trim();
-    const emailKey = emailInput.replace(/\./g, ',');
+    const emailKey      = emailInput.replace(/\./g, ',');
 
     if (view === 'login') {
       try {
@@ -38,18 +38,16 @@ const AuthPage = () => {
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
         } else {
-          alert("Account not found in database");
+          alert("Account not found in database.");
         }
       } catch (error) {
         alert("Login failed: " + error.message);
       }
-
     } else {
       if (!form.name || !emailInput || !passwordInput || !form.profession) return alert("All required fields must be filled!");
       if (passwordInput.length < 6) return alert("Password must be at least 6 characters long!");
       if (!form.phone)   return alert("Please enter your phone number!");
       if (!form.address) return alert("Please enter your address!");
-
       try {
         await createUserWithEmailAndPassword(auth, emailInput, passwordInput);
         const newUser = { ...form, email: emailInput, password: passwordInput, id: Date.now(), profilePic: "/icon.png" };
@@ -59,7 +57,7 @@ const AuthPage = () => {
         alert("Account created successfully!");
       } catch (error) {
         if (error.code === 'auth/email-already-in-use') {
-          alert("Email already in use. Please log in instead.");
+          alert("This email is already registered. Please log in instead.");
         } else {
           alert("Sign-up failed: " + error.message);
         }
@@ -67,12 +65,17 @@ const AuthPage = () => {
     }
   };
 
+  // ── Enter key support ──────────────────────────────────────────
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleAction();
+  };
+
   const handleResetPassword = async () => {
-    const emailPrompt = prompt("Enter your email:");
+    const emailPrompt = prompt("Enter your registered email:");
     if (!emailPrompt) return;
     try {
       await sendPasswordResetEmail(getAuth(), emailPrompt.trim().toLowerCase());
-      alert("Password reset link send!");
+      alert("Password reset link sent! Check your email.");
     } catch (error) {
       alert("Password reset failed: " + error.message);
     }
@@ -92,18 +95,15 @@ const AuthPage = () => {
             {view === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
 
-          {/* ── SIGNUP ONLY ── */}
+          {/* SIGNUP ONLY */}
           {view === 'signup' && (
             <>
-              {/* Role cards */}
               <p style={{ fontSize: '12px', color: '#636e72', marginBottom: '10px', fontWeight: '600', textAlign: 'left' }}>
-                What's your role? *
+                Select your role *
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '15px' }}>
                 {ROLE_OPTIONS.map(r => (
-                  <div
-                    key={r.value}
-                    onClick={() => set_('role', r.value)}
+                  <div key={r.value} onClick={() => set_('role', r.value)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
                       padding: '9px 11px', borderRadius: '12px', cursor: 'pointer',
@@ -111,8 +111,7 @@ const AuthPage = () => {
                       color:      form.role === r.value ? '#fff'    : '#2d3436',
                       border: `2px solid ${form.role === r.value ? '#2d3436' : '#eee'}`,
                       transition: 'all 0.15s',
-                    }}
-                  >
+                    }}>
                     <span style={{ fontSize: '18px', flexShrink: 0 }}>{r.emoji}</span>
                     <div style={{ textAlign: 'left' }}>
                       <div style={{ fontWeight: '700', fontSize: '12px' }}>{r.label}</div>
@@ -122,25 +121,29 @@ const AuthPage = () => {
                 ))}
               </div>
 
-              <input placeholder="Full Name *"   style={inp} onChange={e => set_('name', e.target.value)} />
-              <input
-                placeholder={form.role === 'Hirer' ? 'Profession / Company Name *' : 'Profession / Expertise *'}
-                style={inp}
-                onChange={e => set_('profession', e.target.value)}
-              />
-              <input placeholder="Full Address (Road, Area, District) *" style={inp} onChange={e => set_('address', e.target.value)} />
+              <input placeholder="Full Name *" style={inp}
+                onChange={e => set_('name', e.target.value)} onKeyDown={handleKeyDown}/>
+              <input placeholder={form.role === 'Hirer' ? 'Profession / Company Name *' : 'Profession / Expertise *'}
+                style={inp} onChange={e => set_('profession', e.target.value)} onKeyDown={handleKeyDown}/>
+              <input placeholder="Full Address (Road, Area, District) *" style={inp}
+                onChange={e => set_('address', e.target.value)} onKeyDown={handleKeyDown}/>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <input placeholder="Phone Number *" style={{ ...inp, margin: 0 }} onChange={e => set_('phone', e.target.value)} />
-                <input placeholder="WhatsApp"       style={{ ...inp, margin: 0 }} onChange={e => set_('whatsapp', e.target.value)} />
+                <input placeholder="Phone Number *" style={{ ...inp, margin: 0 }}
+                  onChange={e => set_('phone', e.target.value)} onKeyDown={handleKeyDown}/>
+                <input placeholder="WhatsApp" style={{ ...inp, margin: 0 }}
+                  onChange={e => set_('whatsapp', e.target.value)} onKeyDown={handleKeyDown}/>
               </div>
-              <input placeholder="Facebook Profile Link" style={inp} onChange={e => set_('facebook', e.target.value)} />
+              <input placeholder="Facebook Profile Link" style={inp}
+                onChange={e => set_('facebook', e.target.value)} onKeyDown={handleKeyDown}/>
             </>
           )}
 
-          {/* ── COMMON ── */}
-          <input placeholder="Email *"    type="email"    style={inp} onChange={e => set_('email', e.target.value)} />
-          <input placeholder="Password *" type="password" style={inp} onChange={e => set_('password', e.target.value)} />
+          {/* COMMON */}
+          <input placeholder="Email *" type="email" style={inp}
+            onChange={e => set_('email', e.target.value)} onKeyDown={handleKeyDown}/>
+          <input placeholder="Password *" type="password" style={inp}
+            onChange={e => set_('password', e.target.value)} onKeyDown={handleKeyDown}/>
 
           {view === 'login' && (
             <div style={{ textAlign: 'right', width: '100%', marginBottom: '10px' }}>
@@ -151,13 +154,15 @@ const AuthPage = () => {
           )}
 
           <button onClick={handleAction} style={actionBtn}>
-            {view === 'login' ? 'Enter Dashboard' : 'Join Now →'}
+            {view === 'login' ? 'Enter Dashboard →' : 'Join Now →'}
           </button>
 
           {view === 'login' && (
             <p style={{ marginTop: '20px', fontSize: '14px' }}>
               Don't have an account?{' '}
-              <span onClick={() => setView('signup')} style={{ color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold' }}>Sign Up</span>
+              <span onClick={() => setView('signup')} style={{ color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold' }}>
+                Sign Up
+              </span>
             </p>
           )}
         </div>

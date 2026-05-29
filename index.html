@@ -14,8 +14,16 @@
     <!-- Adsterra Pop-under -->
     <script src="https://pl28755060.effectivecpmnetwork.com/7b/0c/c5/7b0cc57327b7daeeb0ebb0c5c910dc30.js"></script>
 
-    <!-- Adsterra Banner -->
-    <div style="position:fixed; bottom:0; left:0; width:100%; z-index:99999; text-align:center;">
+    <!-- Adsterra Banner with close button -->
+    <div id="ad-banner-wrapper" style="position:fixed; bottom:0; left:0; width: 40px; height: 40px; z-index:99999; text-align:center;">
+      
+      <!-- Close button -->
+      <button
+        onclick="document.getElementById('ad-banner-wrapper').style.display='none'"
+        style="position:absolute; top:-28px; right:8px; background:rgba(0,0,0,0.7); color:#fff; border:none; border-radius:6px 6px 0 0; padding:3px 10px; font-size:12px; cursor:pointer; font-family:sans-serif;">
+        ✕ Close
+      </button>
+
       <div id="container-d711633477fcb42e359f089c87c9b18e"></div>
       <script async="async" data-cfasync="false"
         src="https://pl28754948.effectivecpmnetwork.com/d711633477fcb42e359f089c87c9b18e/invoke.js">
