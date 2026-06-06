@@ -9,9 +9,9 @@ export const playSound = (type = 'notify') => {
     if (!Ctx) return;
     const ctx = new Ctx();
     const presets = {
-      notify:  [{ f: 1047, t: 0, d: 0.35 }, { f: 784,  t: 0.18, d: 0.4  }],
-      follow:  [{ f: 523,  t: 0, d: 0.4  }, { f: 659,  t: 0.13, d: 0.4  }, { f: 784, t: 0.26, d: 0.5 }],
-      approve: [{ f: 659,  t: 0, d: 0.45 }, { f: 988,  t: 0.2,  d: 0.5  }],
+      notify:  [{ f: 1047, t: 0, d: 0.35 }, { f: 784, t: 0.18, d: 0.4 }],
+      follow:  [{ f: 523, t: 0, d: 0.4 }, { f: 659, t: 0.13, d: 0.4 }, { f: 784, t: 0.26, d: 0.5 }],
+      approve: [{ f: 659, t: 0, d: 0.45 }, { f: 988, t: 0.2, d: 0.5 }],
     };
     (presets[type] || presets.notify).forEach(({ f, t, d }) => {
       const osc  = ctx.createOscillator();
@@ -48,7 +48,7 @@ export const AppProvider = ({ children, db }) => {
   const prevTalentReqCount  = useRef(0);
   const prevFollowNotiCount = useRef(0);
 
-  // ── User sync ──────────────────────────────────────────────────────────────
+  // ── User sync ──────────────────────────────────────────────────
   useEffect(() => {
     if (!user?.email) { localStorage.removeItem('activeUser'); return; }
     localStorage.setItem('activeUser', JSON.stringify(user));
@@ -61,7 +61,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user?.email, db]);
 
-  // ── Stories ────────────────────────────────────────────────────────────────
+  // ── Stories ────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = onValue(ref(db, 'stories'), snap => {
       const d = snap.val();
@@ -70,7 +70,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [db]);
 
-  // ── Story requests ─────────────────────────────────────────────────────────
+  // ── Story requests ─────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const unsub = onValue(ref(db, 'requests'), snap => {
@@ -89,7 +89,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user, db]);
 
-  // ── Talent requests + sound ────────────────────────────────────────────────
+  // ── Talent requests ────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const emailKey    = user.email.replace(/\./g, ',');
@@ -123,7 +123,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user, db]);
 
-  // ── Follows ────────────────────────────────────────────────────────────────
+  // ── My follows ─────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const emailKey = user.email.replace(/\./g, ',');
@@ -133,7 +133,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user, db]);
 
-  // ── Follow notifications + sound ───────────────────────────────────────────
+  // ── Follow notifications ───────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const emailKey = user.email.replace(/\./g, ',');
@@ -151,7 +151,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user, db]);
 
-  // ── Bids ───────────────────────────────────────────────────────────────────
+  // ── Bids ───────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = onValue(ref(db, 'bids'), snap => {
       const d = snap.val();
@@ -160,7 +160,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [db]);
 
-  // ── Promoted works ─────────────────────────────────────────────────────────
+  // ── Promoted works ─────────────────────────────────────────────
   useEffect(() => {
     const unsub = onValue(ref(db, 'promotedWorks'), snap => {
       setPromotedWorks(snap.val() || {});
@@ -168,7 +168,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [db]);
 
-  // ══ Functions ══════════════════════════════════════════════════════════════
+  // ══ Functions ══════════════════════════════════════════════════
 
   const deleteStory = async (storyId) => {
     if (window.confirm("Are you sure you want to delete this story?"))
@@ -236,6 +236,7 @@ export const AppProvider = ({ children, db }) => {
       catch(e) { alert("Delete failed: " + e.message); }
   };
 
+  // ── Follow (public /followers/ node এও write) ─────────────────
   const followTalent = async (talentEmail, talentName, talentPic) => {
     if (!user) return;
     const myKey     = user.email.replace(/\./g, ',');
@@ -244,6 +245,15 @@ export const AppProvider = ({ children, db }) => {
       await set(ref(db, `follows/${myKey}/${talentKey}`), {
         talentEmail, talentName: talentName || '',
         talentPic: talentPic || '/icon.png', followedAt: Date.now()
+      });
+      // Public followers node — সবাই দেখতে পাবে
+      await set(ref(db, `followers/${talentKey}/${myKey}`), {
+        followerEmail:      user.email,
+        followerName:       user.name || '',
+        followerPic:        user.profilePic || '/icon.png',
+        followerRole:       user.role || '',
+        followerProfession: user.profession || '',
+        followedAt:         Date.now()
       });
       await set(push(ref(db, `followNotifications/${talentKey}`)), {
         type: 'follow', followerEmail: user.email, followerName: user.name || '',
@@ -255,12 +265,15 @@ export const AppProvider = ({ children, db }) => {
     } catch(e) { alert("Follow failed: " + e.message); }
   };
 
+  // ── Unfollow (public /followers/ থেকেও remove) ────────────────
   const unfollowTalent = async (talentEmail) => {
     if (!user) return;
     const myKey     = user.email.replace(/\./g, ',');
     const talentKey = talentEmail.replace(/\./g, ',');
-    try { await remove(ref(db, `follows/${myKey}/${talentKey}`)); }
-    catch(e) { alert("Unfollow failed: " + e.message); }
+    try {
+      await remove(ref(db, `follows/${myKey}/${talentKey}`));
+      await remove(ref(db, `followers/${talentKey}/${myKey}`));
+    } catch(e) { alert("Unfollow failed: " + e.message); }
   };
 
   const isFollowing = (talentEmail) => !!follows[talentEmail?.replace(/\./g, ',')];
@@ -271,29 +284,32 @@ export const AppProvider = ({ children, db }) => {
     catch(e) {}
   };
 
-  const submitBid = async (category, workId, workTitle, tokens) => {
-    if (!user) return alert("Please Login!");
-    const amount = tokens === 5 ? 500 : 200;
-    try {
-      await push(ref(db, 'bids'), {
-        userEmail: user.email,
-        userEmailKey: user.email.replace(/\./g, ','),
-        userName: user.name || '',
-        userPic: user.profilePic || '/icon.png',
-        category, workId, workTitle,
-        tokens, amount,
-        status: 'pending',
-        timestamp: Date.now()
-      });
-      alert(`Bid submitted!\n\n💰 Payment: ${amount} টাকা admin কে পাঠাও।\nAdmin approve করলে তোমার "${workTitle}" সবার আগে দেখাবে।`);
-    } catch(e) { alert("Bid failed: " + e.message); }
-  };
+  // ── Bid submit ─────────────────────────────────────────────────
+ const submitBid = async (category, workId, workTitle, tokens, paymentScreenshot, workLink) => {
+  if (!user) return alert("Please Login!");
+  const amount = tokens === 5 ? 500 : 200;
+  try {
+    await push(ref(db, 'bids'), {
+      userEmail:         user.email,
+      userEmailKey:      user.email.replace(/\./g, ','),
+      userName:          user.name || '',
+      userPic:           user.profilePic || '/icon.png',
+      category, workId, workTitle, tokens, amount,
+      paymentScreenshot: paymentScreenshot || '',   // ← new
+      workLink:          workLink || '',             // ← new
+      status:            'pending',
+      timestamp:         Date.now()
+    });
+    alert(`Bid submitted! Admin will verify your payment and approve within 24 hours.`);
+  } catch(e) { alert("Bid failed: " + e.message); }
+};
 
+  // ── Admin: approve bid ─────────────────────────────────────────
   const approveBid = async (bid) => {
     try {
       const updates = {};
-      updates[`/bids/${bid.id}/status`]      = 'approved';
-      updates[`/bids/${bid.id}/approvedAt`]  = Date.now();
+      updates[`/bids/${bid.id}/status`]     = 'approved';
+      updates[`/bids/${bid.id}/approvedAt`] = Date.now();
       updates[`/promotedWorks/${bid.category}/${bid.userEmailKey}_${bid.workId}`] = {
         userEmailKey: bid.userEmailKey,
         workId:       bid.workId,
@@ -304,6 +320,7 @@ export const AppProvider = ({ children, db }) => {
     } catch(e) { alert("Approve failed: " + e.message); }
   };
 
+  // ── Admin: reject bid ──────────────────────────────────────────
   const rejectBid = async (bidId) => {
     try { await update(ref(db, `bids/${bidId}`), { status: 'rejected' }); }
     catch(e) { alert("Reject failed: " + e.message); }

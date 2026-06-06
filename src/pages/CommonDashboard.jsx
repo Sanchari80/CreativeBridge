@@ -14,10 +14,22 @@ const TABS = [
 ];
 const GENRES = ["All","Thriller","Romance","Drama","Action","Comedy","Horror","Sci-Fi","Saved"];
 
-// ── BidModal OUTSIDE component (fixes useState bug) ────────────────────────
+// ── Back to Dashboard button ───────────────────────────────────────────────
+const BackToDashboardBtn = ({ onClick }) => (
+  <button
+    onClick={onClick}
+    style={{ padding:'10px 20px', background:'#2d3436', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', marginTop:'15px' }}
+  >
+    ← Back to Dashboard
+  </button>
+);
+
+// ── BidModal OUTSIDE component ─────────────────────────────────────────────
 const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
-  const [tokens,  setTokens]  = useState(5);
-  const [step,    setStep]    = useState(1); // 1=select plan, 2=payment details
+  const [tokens,     setTokens]     = useState(5);
+  const [step,       setStep]       = useState(1);
+  const [screenshot, setScreenshot] = useState('');
+
   const myBid = bids?.find(b => b.workId === work.id && b.userEmail === user?.email && b.status !== 'rejected');
 
   if (myBid) return (
@@ -32,16 +44,19 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
     </div>
   );
 
-  const amount = tokens === 5 ? 500 : 200;
+  const amount   = tokens === 5 ? 500 : 200;
+  const workLink = work.fileUrl || work.fullStoryFile || '';
+  const workId   = work.id || work.Name || '';
 
   // Step 1: Choose plan
   if (step === 1) return (
     <div style={moOverlay} onClick={onClose}>
       <div style={moBox} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop:0 }}>💰 Promote Your Work</h3>
-        <p style={{ fontSize:13, color:'#636e72', marginBottom:14 }}>"{work.title||work.Name}" — Will appear at the top of the dashboard.</p>
+        <p style={{ fontSize:13, color:'#636e72', marginBottom:14 }}>
+          "{work.title||work.Name}" — Will appear at the top of the dashboard.
+        </p>
 
-        {/* Plan cards */}
         <div style={{ display:'flex', gap:10, marginBottom:16 }}>
           {[
             { t:5, price:'৳500', label:'Top Priority', emoji:'🥇', color:'#fdcb6e' },
@@ -49,8 +64,7 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
           ].map(opt => (
             <div key={opt.t} onClick={() => setTokens(opt.t)}
               style={{ flex:1, padding:14, borderRadius:12, border:`2px solid ${tokens===opt.t?opt.color:'#eee'}`,
-                cursor:'pointer', textAlign:'center', background: tokens===opt.t?'#fffbee':'#fff',
-                transition:'all 0.15s' }}>
+                cursor:'pointer', textAlign:'center', background: tokens===opt.t?'#fffbee':'#fff', transition:'all 0.15s' }}>
               <div style={{ fontSize:24 }}>{opt.emoji}</div>
               <div style={{ fontWeight:700, fontSize:14 }}>{opt.t} Tokens</div>
               <div style={{ fontSize:13, color:'#2d3436', fontWeight:600 }}>{opt.price}</div>
@@ -60,8 +74,19 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
         </div>
 
         <div style={{ background:'#f0f4ff', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#4834d4', marginBottom:14 }}>
-          ℹ️ Admin will review and approve your bid. Your work will then be featured at the top.
+          ℹ️ Admin will review your bid and payment. Once approved, your work goes to the top immediately.
         </div>
+
+        {/* Work link preview */}
+        {workLink && (
+          <div style={{ background:'#f8f9fa', borderRadius:10, padding:'10px 12px', fontSize:12, marginBottom:14 }}>
+            <span style={{ color:'#636e72' }}>Work link: </span>
+            <a href={workLink} target="_blank" rel="noreferrer" style={{ color:'#6c5ce7', fontWeight:600 }}>
+              🔗 {work.title||work.Name}
+            </a>
+          </div>
+        )}
+
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>Cancel</button>
           <button onClick={() => setStep(2)} style={{ flex:1, padding:10, borderRadius:10, border:'none', background:'#2d3436', color:'#fff', cursor:'pointer', fontWeight:'bold' }}>
@@ -72,16 +97,16 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
     </div>
   );
 
-  // Step 2: Payment details
+  // Step 2: Payment details + screenshot
   return (
     <div style={moOverlay} onClick={onClose}>
       <div style={{ ...moBox, maxWidth:460 }} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop:0, textAlign:'center' }}>💳 Payment Details</h3>
         <p style={{ fontSize:13, color:'#636e72', textAlign:'center', marginBottom:16 }}>
-          Send <strong style={{ color:'#2d3436', fontSize:16 }}>{amount}৳</strong> to one of the numbers below, then click Submit.
+          Send <strong style={{ color:'#2d3436', fontSize:16 }}>{amount}৳</strong> to one of the numbers below, then paste your payment screenshot link.
         </p>
 
-        {/* Payment cards */}
+        {/* Payment method cards */}
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>
           <div style={{ flex:1, background:'linear-gradient(135deg,#e91e8c,#c2185b)', borderRadius:14, padding:'14px 12px', color:'#fff', textAlign:'center' }}>
             <div style={{ fontSize:22, marginBottom:4 }}>📱</div>
@@ -97,20 +122,48 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
           </div>
         </div>
 
-        <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 14px', fontSize:12, color:'#636e72', marginBottom:14 }}>
-          <strong style={{ color:'#f39c12' }}>⚠️ Important:</strong> After sending payment, click <strong>"Submit Bid"</strong>. Admin will verify and approve within 24 hours.
-        </div>
-
         {/* Amount reminder */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f0f4ff', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
           <span style={{ fontSize:13, color:'#4834d4', fontWeight:600 }}>Plan: {tokens===5?'🥇 Top Priority':'🥈 2nd Priority'}</span>
           <span style={{ fontSize:16, fontWeight:800, color:'#2d3436' }}>{amount}৳</span>
         </div>
 
+        {/* Payment screenshot link */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:'#636e72', display:'block', marginBottom:6 }}>
+            📸 Payment Screenshot Link *
+          </label>
+          <input
+            type="url"
+            placeholder="Upload screenshot to Google Drive and paste link here..."
+            value={screenshot}
+            onChange={e => setScreenshot(e.target.value)}
+            style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #eee', boxSizing:'border-box', fontSize:13 }}
+          />
+          <p style={{ fontSize:11, color:'#94a3b8', margin:'4px 0 0' }}>
+            Upload your payment screenshot to Google Drive → Share → Anyone with link → paste here.
+          </p>
+        </div>
+
+        <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 14px', fontSize:12, color:'#636e72', marginBottom:14 }}>
+          <strong style={{ color:'#f39c12' }}>⚠️ Important:</strong> Admin will verify your payment screenshot before approving. Approval is usually within 24 hours.
+        </div>
+
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={() => setStep(1)} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>← Back</button>
           <button
-            onClick={() => { submitBid(category, work.id||work.Name, work.title||work.Name, tokens); onClose(); }}
+            onClick={() => {
+              if (!screenshot.trim()) return alert("Please paste your payment screenshot link!");
+              submitBid(
+                category,
+                workId,
+                work.title || work.Name,
+                tokens,
+                screenshot.trim(),
+                workLink
+              );
+              onClose();
+            }}
             style={{ flex:2, padding:10, borderRadius:10, border:'none', background:'linear-gradient(135deg,#2d3436,#1a2025)', color:'#fff', cursor:'pointer', fontWeight:'bold', fontSize:13 }}>
             ✅ I've Paid — Submit Bid
           </button>
@@ -119,9 +172,8 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
     </div>
   );
 };
-// ──────────────────────────────────────────────────────────────────────────────
 
-export default function CommonDashboard() {
+export default function CommonDashboard({ pendingProfile, onClearPending }) {
   const {
     user, stories, setStories, requests,
     activeStoryId, setActiveStoryId, deleteStory, sendRequest,
@@ -186,6 +238,25 @@ export default function CommonDashboard() {
     return()=>unsub();
   },[]);
 
+  // Notification profile redirect
+  useEffect(()=>{
+    if(!pendingProfile) return;
+    const allTalents=[...talents.singer,...talents.painter,...talents.actor,...talents.dancer];
+    const found=allTalents.find(t=>t.email?.toLowerCase()===pendingProfile.email?.toLowerCase());
+    if(found){
+      setSelectedProfile(found);
+    } else {
+      setSelectedProfile({
+        email:      pendingProfile.email,
+        name:       pendingProfile.name,
+        profilePic: pendingProfile.pic,
+        profession: pendingProfile.role||'',
+        category:   'writer',
+      });
+    }
+    onClearPending?.();
+  },[pendingProfile]);
+
   const getFollowers=(email)=>{
     if(!email) return [];
     const key=email.replace(/\./g,',');
@@ -193,18 +264,18 @@ export default function CommonDashboard() {
   };
   const getFollowerCount=(email)=>getFollowers(email).length;
 
-  const writerProfiles = React.useMemo(()=>{
+  const writerProfiles=React.useMemo(()=>{
     const map={};
     stories.forEach(s=>{
       const key=(s.writerEmail||s.email||'').toLowerCase();
       if(!key) return;
       if(!map[key]){
         map[key]={
-          email:key, emailKey:key.replace(/\./g,','),
+          email:key,emailKey:key.replace(/\./g,','),
           name:s.writerName||'Unknown',
           profilePic:s.writerPic||'/icon.png',
           profession:s.writerProfession||'Writer',
-          category:'writer', storyCount:0, genres:[],
+          category:'writer',storyCount:0,genres:[],
         };
       }
       map[key].storyCount++;
@@ -262,10 +333,23 @@ export default function CommonDashboard() {
     return promotedWorks?.[category]?.[key]?.tokens||0;
   };
 
+  const getPromoApprovedAt=(category,workId,emailKey)=>{
+    const key=`${emailKey}_${workId}`;
+    return promotedWorks?.[category]?.[key]?.approvedAt||0;
+  };
+
   const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
-    const aP=getPromoTokens(category,a.id,a.emailKey||a.uploaderEmail?.replace(/\./g,','));
-    const bP=getPromoTokens(category,b.id,b.emailKey||b.uploaderEmail?.replace(/\./g,','));
+    const aEK=a.emailKey||a.uploaderEmail?.replace(/\./g,',')||'';
+    const bEK=b.emailKey||b.uploaderEmail?.replace(/\./g,',')||'';
+    const aP=getPromoTokens(category,a.id,aEK);
+    const bP=getPromoTokens(category,b.id,bEK);
     if(bP!==aP) return bP-aP;
+    // Same tokens: earlier approval first (FIFO queue)
+    if(aP>0&&bP>0){
+      const aAT=getPromoApprovedAt(category,a.id,aEK);
+      const bAT=getPromoApprovedAt(category,b.id,bEK);
+      if(aAT!==bAT) return aAT-bAT;
+    }
     const aF=followedEmails.includes((a.uploaderEmail||a.email||'').toLowerCase())?1:0;
     const bF=followedEmails.includes((b.uploaderEmail||b.email||'').toLowerCase())?1:0;
     if(bF!==aF) return bF-aF;
@@ -278,11 +362,11 @@ export default function CommonDashboard() {
       const folder=cat==='painter'?'artworks':cat==='singer'?'songs':'videos';
       Object.entries(t[folder]||{}).forEach(([wid,w])=>{
         list.push({
-          ...w, id:wid, emailKey:t.emailKey,
+          ...w,id:wid,emailKey:t.emailKey,
           uploaderEmail:t.email,
           uploaderName:t.profile?.name||t.name||'Unknown',
           uploaderPic:t.profile?.profilePic||t.profilePic||'/icon.png',
-          category:cat, talentProfile:t
+          category:cat,talentProfile:t
         });
       });
     });
@@ -302,9 +386,7 @@ export default function CommonDashboard() {
   const followingTalents=[...talents.singer,...talents.painter,...talents.actor,...talents.dancer]
     .filter(t=>followedEmails.includes(t.email));
 
-  // ═══════════════════════════════════════════════════
   // STORY DETAIL VIEW
-  // ═══════════════════════════════════════════════════
   if(expandedStory){
     const s=stories.find(i=>i.id===expandedStory);
     if(!s){setExpandedStory(null);return null;}
@@ -365,13 +447,14 @@ export default function CommonDashboard() {
             </LS>
           </div>
         </div>
+        <div style={{textAlign:'center'}}>
+          <BackToDashboardBtn onClick={()=>setExpandedStory(null)}/>
+        </div>
       </div>
     );
   }
 
-  // ═══════════════════════════════════════════════════
   // PROFILE DETAIL VIEW
-  // ═══════════════════════════════════════════════════
   if(selectedProfile){
     const p=selectedProfile;
     const tabObj=TABS.find(t=>t.id===p.category);
@@ -518,13 +601,14 @@ export default function CommonDashboard() {
             </div>
           )}
         </div>
+        <div style={{textAlign:'center'}}>
+          <BackToDashboardBtn onClick={()=>setSelectedProfile(null)}/>
+        </div>
       </div>
     );
   }
 
-  // ═══════════════════════════════════════════════════
   // MAIN BROWSE
-  // ═══════════════════════════════════════════════════
   const tabCount={requests:myRequestedWorks.length,following:followedKeys.length};
 
   return(
@@ -729,9 +813,7 @@ const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onVie
           onClick={onViewProfile||undefined}/>
         <div style={{marginLeft:10,flex:1}}>
           <strong style={{fontSize:14,cursor:onViewProfile?'pointer':'default',color:onViewProfile?'#4834d4':'#2d3436'}}
-            onClick={onViewProfile||undefined}>
-            {s.writerName}
-          </strong>
+            onClick={onViewProfile||undefined}>{s.writerName}</strong>
           <div style={chip}>{s.genre}</div>
           {followerCount>0&&<div style={{fontSize:10,color:'#fdcb6e',fontWeight:700,marginTop:2}}>⭐ {followerCount} followers</div>}
         </div>
@@ -802,7 +884,6 @@ const LS=({label,locked,onReq,reqLabel,children,div})=>(
   </div>
 );
 
-// Enter key support on textarea
 const StoryModal=({modal,note,setNote,onSend,onClose})=>(
   <div style={moOverlay}><div style={moBox}>
     <h3 style={{marginTop:0}}>Request {modal.type==='fullStory'?'Script':modal.type==='synopsis'?'Synopsis':'Contact'} Access</h3>
@@ -855,23 +936,8 @@ const ProtImg=({src,title,height=130})=>{
   );
 };
 
-<button 
-  onClick={() => setView('dashboard')} 
-  style={{
-    padding: '10px 20px',
-    background: '#2d3436',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    marginTop: '15px'
-  }}
->
-  ← Back to Dashboard
-</button>
 const Empty=({emoji,text})=>(
-  <div style={{textAlign:'center',padding:'50px 20px',color:'#b2bec3'}}>
+  <div style={{textAlign:'center',padding:'50px 20px',color:'#FFFFFF',background:'rgba(255,255,255,0.9)',borderRadius:12}}>
     <p style={{fontSize:40,margin:'0 0 10px'}}>{emoji}</p>
     <p style={{fontSize:14}}>{text}</p>
   </div>

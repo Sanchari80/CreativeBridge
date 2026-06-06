@@ -35,6 +35,7 @@ function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [view,              setView]              = useState('dashboard');
   const [liveVisitors,      setLiveVisitors]      = useState(0);
+  const [pendingProfile,    setPendingProfile]    = useState(null); // ← notification profile redirect
 
   useEffect(() => {
     const savedUser = localStorage.getItem('activeUser');
@@ -84,9 +85,8 @@ function App() {
   return (
     <div className="app-container" style={appContainerStyle}>
 
-      {/* ── Animated CSS Background (video বাদ) ── */}
+      {/* ── Animated CSS Background ── */}
       <div style={bgWrapper}>
-        {/* CSS এ target হবে: .app-container > div:first-child > div:last-child */}
         <div style={bgOverlay}></div>
       </div>
 
@@ -111,7 +111,14 @@ function App() {
             </span>
             <button onClick={() => setShowNotifications(false)} style={closeBtnStyle}>✕</button>
           </div>
-          <NotificationSystem onBack={() => setShowNotifications(false)} />
+          <NotificationSystem
+            onBack={() => setShowNotifications(false)}
+            onViewProfile={(profile) => {
+              setShowNotifications(false);
+              setView('dashboard');
+              setPendingProfile(profile);
+            }}
+          />
         </div>
       )}
 
@@ -120,11 +127,16 @@ function App() {
 
       {/* ── Main Content ── */}
       <main style={mainStyle}>
-        {view === 'dashboard' && <CommonDashboard />}
-        {view === 'hire'      && isHirer  && <HireDashboard />}
-        {view === 'mywork'    && isTalent && <TalentDashboard />}
-        {view === 'profile'   && <ProfilePage onBack={() => setView('dashboard')} />}
-        {view === 'admin'     && isAdmin  && <AdminDashboard />}
+        {view === 'dashboard' && (
+          <CommonDashboard
+            pendingProfile={pendingProfile}
+            onClearPending={() => setPendingProfile(null)}
+          />
+        )}
+        {view === 'hire'    && isHirer && <HireDashboard />}
+        {view === 'mywork'  && isTalent && <TalentDashboard />}
+        {view === 'profile' && <ProfilePage onBack={() => setView('dashboard')} />}
+        {view === 'admin'   && isAdmin  && <AdminDashboard />}
       </main>
 
       {/* ── Footer ── */}
@@ -152,8 +164,7 @@ function App() {
   );
 }
 
-/* ── Styles ─────────────────────────────────────────────────────────── */
-
+/* ── Styles ── */
 const appContainerStyle = {
   display: 'flex',
   flexDirection: 'column',
@@ -161,7 +172,6 @@ const appContainerStyle = {
   position: 'relative',
 };
 
-/* Background wrapper — fixed, full screen, behind everything */
 const bgWrapper = {
   position: 'fixed',
   top: 0, left: 0,
@@ -170,12 +180,9 @@ const bgWrapper = {
   overflow: 'hidden',
 };
 
-/* This div is targeted by CSS for the animated gradient:
-   .app-container > div:first-child > div:last-child  */
 const bgOverlay = {
   position: 'absolute',
   inset: 0,
-  /* Fallback — CSS এ override হবে bgBreath animation দিয়ে */
   background: `
     radial-gradient(ellipse 80% 60% at 15% 20%, rgba(108,92,231,0.35) 0%, transparent 60%),
     radial-gradient(ellipse 70% 60% at 85% 80%, rgba(0,196,140,0.28) 0%, transparent 60%),
