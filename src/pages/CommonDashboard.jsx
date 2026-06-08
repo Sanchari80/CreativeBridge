@@ -14,17 +14,24 @@ const TABS = [
 ];
 const GENRES = ["All","Thriller","Romance","Drama","Action","Comedy","Horror","Sci-Fi","Saved"];
 
-// ── Back to Dashboard button ───────────────────────────────────────────────
+// Role → color/label map (handles all roles including Hirer)
+const ROLE_CFG = {
+  Writer:  { color:'#4834d4', label:'✍️ Writer',  cat:'writer'  },
+  Singer:  { color:'#00b894', label:'🎤 Singer',  cat:'singer'  },
+  Painter: { color:'#e17055', label:'🎨 Painter', cat:'painter' },
+  Actor:   { color:'#f39c12', label:'🎬 Actor',   cat:'actor'   },
+  Dancer:  { color:'#fd79a8', label:'💃 Dancer',  cat:'dancer'  },
+  Hirer:   { color:'#636e72', label:'🔍 Hirer',   cat:'hirer'   },
+  'Looking for new stories': { color:'#636e72', label:'🔍 Hirer', cat:'hirer' },
+};
+
 const BackToDashboardBtn = ({ onClick }) => (
-  <button
-    onClick={onClick}
-    style={{ padding:'10px 20px', background:'#2d3436', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', marginTop:'15px' }}
-  >
+  <button onClick={onClick} style={{ padding:'10px 20px', background:'#2d3436', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', marginTop:'15px' }}>
     ← Back to Dashboard
   </button>
 );
 
-// ── BidModal OUTSIDE component ─────────────────────────────────────────────
+// ── BidModal (unchanged) ───────────────────────────────────────
 const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
   const [tokens,     setTokens]     = useState(5);
   const [step,       setStep]       = useState(1);
@@ -48,15 +55,11 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
   const workLink = work.fileUrl || work.fullStoryFile || '';
   const workId   = work.id || work.Name || '';
 
-  // Step 1: Choose plan
   if (step === 1) return (
     <div style={moOverlay} onClick={onClose}>
       <div style={moBox} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop:0 }}>💰 Promote Your Work</h3>
-        <p style={{ fontSize:13, color:'#636e72', marginBottom:14 }}>
-          "{work.title||work.Name}" — Will appear at the top of the dashboard.
-        </p>
-
+        <p style={{ fontSize:13, color:'#636e72', marginBottom:14 }}>"{work.title||work.Name}" — Will appear at the top of the dashboard.</p>
         <div style={{ display:'flex', gap:10, marginBottom:16 }}>
           {[
             { t:5, price:'৳500', label:'Top Priority', emoji:'🥇', color:'#fdcb6e' },
@@ -72,21 +75,15 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
             </div>
           ))}
         </div>
-
         <div style={{ background:'#f0f4ff', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#4834d4', marginBottom:14 }}>
           ℹ️ Admin will review your bid and payment. Once approved, your work goes to the top immediately.
         </div>
-
-        {/* Work link preview */}
         {workLink && (
           <div style={{ background:'#f8f9fa', borderRadius:10, padding:'10px 12px', fontSize:12, marginBottom:14 }}>
             <span style={{ color:'#636e72' }}>Work link: </span>
-            <a href={workLink} target="_blank" rel="noreferrer" style={{ color:'#6c5ce7', fontWeight:600 }}>
-              🔗 {work.title||work.Name}
-            </a>
+            <a href={workLink} target="_blank" rel="noreferrer" style={{ color:'#6c5ce7', fontWeight:600 }}>🔗 {work.title||work.Name}</a>
           </div>
         )}
-
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>Cancel</button>
           <button onClick={() => setStep(2)} style={{ flex:1, padding:10, borderRadius:10, border:'none', background:'#2d3436', color:'#fff', cursor:'pointer', fontWeight:'bold' }}>
@@ -97,7 +94,6 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
     </div>
   );
 
-  // Step 2: Payment details + screenshot
   return (
     <div style={moOverlay} onClick={onClose}>
       <div style={{ ...moBox, maxWidth:460 }} onClick={e => e.stopPropagation()}>
@@ -105,8 +101,6 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
         <p style={{ fontSize:13, color:'#636e72', textAlign:'center', marginBottom:16 }}>
           Send <strong style={{ color:'#2d3436', fontSize:16 }}>{amount}৳</strong> to one of the numbers below, then paste your payment screenshot link.
         </p>
-
-        {/* Payment method cards */}
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>
           <div style={{ flex:1, background:'linear-gradient(135deg,#e91e8c,#c2185b)', borderRadius:14, padding:'14px 12px', color:'#fff', textAlign:'center' }}>
             <div style={{ fontSize:22, marginBottom:4 }}>📱</div>
@@ -121,47 +115,27 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
             <div style={{ fontSize:11, opacity:0.85 }}>Send Money → Personal</div>
           </div>
         </div>
-
-        {/* Amount reminder */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f0f4ff', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
           <span style={{ fontSize:13, color:'#4834d4', fontWeight:600 }}>Plan: {tokens===5?'🥇 Top Priority':'🥈 2nd Priority'}</span>
           <span style={{ fontSize:16, fontWeight:800, color:'#2d3436' }}>{amount}৳</span>
         </div>
-
-        {/* Payment screenshot link */}
         <div style={{ marginBottom:14 }}>
-          <label style={{ fontSize:12, fontWeight:700, color:'#636e72', display:'block', marginBottom:6 }}>
-            📸 Payment Screenshot Link *
-          </label>
-          <input
-            type="url"
-            placeholder="Upload screenshot to Google Drive and paste link here..."
-            value={screenshot}
-            onChange={e => setScreenshot(e.target.value)}
+          <label style={{ fontSize:12, fontWeight:700, color:'#636e72', display:'block', marginBottom:6 }}>📸 Payment Screenshot Link *</label>
+          <input type="url" placeholder="Upload screenshot to Google Drive and paste link here..."
+            value={screenshot} onChange={e => setScreenshot(e.target.value)}
             style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #eee', boxSizing:'border-box', fontSize:13 }}
           />
-          <p style={{ fontSize:11, color:'#94a3b8', margin:'4px 0 0' }}>
-            Upload your payment screenshot to Google Drive → Share → Anyone with link → paste here.
-          </p>
+          <p style={{ fontSize:11, color:'#94a3b8', margin:'4px 0 0' }}>Upload your payment screenshot to Google Drive → Share → Anyone with link → paste here.</p>
         </div>
-
         <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 14px', fontSize:12, color:'#636e72', marginBottom:14 }}>
           <strong style={{ color:'#f39c12' }}>⚠️ Important:</strong> Admin will verify your payment screenshot before approving. Approval is usually within 24 hours.
         </div>
-
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={() => setStep(1)} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>← Back</button>
           <button
             onClick={() => {
               if (!screenshot.trim()) return alert("Please paste your payment screenshot link!");
-              submitBid(
-                category,
-                workId,
-                work.title || work.Name,
-                tokens,
-                screenshot.trim(),
-                workLink
-              );
+              submitBid(category, workId, work.title||work.Name, tokens, screenshot.trim(), workLink);
               onClose();
             }}
             style={{ flex:2, padding:10, borderRadius:10, border:'none', background:'linear-gradient(135deg,#2d3436,#1a2025)', color:'#fff', cursor:'pointer', fontWeight:'bold', fontSize:13 }}>
@@ -184,6 +158,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
 
   const [activeTab,       setActiveTab]       = useState('writer');
   const [talents,         setTalents]         = useState({singer:[],painter:[],actor:[],dancer:[]});
+  const [allUsers,        setAllUsers]        = useState({});   // ← NEW
   const [expandedStory,   setExpandedStory]   = useState(null);
   const [storyModal,      setStoryModal]      = useState(null);
   const [directorNote,    setDirectorNote]    = useState('');
@@ -224,6 +199,14 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     return()=>subs.forEach(u=>u());
   },[]);
 
+  // ── Load all users ─────────────────────────────────────────────
+  useEffect(()=>{
+    const unsub=onValue(ref(db,'users'),snap=>{
+      setAllUsers(snap.val()||{});
+    });
+    return()=>unsub();
+  },[]);
+
   useEffect(()=>{
     if(activeStoryId){
       setActiveTab('writer');setSelectedGenre('All');
@@ -241,11 +224,10 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   // Notification profile redirect
   useEffect(()=>{
     if(!pendingProfile) return;
-    const allTalents=[...talents.singer,...talents.painter,...talents.actor,...talents.dancer];
-    const found=allTalents.find(t=>t.email?.toLowerCase()===pendingProfile.email?.toLowerCase());
-    if(found){
-      setSelectedProfile(found);
-    } else {
+    const allTalentsList=[...talents.singer,...talents.painter,...talents.actor,...talents.dancer];
+    const found=allTalentsList.find(t=>t.email?.toLowerCase()===pendingProfile.email?.toLowerCase());
+    if(found){ setSelectedProfile(found); }
+    else {
       setSelectedProfile({
         email:      pendingProfile.email,
         name:       pendingProfile.name,
@@ -263,6 +245,38 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     return Object.values(allFollowers[key]||{});
   };
   const getFollowerCount=(email)=>getFollowers(email).length;
+
+  // ── Build full profile for any email ──────────────────────────
+  const buildProfile = (email) => {
+    const lEmail = email.toLowerCase();
+    const emailKey = lEmail.replace(/\./g, ',');
+
+    // 1. Try talent data first (has songs/artworks/videos)
+    const talentProfile = [...talents.singer,...talents.painter,...talents.actor,...talents.dancer]
+      .find(t => t.email?.toLowerCase() === lEmail);
+    if (talentProfile) return talentProfile;
+
+    // 2. Try writer profiles
+    const writerProfile = writerProfiles.find(p => p.email === lEmail);
+    if (writerProfile) return writerProfile;
+
+    // 3. Fallback to allUsers
+    const u = allUsers[emailKey];
+    if (u) {
+      const roleCfg = ROLE_CFG[u.role] || { color:'#636e72', label:'👤 User', cat:'writer' };
+      return {
+        email:      lEmail,
+        emailKey,
+        name:       u.name       || 'Unknown',
+        profilePic: u.profilePic || '/icon.png',
+        profession: u.profession || u.role || '',
+        address:    u.address    || '',
+        role:       u.role       || '',
+        category:   roleCfg.cat,
+      };
+    }
+    return null;
+  };
 
   const writerProfiles=React.useMemo(()=>{
     const map={};
@@ -344,7 +358,6 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     const aP=getPromoTokens(category,a.id,aEK);
     const bP=getPromoTokens(category,b.id,bEK);
     if(bP!==aP) return bP-aP;
-    // Same tokens: earlier approval first (FIFO queue)
     if(aP>0&&bP>0){
       const aAT=getPromoApprovedAt(category,a.id,aEK);
       const bAT=getPromoApprovedAt(category,b.id,bEK);
@@ -382,9 +395,12 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     r.fromEmail?.toLowerCase()===user?.email?.toLowerCase()
   )||[];
 
-  const followingStories=stories.filter(s=>followedEmails.includes((s.writerEmail||s.email||'').toLowerCase()));
-  const followingTalents=[...talents.singer,...talents.painter,...talents.actor,...talents.dancer]
-    .filter(t=>followedEmails.includes(t.email));
+  // ── All followed user profiles (for Following tab) ─────────────
+  const followingProfiles = React.useMemo(() => {
+    return followedEmails
+      .map(email => buildProfile(email))
+      .filter(Boolean);
+  }, [followedEmails, allUsers, talents, writerProfiles]);
 
   // STORY DETAIL VIEW
   if(expandedStory){
@@ -408,9 +424,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {promoT>0&&<span style={promoT===5?goldBadge:silverBadge}>{promoT===5?'🥇 Top':'🥈'}</span>}
             {!isOwner&&wProfile&&(
-              <button onClick={()=>{setExpandedStory(null);setSelectedProfile(wProfile);}} style={{...followBtn,background:'#4834d4',color:'#fff'}}>
-                👤 View Profile
-              </button>
+              <button onClick={()=>{setExpandedStory(null);setSelectedProfile(wProfile);}} style={{...followBtn,background:'#4834d4',color:'#fff'}}>👤 View Profile</button>
             )}
             {!isOwner&&<button onClick={()=>iFollow?unfollowTalent(writerEmail):followTalent(writerEmail,s.writerName,s.writerPic||'/icon.png')} style={{...followBtn,background:iFollow?'#f1f2f6':'#fdcb6e'}}>{iFollow?'✓ Following':'+ Follow'}</button>}
             {isOwner&&<button onClick={()=>setBidModal({work:{...s},category:'writer'})} style={{...followBtn,background:'#a29bfe',color:'#fff'}}>💰 Promote</button>}
@@ -447,9 +461,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             </LS>
           </div>
         </div>
-        <div style={{textAlign:'center'}}>
-          <BackToDashboardBtn onClick={()=>setExpandedStory(null)}/>
-        </div>
+        <div style={{textAlign:'center'}}><BackToDashboardBtn onClick={()=>setExpandedStory(null)}/></div>
       </div>
     );
   }
@@ -457,7 +469,17 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   // PROFILE DETAIL VIEW
   if(selectedProfile){
     const p=selectedProfile;
-    const tabObj=TABS.find(t=>t.id===p.category);
+    // ── Handle ALL roles including Hirer ─────────────────────────
+    const roleCfg = ROLE_CFG[p.role] || ROLE_CFG[
+      p.category==='writer'  ? 'Writer'  :
+      p.category==='singer'  ? 'Singer'  :
+      p.category==='painter' ? 'Painter' :
+      p.category==='actor'   ? 'Actor'   :
+      p.category==='dancer'  ? 'Dancer'  : 'Hirer'
+    ] || { color:'#636e72', label:'👤 User', cat:'writer' };
+    const tabColor = roleCfg.color;
+    const tabLabel = roleCfg.label;
+
     const status=getReqStatus(p.email);
     const contact=getRevealedContact(p.email);
     const isMe=isOwnProfile(p.email);
@@ -475,6 +497,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
         )}
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
           <button onClick={()=>setSelectedProfile(null)} style={backBtn}>← Back</button>
+          {/* Follow/Unfollow for ANY user */}
           {!isMe&&(
             <button onClick={()=>iFollow?unfollowTalent(p.email):followTalent(p.email,name,pic)}
               style={{...followBtn,background:iFollow?'#f1f2f6':'#fdcb6e'}}>
@@ -487,7 +510,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             <img src={pic} alt="" style={{width:76,height:76,borderRadius:'50%',objectFit:'cover',border:'3px solid #eee',flexShrink:0}}/>
             <div style={{flex:1}}>
               <h2 style={{margin:'0 0 4px',color:'#2d3436'}}>{name}</h2>
-              <span style={{...chip,background:(tabObj?.color||'#eee')+'22',color:tabObj?.color,fontSize:12}}>{tabObj?.label}</span>
+              <span style={{...chip,background:tabColor+'22',color:tabColor,fontSize:12}}>{tabLabel}</span>
               {followerList.length>0&&(
                 <span style={{display:'inline-block',marginLeft:8,fontSize:11,fontWeight:700,color:'#fdcb6e',background:'#fffbee',border:'1px solid #fdcb6e44',padding:'2px 8px',borderRadius:20}}>
                   ⭐ {followerList.length} follower{followerList.length>1?'s':''}
@@ -517,7 +540,8 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             ):(
               <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
                 {followerList.map((f,i)=>(
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:7,background:'#f8f9fa',borderRadius:12,padding:'6px 10px',fontSize:12}}>
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:7,background:'#f8f9fa',borderRadius:12,padding:'6px 10px',fontSize:12,cursor:'pointer'}}
+                    onClick={()=>{ const fp=buildProfile(f.followerEmail); if(fp) setSelectedProfile(fp); }}>
                     <img src={f.followerPic||'/icon.png'} alt="" style={{width:28,height:28,borderRadius:'50%',objectFit:'cover',border:'1.5px solid #eee',flexShrink:0}}/>
                     <div>
                       <div style={{fontWeight:600,color:'#2d3436',lineHeight:1.2}}>{f.followerName||'User'}</div>
@@ -601,9 +625,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             </div>
           )}
         </div>
-        <div style={{textAlign:'center'}}>
-          <BackToDashboardBtn onClick={()=>setSelectedProfile(null)}/>
-        </div>
+        <div style={{textAlign:'center'}}><BackToDashboardBtn onClick={()=>setSelectedProfile(null)}/></div>
       </div>
     );
   }
@@ -614,11 +636,8 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   return(
     <div>
       {bidModal&&(
-        <BidModal
-          work={bidModal.work} category={bidModal.category}
-          onClose={()=>setBidModal(null)}
-          bids={bids} user={user} submitBid={submitBid}
-        />
+        <BidModal work={bidModal.work} category={bidModal.category} onClose={()=>setBidModal(null)}
+          bids={bids} user={user} submitBid={submitBid}/>
       )}
       {contactModal&&(
         <ContactModal talent={contactModal} msg={contactMsg} setMsg={setContactMsg}
@@ -645,45 +664,64 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
         })}
       </div>
 
-      {/* FOLLOWING TAB */}
+      {/* ── FOLLOWING TAB ── */}
       {activeTab==='following'&&(
         <div style={{padding:16}}>
-          {followedKeys.length===0?<Empty emoji="⭐" text="You haven't followed anyone yet."/>:(
+          {followedKeys.length===0 ? (
+            <Empty emoji="⭐" text="You haven't followed anyone yet."/>
+          ) : followingProfiles.length===0 ? (
+            <Empty emoji="⭐" text="Loading followed profiles..."/>
+          ) : (
             <div>
-              {followingStories.length>0&&(
-                <div style={{marginBottom:20}}>
-                  <h4 style={{color:'#4834d4',margin:'0 0 12px',fontSize:14}}>✍️ Writers' Stories</h4>
-                  <div style={grid}>
-                    {followingStories.map(s=>{
-                      const wE=(s.writerEmail||s.email||'').toLowerCase();
-                      const wP=writerProfiles.find(p=>p.email===wE);
-                      return <SCard key={s.id} s={s} user={user} saved={savedStories} toggleSave={toggleSave}
-                        onView={()=>setExpandedStory(s.id)} onDelete={deleteStory}
-                        isFollowing={isFollowing}
-                        onFollow={()=>isFollowing(wE)?unfollowTalent(wE):followTalent(wE,s.writerName,s.writerPic||'/icon.png')}
-                        onViewProfile={wP&&!isOwnProfile(wE)?()=>setSelectedProfile(wP):null}
-                        promoTokens={getPromoTokens('writer',s.id,wE.replace(/\./g,','))}
-                        followerCount={getFollowerCount(wE)}
-                        onBid={isOwnProfile(wE)?()=>setBidModal({work:{...s},category:'writer'}):null}/>;
-                    })}
-                  </div>
-                </div>
-              )}
-              {followingTalents.length>0&&(
-                <div>
-                  <h4 style={{color:'#2d3436',margin:'0 0 12px',fontSize:14}}>🎭 Talents</h4>
-                  <div style={grid}>
-                    {followingTalents.map((p,i)=>(
-                      <TCard key={i} p={p} user={user} TABS={TABS} getReqStatus={getReqStatus}
-                        isFollowing={isFollowing} onView={()=>setSelectedProfile(p)}
-                        onContact={()=>openContactModal(p)}
-                        onFollow={()=>followTalent(p.email,p.profile?.name||p.name,p.profile?.profilePic||p.profilePic||'/icon.png')}
-                        onUnfollow={()=>unfollowTalent(p.email)}
-                        followerCount={getFollowerCount(p.email)}/>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <p style={{color:'rgba(255,255,255,0.6)',fontSize:13,margin:'0 0 14px'}}>
+                {followingProfiles.length} people you follow
+              </p>
+              <div style={grid}>
+                {followingProfiles.map((p, i) => {
+                  if (!p) return null;
+                  const iF = isFollowing(p.email);
+                  const name = p.profile?.name || p.name || 'Unknown';
+                  const pic  = p.profile?.profilePic || p.profilePic || '/icon.png';
+                  const addr = (p.profile?.address || p.address || '').split(',')[0];
+                  const fCount = getFollowerCount(p.email);
+                  const roleCfgItem = ROLE_CFG[p.role] || ROLE_CFG[
+                    p.category==='writer'  ? 'Writer'  :
+                    p.category==='singer'  ? 'Singer'  :
+                    p.category==='painter' ? 'Painter' :
+                    p.category==='actor'   ? 'Actor'   :
+                    p.category==='dancer'  ? 'Dancer'  : 'Hirer'
+                  ] || { color:'#636e72', label:'👤 User' };
+
+                  return (
+                    <div key={i} style={{...card, cursor:'pointer'}}
+                      onClick={() => setSelectedProfile(p)}>
+                      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+                        <img src={pic} alt="" style={{...av45,width:52,height:52,border:`2px solid ${roleCfgItem.color}33`}}/>
+                        <div style={{flex:1,overflow:'hidden'}}>
+                          <strong style={{fontSize:15,color:'#2d3436',display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</strong>
+                          {addr&&<p style={{margin:'2px 0 0',fontSize:11,color:'#636e72'}}>📍 {addr}</p>}
+                          {fCount>0&&<p style={{margin:'2px 0 0',fontSize:11,color:'#fdcb6e',fontWeight:700}}>⭐ {fCount} follower{fCount>1?'s':''}</p>}
+                        </div>
+                        <span style={{...chip,background:roleCfgItem.color+'22',color:roleCfgItem.color,fontSize:10,flexShrink:0}}>
+                          {roleCfgItem.label}
+                        </span>
+                      </div>
+
+                      {/* Tap to view hint */}
+                      <p style={{fontSize:11,color:'#94a3b8',margin:'0 0 10px',textAlign:'center'}}>
+                        👆 Tap to view profile
+                      </p>
+
+                      {/* Unfollow button */}
+                      <button
+                        onClick={e => { e.stopPropagation(); unfollowTalent(p.email); }}
+                        style={{...followBtn,width:'100%',justifyContent:'center',background:'#f1f2f6',fontSize:12,padding:'7px'}}>
+                        ✓ Following — Unfollow
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -799,7 +837,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   );
 }
 
-/* ── Sub Components ── */
+/* ── Sub Components (unchanged) ── */
 const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onViewProfile,promoTokens,followerCount,onBid})=>{
   const isOwner=s.writerEmail===user?.email||s.email===user?.email;
   const wEmail=(s.writerEmail||s.email||'').toLowerCase();

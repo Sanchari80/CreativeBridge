@@ -1,17 +1,20 @@
+// AdminDashboard.jsx — full updated
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 
 const AdminDashboard = () => {
-  const { bids, approveBid, rejectBid } = useContext(AppContext);
-  const [filter, setFilter] = useState('pending');
+  const { bids, approveBid, rejectBid, adminNotifications, markAdminNotifRead } = useContext(AppContext);
+  const [filter,      setFilter]      = useState('pending');
+  const [showNotifs,  setShowNotifs]  = useState(false);
 
-  // Queue: oldest first (FIFO) for pending, newest first for others
+  const unreadNotifs = (adminNotifications||[]).filter(n => !n.read).length;
+
   const displayed = (bids||[])
     .filter(b => filter==='all' ? true : b.status===filter)
     .sort((a,b) =>
       filter==='pending'
-        ? a.timestamp - b.timestamp   // oldest bid first (queue order)
-        : b.timestamp - a.timestamp   // newest first for approved/rejected
+        ? a.timestamp - b.timestamp
+        : b.timestamp - a.timestamp
     );
 
   const stats = {
@@ -21,12 +24,87 @@ const AdminDashboard = () => {
     revenue:  (bids||[]).filter(b=>b.status==='approved').reduce((s,b)=>s+(b.amount||0),0),
   };
 
+  const handleOpenNotifs = () => {
+    setShowNotifs(v => !v);
+    // Mark all unread as read
+    (adminNotifications||[])
+      .filter(n => !n.read)
+      .forEach(n => markAdminNotifRead(n.firebaseKey));
+  };
+
   return (
     <div style={{ maxWidth:750, margin:'0 auto', padding:20 }}>
-      <h2 style={{ color:'#2d3436', margin:'0 0 6px' }}>🛡️ Admin — Bid Management</h2>
+
+      {/* Header row */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+        <h2 style={{ color:'#2d3436', margin:0 }}>🛡️ Admin — Bid Management</h2>
+
+        {/* Notification bell */}
+        <button onClick={handleOpenNotifs} style={{
+          position:'relative', background: unreadNotifs>0 ? '#fff9db' : '#f8f9fa',
+          border:`1.5px solid ${unreadNotifs>0?'#f39c12':'#eee'}`,
+          borderRadius:12, padding:'8px 16px', cursor:'pointer',
+          display:'flex', alignItems:'center', gap:8,
+          fontWeight:700, fontSize:13, color: unreadNotifs>0?'#f39c12':'#636e72',
+        }}>
+          🔔 New Bids
+          {unreadNotifs > 0 && (
+            <span style={{
+              background:'#ff4757', color:'#fff', borderRadius:'50%',
+              padding:'1px 6px', fontSize:10, fontWeight:800,
+            }}>{unreadNotifs}</span>
+          )}
+        </button>
+      </div>
+
       <p style={{ color:'#636e72', fontSize:13, marginBottom:20 }}>
         Pending bids are shown oldest first (queue order). Approve to immediately promote the work.
       </p>
+
+      {/* Admin notification panel */}
+      {showNotifs && (
+        <div style={{
+          background:'#fff', borderRadius:16, border:'1.5px solid #f39c12',
+          padding:16, marginBottom:20,
+          boxShadow:'0 8px 30px rgba(243,156,18,0.15)',
+        }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+            <h4 style={{ margin:0, fontSize:14, color:'#2d3436' }}>📥 Incoming Bid Notifications</h4>
+            <button onClick={()=>setShowNotifs(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:16, color:'#636e72' }}>✕</button>
+          </div>
+
+          {(adminNotifications||[]).length === 0 ? (
+            <p style={{ textAlign:'center', color:'#b2bec3', fontSize:13, padding:'20px 0' }}>No notifications yet.</p>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:320, overflowY:'auto' }}>
+              {(adminNotifications||[]).map((n, i) => (
+                <div key={n.firebaseKey||i} style={{
+                  display:'flex', alignItems:'center', gap:12,
+                  padding:'10px 12px', borderRadius:12,
+                  background: n.read ? '#f8f9fa' : '#fffbee',
+                  border:`1px solid ${n.read?'#eee':'#f9ca24'}`,
+                }}>
+                  <img src={n.userPic||'/icon.png'} alt="" style={{ width:38, height:38, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                  <div style={{ flex:1 }}>
+                    <p style={{ margin:0, fontSize:13, fontWeight:600, color:'#2d3436' }}>
+                      <strong>{n.userName}</strong> submitted a bid
+                    </p>
+                    <p style={{ margin:'2px 0 0', fontSize:12, color:'#636e72' }}>
+                      "{n.workTitle}" · {n.category} · {n.tokens===5?'🥇 5 Tokens':'🥈 2 Tokens'} · ৳{n.amount}
+                    </p>
+                    <p style={{ margin:'2px 0 0', fontSize:11, color:'#94a3b8' }}>
+                      {new Date(n.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  {!n.read && (
+                    <span style={{ width:8, height:8, background:'#f39c12', borderRadius:'50%', flexShrink:0 }}/>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:20 }}>
@@ -51,12 +129,12 @@ const AdminDashboard = () => {
             fontWeight:600, fontSize:12, textTransform:'capitalize',
             background:filter===f?'#fff':'transparent',
             boxShadow:filter===f?'0 1px 4px rgba(0,0,0,0.1)':'none',
-            color:filter===f?'#2d3436':'#636e72'
+            color:filter===f?'#2d3436':'#636e72',
           }}>{f}</button>
         ))}
       </div>
 
-      {/* Queue label for pending */}
+      {/* Queue label */}
       {filter==='pending' && displayed.length>0 && (
         <div style={{ background:'#f0f4ff', borderRadius:10, padding:'8px 14px', fontSize:12, color:'#4834d4', marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
           📋 <strong>{displayed.length} bid{displayed.length>1?'s':''} in queue</strong> — shown oldest first. Approve in order for fair promotion.
@@ -77,7 +155,6 @@ const AdminDashboard = () => {
               boxShadow:'0 3px 12px rgba(0,0,0,0.07)',
               borderLeft:`4px solid ${bid.status==='approved'?'#2ecc71':bid.status==='rejected'?'#e74c3c':'#f39c12'}`
             }}>
-              {/* Queue position badge */}
               {filter==='pending' && (
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10, alignItems:'center' }}>
                   <span style={{ background:'#f39c12', color:'#fff', fontSize:11, fontWeight:800, padding:'3px 10px', borderRadius:20 }}>
@@ -89,7 +166,6 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {/* User info */}
               <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
                 <img src={bid.userPic||'/icon.png'} alt="" style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', border:'2px solid #eee' }}/>
                 <div style={{ flex:1 }}>
@@ -104,23 +180,20 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Work info */}
               <div style={{ background:'#f8f9fa', padding:'10px 14px', borderRadius:12, marginBottom:12 }}>
                 <div style={{ fontSize:11, color:'#94a3b8', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.5px' }}>Work Details</div>
                 <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>{bid.workTitle}</div>
                 <div style={{ fontSize:11, color:'#636e72', marginBottom:8 }}>
                   Category: <strong>{bid.category}</strong>
                 </div>
-                {/* Work link */}
                 {bid.workLink && (
                   <a href={bid.workLink} target="_blank" rel="noreferrer"
-                    style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, color:'#6c5ce7', fontWeight:600, textDecoration:'none', background:'#f0f0ff', padding:'4px 10px', borderRadius:8, marginBottom:6 }}>
+                    style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, color:'#6c5ce7', fontWeight:600, textDecoration:'none', background:'#f0f0ff', padding:'4px 10px', borderRadius:8 }}>
                     🔗 View Work
                   </a>
                 )}
               </div>
 
-              {/* Payment screenshot */}
               {bid.paymentScreenshot && (
                 <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 14px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <span style={{ fontSize:12, color:'#636e72' }}>📸 Payment Screenshot:</span>
@@ -131,7 +204,6 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {/* Status / Actions */}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 {bid.status!=='pending' && (
                   <span style={{ fontSize:11, color:'#94a3b8' }}>

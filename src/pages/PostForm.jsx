@@ -1,13 +1,17 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, push, set } from "firebase/database";
 import { db } from '../App.jsx';
 
+// ── Cloudinary config ─────────────────────────────────────────
+const CLOUD_NAME    = 'danbshghf';
+const UPLOAD_PRESET = 'CreativeBridge';
+
 const TALENT_CFG = {
-  Singer:  { label:'Song',    icon:'🎤', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' },    linkPh:'YouTube / Google Drive link (e.g. https://youtu.be/...)' },
-  Painter: { label:'Artwork', icon:'🎨', extra:{ name:'style', ph:'Style (Abstract, Realism...)' },      linkPh:'Google Drive image link (e.g. https://drive.google.com/...)' },
-  Actor:   { label:'Video',   icon:'🎬', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' },     linkPh:'YouTube / Google Drive video link' },
-  Dancer:  { label:'Video',   icon:'💃', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' },     linkPh:'YouTube / Google Drive video link' },
+  Singer:  { label:'Song',    icon:'🎤', accept:'audio/*',  maxMB:50,  resourceType:'video', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' } },
+  Painter: { label:'Artwork', icon:'🎨', accept:'image/*',  maxMB:10,  resourceType:'image', extra:{ name:'style', ph:'Style (Abstract, Realism...)' } },
+  Actor:   { label:'Video',   icon:'🎬', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' } },
+  Dancer:  { label:'Video',   icon:'💃', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' } },
 };
 
 const PostForm = ({ closeForm }) => {
@@ -30,7 +34,7 @@ const PostForm = ({ closeForm }) => {
   );
 };
 
-/* ── Writer Form ─────────────────────────────────────────────── */
+/* ── Writer Form (unchanged) ─────────────────────────────────── */
 const WriterForm = ({ closeForm, user }) => {
   const [form, setForm] = useState({
     Name:'', logline:'', synopsis:'', fullStoryFile:'', genre:'Action',
@@ -48,13 +52,13 @@ const WriterForm = ({ closeForm, user }) => {
       const newRef = push(ref(db,'stories'));
       await set(newRef, {
         ...form,
-        writerId:        user?.id || Date.now(),
-        writerName:      user?.name || "Anonymous",
-        writerEmail:     user?.email,
-        writerPic:       user?.profilePic || "/icon.png",
-        writerProfession:user?.profession || "Writer",
-        createdAt:       new Date().toISOString(),
-        timestamp:       Date.now()
+        writerId:         user?.id || Date.now(),
+        writerName:       user?.name || "Anonymous",
+        writerEmail:      user?.email,
+        writerPic:        user?.profilePic || "/icon.png",
+        writerProfession: user?.profession || "Writer",
+        createdAt:        new Date().toISOString(),
+        timestamp:        Date.now()
       });
       alert("Story published successfully!"); closeForm();
     } catch(e) { alert("Failed: " + e.message); }
@@ -110,27 +114,77 @@ const WriterForm = ({ closeForm, user }) => {
   );
 };
 
-/* ── Talent Form — Link based (no file upload) ───────────────── */
+/* ── Talent Form — Cloudinary direct upload ──────────────────── */
 const TalentForm = ({ closeForm, user }) => {
-  const cfg      = TALENT_CFG[user?.role];
-  const [title,  setTitle]  = useState('');
-  const [extra,  setExtra]  = useState('');
-  const [link,   setLink]   = useState('');
-  const [desc,   setDesc]   = useState('');
-  const [busy,   setBusy]   = useState(false);
+  const cfg     = TALENT_CFG[user?.role];
+  const fileRef = useRef(null);
+
+  const [title,    setTitle]    = useState('');
+  const [extra,    setExtra]    = useState('');
+  const [desc,     setDesc]     = useState('');
+  const [file,     setFile]     = useState(null);
+  const [prog,     setProg]     = useState(0);
+  const [busy,     setBusy]     = useState(false);
+  const [uploaded, setUploaded] = useState(null); // Cloudinary URL after upload
 
   const emailKey = user?.email?.replace(/\./g, ',');
   const dbPath   = `talents/${user?.role?.toLowerCase()}/${emailKey}`;
   const folder   = user?.role === 'Painter' ? 'artworks' : user?.role === 'Singer' ? 'songs' : 'videos';
 
+  const handleFileChange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const maxBytes = cfg.maxMB * 1024 * 1024;
+    if (f.size > maxBytes) {
+      alert(`File too large! Maximum size is ${cfg.maxMB} MB.`);
+      e.target.value = '';
+      return;
+    }
+    setFile(f);
+    setUploaded(null);
+    setProg(0);
+  };
+
+  // Upload to Cloudinary with progress
+  const uploadToCloudinary = () => new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file',           file);
+    formData.append('upload_preset',  UPLOAD_PRESET);
+    formData.append('folder',         'CreativeBridge');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${cfg.resourceType}/upload`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) setProg(Math.round(e.loaded / e.total * 100));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        resolve(data.secure_url);
+      } else {
+        reject(new Error('Upload failed: ' + xhr.statusText));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.send(formData);
+  });
+
   const handleSubmit = async () => {
     if (!title.trim()) return alert("Please enter a title!");
-    if (!link.trim())  return alert("Please enter a link!");
-    if (!link.startsWith('http')) return alert("Please enter a valid URL starting with https://");
+    if (!file)         return alert("Please select a file!");
 
     setBusy(true);
+    setProg(0);
+
     try {
-      // Save profile node
+      // Step 1: Upload to Cloudinary
+      const cloudUrl = await uploadToCloudinary();
+      setUploaded(cloudUrl);
+
+      // Step 2: Save profile to Firebase
       await set(ref(db, `${dbPath}/profile`), {
         name:       user.name,
         email:      user.email,
@@ -141,10 +195,10 @@ const TalentForm = ({ closeForm, user }) => {
         bio:        user.bio        || '',
       });
 
-      // Save work
+      // Step 3: Save work to Firebase
       await push(ref(db, `${dbPath}/${folder}`), {
         title,
-        fileUrl:       link,
+        fileUrl:       cloudUrl,
         description:   desc,
         uploadedAt:    Date.now(),
         uploaderEmail: user.email,
@@ -182,41 +236,83 @@ const TalentForm = ({ closeForm, user }) => {
         />
       )}
 
-      {/* Link input */}
-      <div style={linkBox}>
-        <p style={linkLabel}>🔗 Paste your link *</p>
-        <input
-          style={inp}
-          placeholder={cfg.linkPh}
-          value={link}
-          onChange={e => setLink(e.target.value)}
-        />
-        <p style={linkHint}>
-          {user.role === 'Singer'
-            ? 'Upload your song to YouTube or Google Drive, then paste the link here.'
-            : user.role === 'Painter'
-            ? 'Upload your artwork to Google Drive, set sharing to "Anyone with link", then paste here.'
-            : 'Upload your video to YouTube or Google Drive, then paste the link here.'}
-        </p>
+      {/* File picker */}
+      <div
+        style={{ ...dropZone, borderColor: file ? '#6c5ce7' : '#dfe6e9' }}
+        onClick={() => !busy && fileRef.current?.click()}
+      >
+        {file ? (
+          <>
+            <span style={{ fontSize:28 }}>
+              {user.role==='Singer' ? '🎵' : user.role==='Painter' ? '🖼️' : '🎬'}
+            </span>
+            <p style={{ margin:'6px 0 2px', fontWeight:700, fontSize:14 }}>{file.name}</p>
+            <p style={{ margin:0, fontSize:12, color:'#636e72' }}>
+              {(file.size/1024/1024).toFixed(2)} MB
+            </p>
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize:32 }}>{cfg.icon}</span>
+            <p style={{ margin:'8px 0 4px', fontWeight:700, fontSize:14 }}>
+              Tap to select file
+            </p>
+            <p style={{ margin:0, fontSize:12, color:'#94a3b8' }}>
+              {user.role==='Singer'  ? `MP3, WAV, M4A — max ${cfg.maxMB}MB` :
+               user.role==='Painter' ? `JPG, PNG, WEBP — max ${cfg.maxMB}MB` :
+               `MP4, MOV — max ${cfg.maxMB}MB`}
+            </p>
+          </>
+        )}
       </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={cfg.accept}
+        onChange={handleFileChange}
+        style={{ display:'none' }}
+      />
 
       {/* Description */}
       <textarea
-        style={{...inp, height:70, resize:'none'}}
+        style={{ ...inp, height:65, resize:'none' }}
         placeholder="Description (optional)"
         value={desc}
         onChange={e => setDesc(e.target.value)}
       />
 
-      {/* Painter notice */}
+      {/* Painter copyright notice */}
       {user.role === 'Painter' && (
         <div style={noticeBox}>
-          🔒 Your artwork link will be copyright-protected on Creative Bridge. Use Google Drive with restricted sharing for extra protection.
+          🔒 Your artwork will be copyright-protected on Creative Bridge.
         </div>
       )}
 
-      <button style={{...submitBtn, opacity: busy ? 0.7 : 1}} disabled={busy} onClick={handleSubmit}>
-        {busy ? 'Publishing...' : '🚀 Publish'}
+      {/* Upload progress */}
+      {busy && (
+        <div style={{ marginBottom:12 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+            <span style={{ fontSize:12, color:'#636e72' }}>
+              {prog < 100 ? `Uploading... ${prog}%` : 'Saving...'}
+            </span>
+            <span style={{ fontSize:12, fontWeight:700, color:'#6c5ce7' }}>{prog}%</span>
+          </div>
+          <div style={{ background:'#f1f2f6', borderRadius:8, height:8, overflow:'hidden' }}>
+            <div style={{
+              background: 'linear-gradient(90deg,#6c5ce7,#a29bfe)',
+              height:'100%', width:`${prog}%`,
+              transition:'width 0.3s', borderRadius:8
+            }}/>
+          </div>
+        </div>
+      )}
+
+      <button
+        style={{ ...submitBtn, opacity: busy ? 0.7 : 1 }}
+        disabled={busy}
+        onClick={handleSubmit}
+      >
+        {busy ? `Uploading... ${prog}%` : `🚀 Publish ${cfg.label}`}
       </button>
     </div>
   );
@@ -231,9 +327,7 @@ const secBox    = { border:'1px solid #f0f0f0', padding:10, borderRadius:12, mar
 const lockRow   = { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 };
 const lbl       = { fontSize:12, fontWeight:'bold', color:'#666' };
 const lockLbl   = { fontSize:10, display:'flex', alignItems:'center', gap:4, cursor:'pointer', color:'#6c5ce7' };
-const linkBox   = { border:'2px dashed #dfe6e9', borderRadius:12, padding:14, marginBottom:12, background:'#f8f9ff' };
-const linkLabel = { fontSize:12, fontWeight:700, color:'#6c5ce7', margin:'0 0 8px' };
-const linkHint  = { fontSize:11, color:'#94a3b8', margin:'6px 0 0', lineHeight:1.5 };
+const dropZone  = { border:'2px dashed #dfe6e9', borderRadius:12, padding:22, textAlign:'center', cursor:'pointer', marginBottom:10, transition:'border-color 0.2s', background:'#f8f9ff' };
 const noticeBox = { background:'#fff9db', border:'1px solid #f9ca24', borderRadius:10, padding:'8px 12px', fontSize:12, color:'#636e72', marginBottom:12 };
 const submitBtn = { width:'100%', padding:13, background:'#2d3436', color:'#fff', border:'none', borderRadius:12, cursor:'pointer', fontWeight:'bold', fontSize:15, marginTop:8 };
 

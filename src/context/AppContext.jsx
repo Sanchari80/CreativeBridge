@@ -1,3 +1,4 @@
+// AppContext.jsx — full updated
 import React, { createContext, useState, useEffect, useRef } from 'react';
 import { ref, onValue, remove, push, set, update } from "firebase/database";
 
@@ -44,9 +45,14 @@ export const AppProvider = ({ children, db }) => {
   const [activeStoryId,       setActiveStoryId]        = useState(null);
   const [bids,                setBids]                 = useState([]);
   const [promotedWorks,       setPromotedWorks]        = useState({});
+  // ── NEW ────────────────────────────────────────────────────────
+  const [adminNotifications,  setAdminNotifications]   = useState([]);
+  const [bidNotifications,    setBidNotifications]     = useState([]);
 
-  const prevTalentReqCount  = useRef(0);
-  const prevFollowNotiCount = useRef(0);
+  const prevTalentReqCount    = useRef(0);
+  const prevFollowNotiCount   = useRef(0);
+  const prevAdminNotifCount   = useRef(0);
+  const prevBidNotifCount     = useRef(0);
 
   // ── User sync ──────────────────────────────────────────────────
   useEffect(() => {
@@ -92,10 +98,10 @@ export const AppProvider = ({ children, db }) => {
   // ── Talent requests ────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-    const emailKey    = user.email.replace(/\./g, ',');
+    const emailKey     = user.email.replace(/\./g, ',');
     const TALENT_ROLES = ['Singer', 'Painter', 'Actor', 'Dancer', 'Writer'];
-    const isTalent    = TALENT_ROLES.includes(user.role);
-    const isHirer     = user.role === 'Hirer' || user.role === 'Looking for new stories';
+    const isTalent     = TALENT_ROLES.includes(user.role);
+    const isHirer      = user.role === 'Hirer' || user.role === 'Looking for new stories';
 
     const unsub = onValue(ref(db, 'talentRequests'), snap => {
       const d = snap.val();
@@ -168,6 +174,45 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [db]);
 
+  // ── Admin bid notifications ────────────────────────────────────
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+    const unsub = onValue(ref(db, 'adminNotifications'), snap => {
+      const d = snap.val();
+      if (d) {
+        const list = Object.entries(d)
+          .map(([k, v]) => ({ ...v, firebaseKey: k }))
+          .sort((a, b) => b.timestamp - a.timestamp);
+        setAdminNotifications(list);
+        const unread = list.filter(n => !n.read).length;
+        if (prevAdminNotifCount.current !== 0 && unread > prevAdminNotifCount.current)
+          playSound('notify');
+        prevAdminNotifCount.current = unread;
+      } else setAdminNotifications([]);
+    });
+    return () => unsub();
+  }, [user?.isAdmin, db]);
+
+  // ── User bid notifications ─────────────────────────────────────
+  useEffect(() => {
+    if (!user?.email) return;
+    const emailKey = user.email.replace(/\./g, ',');
+    const unsub = onValue(ref(db, `bidNotifications/${emailKey}`), snap => {
+      const d = snap.val();
+      if (d) {
+        const list = Object.entries(d)
+          .map(([k, v]) => ({ ...v, firebaseKey: k }))
+          .sort((a, b) => b.timestamp - a.timestamp);
+        setBidNotifications(list);
+        const unread = list.filter(n => !n.read).length;
+        if (prevBidNotifCount.current !== 0 && unread > prevBidNotifCount.current)
+          playSound('approve');
+        prevBidNotifCount.current = unread;
+      } else setBidNotifications([]);
+    });
+    return () => unsub();
+  }, [user?.email, db]);
+
   // ══ Functions ══════════════════════════════════════════════════
 
   const deleteStory = async (storyId) => {
@@ -236,7 +281,7 @@ export const AppProvider = ({ children, db }) => {
       catch(e) { alert("Delete failed: " + e.message); }
   };
 
-  // ── Follow (public /followers/ node এও write) ─────────────────
+  // ── Follow ─────────────────────────────────────────────────────
   const followTalent = async (talentEmail, talentName, talentPic) => {
     if (!user) return;
     const myKey     = user.email.replace(/\./g, ',');
@@ -246,7 +291,6 @@ export const AppProvider = ({ children, db }) => {
         talentEmail, talentName: talentName || '',
         talentPic: talentPic || '/icon.png', followedAt: Date.now()
       });
-      // Public followers node — সবাই দেখতে পাবে
       await set(ref(db, `followers/${talentKey}/${myKey}`), {
         followerEmail:      user.email,
         followerName:       user.name || '',
@@ -265,7 +309,7 @@ export const AppProvider = ({ children, db }) => {
     } catch(e) { alert("Follow failed: " + e.message); }
   };
 
-  // ── Unfollow (public /followers/ থেকেও remove) ────────────────
+  // ── Unfollow ───────────────────────────────────────────────────
   const unfollowTalent = async (talentEmail) => {
     if (!user) return;
     const myKey     = user.email.replace(/\./g, ',');
@@ -284,46 +328,120 @@ export const AppProvider = ({ children, db }) => {
     catch(e) {}
   };
 
+  // ── Mark admin notification read ───────────────────────────────
+  const markAdminNotifRead = async (notifId) => {
+    try { await update(ref(db, `adminNotifications/${notifId}`), { read: true }); }
+    catch(e) {}
+  };
+
+  // ── Mark bid notification read (user side) ─────────────────────
+  const markBidNotifRead = async (notifId) => {
+    const emailKey = user?.email?.replace(/\./g, ',');
+    try { await update(ref(db, `bidNotifications/${emailKey}/${notifId}`), { read: true }); }
+    catch(e) {}
+  };
+
   // ── Bid submit ─────────────────────────────────────────────────
- const submitBid = async (category, workId, workTitle, tokens, paymentScreenshot, workLink) => {
-  if (!user) return alert("Please Login!");
-  const amount = tokens === 5 ? 500 : 200;
-  try {
-    await push(ref(db, 'bids'), {
-      userEmail:         user.email,
-      userEmailKey:      user.email.replace(/\./g, ','),
-      userName:          user.name || '',
-      userPic:           user.profilePic || '/icon.png',
-      category, workId, workTitle, tokens, amount,
-      paymentScreenshot: paymentScreenshot || '',   // ← new
-      workLink:          workLink || '',             // ← new
-      status:            'pending',
-      timestamp:         Date.now()
-    });
-    alert(`Bid submitted! Admin will verify your payment and approve within 24 hours.`);
-  } catch(e) { alert("Bid failed: " + e.message); }
-};
+  const submitBid = async (category, workId, workTitle, tokens, paymentScreenshot, workLink) => {
+    if (!user) return alert("Please Login!");
+    const amount = tokens === 5 ? 500 : 200;
+    try {
+      // Save bid
+      const bidRef = push(ref(db, 'bids'));
+      await set(bidRef, {
+        userEmail:         user.email,
+        userEmailKey:      user.email.replace(/\./g, ','),
+        userName:          user.name || '',
+        userPic:           user.profilePic || '/icon.png',
+        category, workId, workTitle, tokens, amount,
+        paymentScreenshot: paymentScreenshot || '',
+        workLink:          workLink || '',
+        status:            'pending',
+        timestamp:         Date.now()
+      });
+
+      // ── Notify admin ─────────────────────────────────────────
+      await push(ref(db, 'adminNotifications'), {
+        type:        'new_bid',
+        bidId:       bidRef.key,
+        userName:    user.name || '',
+        userPic:     user.profilePic || '/icon.png',
+        userEmail:   user.email,
+        workTitle,
+        category,
+        tokens,
+        amount,
+        workLink:    workLink || '',
+        paymentScreenshot: paymentScreenshot || '',
+        read:        false,
+        timestamp:   Date.now()
+      });
+
+      alert("Bid submitted! Admin will verify your payment and approve within 24 hours.");
+    } catch(e) { alert("Bid failed: " + e.message); }
+  };
 
   // ── Admin: approve bid ─────────────────────────────────────────
   const approveBid = async (bid) => {
     try {
+      const now = Date.now();
       const updates = {};
       updates[`/bids/${bid.id}/status`]     = 'approved';
-      updates[`/bids/${bid.id}/approvedAt`] = Date.now();
+      updates[`/bids/${bid.id}/approvedAt`] = now;
       updates[`/promotedWorks/${bid.category}/${bid.userEmailKey}_${bid.workId}`] = {
         userEmailKey: bid.userEmailKey,
         workId:       bid.workId,
         tokens:       bid.tokens,
-        approvedAt:   Date.now()
+        approvedAt:   now
       };
       await update(ref(db), updates);
+
+      // ── Notify the user whose bid was approved ───────────────
+      await push(ref(db, `bidNotifications/${bid.userEmailKey}`), {
+        type:      'bid_approved',
+        workTitle: bid.workTitle,
+        category:  bid.category,
+        tokens:    bid.tokens,
+        amount:    bid.amount,
+        message:   `🎉 Your bid for "${bid.workTitle}" has been approved! It is now promoted to the top.`,
+        read:      false,
+        timestamp: now
+      });
+
+      // Mark related admin notification as read
+      const relatedNotif = adminNotifications.find(n => n.bidId === bid.id);
+      if (relatedNotif?.firebaseKey) {
+        await update(ref(db, `adminNotifications/${relatedNotif.firebaseKey}`), { read: true });
+      }
     } catch(e) { alert("Approve failed: " + e.message); }
   };
 
   // ── Admin: reject bid ──────────────────────────────────────────
   const rejectBid = async (bidId) => {
-    try { await update(ref(db, `bids/${bidId}`), { status: 'rejected' }); }
-    catch(e) { alert("Reject failed: " + e.message); }
+    try {
+      const bid = bids.find(b => b.id === bidId);
+      await update(ref(db, `bids/${bidId}`), { status: 'rejected' });
+
+      // ── Notify the user whose bid was rejected ───────────────
+      if (bid?.userEmailKey) {
+        await push(ref(db, `bidNotifications/${bid.userEmailKey}`), {
+          type:      'bid_rejected',
+          workTitle: bid.workTitle || '',
+          category:  bid.category  || '',
+          tokens:    bid.tokens    || 0,
+          amount:    bid.amount    || 0,
+          message:   `❌ Your bid for "${bid.workTitle}" was not approved. Please contact admin for details.`,
+          read:      false,
+          timestamp: Date.now()
+        });
+      }
+
+      // Mark related admin notification as read
+      const relatedNotif = adminNotifications.find(n => n.bidId === bidId);
+      if (relatedNotif?.firebaseKey) {
+        await update(ref(db, `adminNotifications/${relatedNotif.firebaseKey}`), { read: true });
+      }
+    } catch(e) { alert("Reject failed: " + e.message); }
   };
 
   const logout = () => { localStorage.removeItem('activeUser'); setUser(null); };
@@ -337,9 +455,11 @@ export const AppProvider = ({ children, db }) => {
       follows, followNotifications,
       activeStoryId, setActiveStoryId,
       bids, promotedWorks,
+      adminNotifications, bidNotifications,
       deleteStory, sendRequest,
       sendTalentRequest, updateTalentRequest, deleteTalentWork,
       followTalent, unfollowTalent, isFollowing, markFollowNotifRead,
+      markAdminNotifRead, markBidNotifRead,
       submitBid, approveBid, rejectBid,
       logout
     }}>

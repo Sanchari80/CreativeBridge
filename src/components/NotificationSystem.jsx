@@ -1,3 +1,4 @@
+// NotificationSystem.jsx — full updated
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { AppContext, playSound } from '../context/AppContext';
 import { ref, update, remove } from "firebase/database";
@@ -6,6 +7,7 @@ import { db } from '../App.jsx';
 const NotificationSystem = ({ onBack, onViewProfile }) => {
   const {
     user, requests, talentRequests, followNotifications,
+    bidNotifications, markBidNotifRead,
     updateTalentRequest, markFollowNotifRead, setActiveStoryId,
   } = useContext(AppContext);
 
@@ -44,7 +46,6 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
     await remove(ref(db, path)).catch(e => alert("Error: " + e.message));
   };
 
-  // ── Go to profile ─────────────────────────────────────────────
   const goToProfile = (email, name, pic, role) => {
     if (!email || !onViewProfile) return;
     onBack();
@@ -60,25 +61,30 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
              : r.fromEmail?.toLowerCase() === user?.email?.toLowerCase()
   );
   const myFollowNotifs = followNotifications || [];
+  const myBidNotifs    = bidNotifications    || [];
 
   const allNotifs = [
     ...myStoryNotifs.map(n  => ({ ...n, _type: 'story'  })),
     ...myTalentNotifs.map(n => ({ ...n, _type: 'talent' })),
     ...myFollowNotifs.map(n => ({ ...n, _type: 'follow' })),
+    ...myBidNotifs.map(n    => ({ ...n, _type: 'bid'    })),
   ].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
   const display = activeTab === 'all'     ? allNotifs
                 : activeTab === 'story'   ? myStoryNotifs.map(n  => ({ ...n, _type: 'story'  }))
                 : activeTab === 'contact' ? myTalentNotifs.map(n => ({ ...n, _type: 'talent' }))
-                : myFollowNotifs.map(n => ({ ...n, _type: 'follow' }));
+                : activeTab === 'follow'  ? myFollowNotifs.map(n => ({ ...n, _type: 'follow' }))
+                : activeTab === 'bid'     ? myBidNotifs.map(n    => ({ ...n, _type: 'bid'    }))
+                : allNotifs;
 
   const unreadFollow  = myFollowNotifs.filter(n => !n.read).length;
   const unreadContact = isTalent
     ? myTalentNotifs.filter(n => n.status === 'pending').length
     : myTalentNotifs.filter(n => n.status === 'approved' && !n.read).length;
-  const unreadStory = isWriter
+  const unreadStory   = isWriter
     ? myStoryNotifs.filter(n => n.status === 'pending').length
     : myStoryNotifs.filter(n => n.status === 'approved' && !n.read).length;
+  const unreadBids    = myBidNotifs.filter(n => !n.read).length;
 
   const getTypeText = req =>
     req.requestType === 'fullStory' ? 'Full Script' :
@@ -87,10 +93,11 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
   const sColor = s => s==='approved'?'#2ecc71': s==='declined'?'#e74c3c':'#f39c12';
 
   const TABS_DEF = [
-    { id:'all',     label:'All',        count: unreadStory+unreadContact+unreadFollow },
+    { id:'all',     label:'All',        count: unreadStory+unreadContact+unreadFollow+unreadBids },
     { id:'story',   label:'📝 Stories',  count: unreadStory,   show: isWriter||isHirer },
     { id:'contact', label:'📩 Contact',  count: unreadContact, show: true },
     { id:'follow',  label:'❤️ Follows',  count: unreadFollow,  show: isTalent },
+    { id:'bid',     label:'💰 Bids',     count: unreadBids,    show: true },
   ].filter(t => t.show !== false);
 
   return (
@@ -135,6 +142,43 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
           </div>
         ) : display.map((item, idx) => {
 
+          /* ── BID NOTIFICATION ── */
+          if (item._type === 'bid') {
+            const isApproved = item.type === 'bid_approved';
+            return (
+              <div key={item.firebaseKey || idx}
+                style={{ ...nCard,
+                  borderLeft: `4px solid ${isApproved ? '#2ecc71' : '#e74c3c'}`,
+                  background: item.read ? '#f9f9f9' : (isApproved ? '#f0fff8' : '#fff5f5'),
+                  cursor: 'pointer',
+                }}
+                onClick={() => { if (!item.read && item.firebaseKey) markBidNotifRead(item.firebaseKey); }}
+              >
+                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                  <span style={{ fontSize:24, flexShrink:0 }}>{isApproved ? '🎉' : '❌'}</span>
+                  <div style={{ flex:1 }}>
+                    <p style={{ margin:0, fontSize:13, fontWeight:700, color: isApproved ? '#2ecc71' : '#e74c3c' }}>
+                      {isApproved ? 'Bid Approved!' : 'Bid Rejected'}
+                    </p>
+                    <p style={{ margin:'3px 0 0', fontSize:12, color:'#636e72' }}>{item.message}</p>
+                    <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
+                      <span style={{ fontSize:10, background: isApproved?'#d4edda':'#fdecea', color: isApproved?'#2ecc71':'#e74c3c', padding:'2px 8px', borderRadius:12, fontWeight:700 }}>
+                        {item.category}
+                      </span>
+                      <span style={{ fontSize:10, background:'#f0f4ff', color:'#4834d4', padding:'2px 8px', borderRadius:12, fontWeight:700 }}>
+                        {item.tokens===5?'🥇 5 Tokens':'🥈 2 Tokens'} · ৳{item.amount}
+                      </span>
+                    </div>
+                    <div style={{ fontSize:'10px', color:'#b2bec3', marginTop:'4px' }}>
+                      {item.timestamp ? new Date(item.timestamp).toLocaleString() : ''}
+                    </div>
+                  </div>
+                  {!item.read && <span style={{ width:'8px', height:'8px', background: isApproved?'#2ecc71':'#e74c3c', borderRadius:'50%', flexShrink:0 }}/>}
+                </div>
+              </div>
+            );
+          }
+
           /* ── FOLLOW ── */
           if (item._type === 'follow') return (
             <div key={item.firebaseKey || idx}
@@ -142,18 +186,14 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
               onClick={() => { if (!item.read && item.firebaseKey) markFollowNotifRead(item.firebaseKey); }}
             >
               <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <img
-                  src={item.followerPic || '/icon.png'} alt="" style={{ ...avSmall, cursor:'pointer' }}
-                  title="View Profile"
+                <img src={item.followerPic || '/icon.png'} alt="" style={{ ...avSmall, cursor:'pointer' }} title="View Profile"
                   onClick={e => { e.stopPropagation(); goToProfile(item.followerEmail, item.followerName, item.followerPic, item.followerRole||''); }}
                 />
                 <div style={{ flex:1 }}>
                   <span style={{ fontSize:'13px' }}>
                     ❤️{' '}
-                    <strong
-                      style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
-                      onClick={e => { e.stopPropagation(); goToProfile(item.followerEmail, item.followerName, item.followerPic, item.followerRole||''); }}
-                    >
+                    <strong style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
+                      onClick={e => { e.stopPropagation(); goToProfile(item.followerEmail, item.followerName, item.followerPic, item.followerRole||''); }}>
                       {item.followerName}
                     </strong>
                     {item.followerProfession ? ` (${item.followerProfession})` : ''} started following you!
@@ -162,11 +202,9 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                     {item.timestamp ? new Date(item.timestamp).toLocaleString() : ''}
                   </div>
                 </div>
-                {!item.read && <span style={{ width:'8px', height:'8px', background:'#fd79a8', borderRadius:'50%', flexShrink:0 }} />}
+                {!item.read && <span style={{ width:'8px', height:'8px', background:'#fd79a8', borderRadius:'50%', flexShrink:0 }}/>}
               </div>
-              <button
-                onClick={e => { e.stopPropagation(); goToProfile(item.followerEmail, item.followerName, item.followerPic, item.followerRole||''); }}
-                style={profileBtn}>
+              <button onClick={e => { e.stopPropagation(); goToProfile(item.followerEmail, item.followerName, item.followerPic, item.followerRole||''); }} style={profileBtn}>
                 👤 View Profile
               </button>
             </div>
@@ -178,18 +216,14 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
               style={{ ...nCard, borderLeft:`4px solid ${sColor(item.status)}`, background: item.status==='pending'?'#fff9db':'#f9f9f9' }}>
               <button onClick={() => deleteNotif(item,'talent')} style={delBtn}>🗑️</button>
               <div style={{ display:'flex', alignItems:'flex-start', gap:'10px' }}>
-                <img
-                  src={item.fromPic || '/icon.png'} alt="" style={{ ...avSmall, cursor:'pointer' }}
-                  title="View Profile"
+                <img src={item.fromPic || '/icon.png'} alt="" style={{ ...avSmall, cursor:'pointer' }} title="View Profile"
                   onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')}
                 />
                 <div style={{ flex:1, fontSize:'13px', lineHeight:1.5 }}>
                   {isTalent ? (
                     <>
-                      <strong
-                        style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
-                        onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')}
-                      >
+                      <strong style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
+                        onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')}>
                         {item.fromName}
                       </strong>
                       {item.fromProfession ? ` (${item.fromProfession})` : ''} wants to contact you.
@@ -201,13 +235,7 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                 </div>
               </div>
               {item.message && <div style={noteBox}>"{item.message}"</div>}
-              {isTalent && (
-                <button
-                  onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')}
-                  style={profileBtn}>
-                  👤 View Profile
-                </button>
-              )}
+              {isTalent && <button onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')} style={profileBtn}>👤 View Profile</button>}
               {isTalent && item.status==='pending' && (
                 <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
                   <button onClick={() => updateTalentRequest(item,'approved')} style={appBtn}>✅ Accept</button>
@@ -224,19 +252,15 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
               style={{ ...nCard, borderLeft:`4px solid ${sColor(item.status)}`, background: item.status==='pending'?'#fff9db':'#f9f9f9' }}>
               <button onClick={() => deleteNotif(item,'story')} style={delBtn}>🗑️</button>
               <div style={{ display:'flex', alignItems:'flex-start', gap:'10px' }}>
-                <img
-                  src={isWriter ? (item.fromPic||'/icon.png') : (item.writerPic||'/icon.png')} alt=""
+                <img src={isWriter ? (item.fromPic||'/icon.png') : (item.writerPic||'/icon.png')} alt=""
                   style={{ ...avSmall, cursor: isWriter ? 'pointer' : 'default' }}
-                  title={isWriter ? "View Profile" : ""}
                   onClick={() => { if (isWriter) goToProfile(item.fromEmail, item.fromName, item.fromPic, ''); }}
                 />
                 <div style={{ flex:1, fontSize:'13px', lineHeight:1.5 }}>
                   {isWriter ? (
                     <>
-                      <strong
-                        style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
-                        onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, '')}
-                      >
+                      <strong style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
+                        onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, '')}>
                         {item.fromName}
                       </strong>{' '}
                       requested <strong>{getTypeText(item)}</strong> of <strong>"{item.storyTitle}"</strong>.
@@ -254,11 +278,7 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                   <button onClick={() => updateStoryStatus(item,'declined')} style={decBtn}>❌ Decline</button>
                 </div>
               )}
-              {isWriter && (
-                <button onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, '')} style={profileBtn}>
-                  👤 View Profile
-                </button>
-              )}
+              {isWriter && <button onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, '')} style={profileBtn}>👤 View Profile</button>}
               {!isWriter && item.status==='approved' && (
                 <button
                   onClick={() => { setActiveStoryId(item.storyId); update(ref(db,`requests/${item.ownerPath}/${item.firebaseKey}`),{read:true}); onBack(); }}

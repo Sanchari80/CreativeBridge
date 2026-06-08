@@ -1,0 +1,16 @@
+{
+  "name": "Creative Bridge",
+  "short_name": "Creative Bridge",
+  "description": "Connecting Creative Minds — Writers, Singers, Painters, Actors, Dancers",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0c1e",
+  "theme_color": "#6c5ce7",
+  "icons": [
+    { "src": "/icon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
