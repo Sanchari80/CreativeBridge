@@ -354,8 +354,8 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   };
 
   const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
-    const aEK=a.emailKey||a.uploaderEmail?.replace(/\./g,',')||'';
-    const bEK=b.emailKey||b.uploaderEmail?.replace(/\./g,',')||'';
+    const aEK=a.emailKey||a.uploaderEmail?.replace(/\./g,',')||a.writerEmail?.replace(/\./g,',')||a.email?.replace(/\./g,',')||'';
+    const bEK=b.emailKey||b.uploaderEmail?.replace(/\./g,',')||b.writerEmail?.replace(/\./g,',')||b.email?.replace(/\./g,',')||'';
     const aP=getPromoTokens(category,a.id,aEK);
     const bP=getPromoTokens(category,b.id,bEK);
     if(bP!==aP) return bP-aP;
