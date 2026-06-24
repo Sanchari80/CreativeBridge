@@ -5,7 +5,7 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebas
 import { db, storage } from '../App.jsx';
 
 const CONFIG = {
-  Singer:  { folder: 'songs',    label: 'Songs',    icon: '🎤', accept: 'audio/*',  hint: 'MP3, WAV, FLAC — max 50MB' },
+  Singer:  { folder: 'songs',    label: 'Songs',    icon: '🎤', accept: 'audio/*,video/*',  hint: 'Audio (MP3, WAV, FLAC) or Video (MP4, MOV) — max 100MB' },
   Painter: { folder: 'artworks', label: 'Artworks', icon: '🎨', accept: 'image/*',  hint: 'JPG, PNG — সম্পূর্ণ Copyright protected' },
   Actor:   { folder: 'videos',   label: 'Videos',   icon: '🎬', accept: 'video/*',  hint: 'MP4, MOV — max 2 mins · 500MB' },
   Dancer:  { folder: 'videos',   label: 'Videos',   icon: '💃', accept: 'video/*',  hint: 'MP4, MOV — max 2 mins · 500MB' },
@@ -28,6 +28,7 @@ const TalentDashboard = () => {
   const [file, setFile]                 = useState(null);
   const [progress, setProgress]         = useState(0);
   const [uploading, setUploading]       = useState(false);
+  const [copiedId, setCopiedId]         = useState(null);
   const fileInputRef                    = useRef(null);
 
   const role     = user?.role;
@@ -35,6 +36,14 @@ const TalentDashboard = () => {
   const emailKey = user?.email?.replace(/\./g, ',');
   const dbPath   = `talents/${role?.toLowerCase()}/${emailKey}`;
   const extraCfg = EXTRA[role];
+
+  // Detect whether selected file is audio or video (only relevant for Singer)
+  const getMediaType = (f) => {
+    if (!f) return null;
+    if (f.type?.startsWith('video/')) return 'video';
+    if (f.type?.startsWith('audio/')) return 'audio';
+    return null;
+  };
 
   // Fetch this talent's works
   useEffect(() => {
@@ -49,6 +58,36 @@ const TalentDashboard = () => {
 
   const myRequests   = talentRequests.filter(r => r.ownerPath === emailKey);
   const pendingCount = myRequests.filter(r => r.status === 'pending').length;
+
+  // ── Build a shareable link for a specific work ──────────────────
+  const buildShareLink = (workId) => {
+    const base = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+      profile: user.email,
+      role:    role,
+      work:    workId,
+    });
+    return `${base}?${params.toString()}`;
+  };
+
+  const handleCopyLink = async (workId) => {
+    const link = buildShareLink(workId);
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedId(workId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (e) {
+      // Fallback for browsers without clipboard API permission
+      const ta = document.createElement('textarea');
+      ta.value = link;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedId(workId);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   const handleUpload = async () => {
     if (!form.title.trim()) return alert("Title দিন!");
@@ -80,10 +119,12 @@ const TalentDashboard = () => {
           });
 
           // Work metadata save
+          const mediaType = role === 'Singer' ? (getMediaType(file) || 'audio') : undefined;
           await push(ref(db, `${dbPath}/${cfg.folder}`), {
             title:       form.title,
             fileUrl:     url,
             uploadedAt:  Date.now(),
+            ...(mediaType ? { mediaType } : {}),
             ...(extraCfg ? { [extraCfg.name]: form.extra } : {}),
           });
 
@@ -216,11 +257,20 @@ const TalentDashboard = () => {
                       {work.uploadedAt ? '· ' + new Date(work.uploadedAt).toLocaleDateString('bn-BD') : ''}
                     </div>
                   </div>
-                  <button onClick={() => deleteTalentWork(role, emailKey, work.id)} style={delBtn}>🗑</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    <button onClick={() => handleCopyLink(work.id)} style={copyBtn} title="Copy shareable link">
+                      {copiedId === work.id ? '✅ Copied' : '🔗 Copy Link'}
+                    </button>
+                    <button onClick={() => deleteTalentWork(role, emailKey, work.id)} style={delBtn}>🗑</button>
+                  </div>
                 </div>
 
                 {role === 'Singer' && work.fileUrl && (
-                  <audio controls src={work.fileUrl} style={{ width: '100%', marginTop: '10px', height: '36px' }} />
+                  work.mediaType === 'video' ? (
+                    <video controls src={work.fileUrl} style={{ width: '100%', borderRadius: '10px', marginTop: '10px', maxHeight: '200px' }} />
+                  ) : (
+                    <audio controls src={work.fileUrl} style={{ width: '100%', marginTop: '10px', height: '36px' }} />
+                  )
                 )}
 
                 {role === 'Painter' && work.fileUrl && (
@@ -307,6 +357,7 @@ const emptyBox   = { textAlign: 'center', padding: '50px 20px', display: 'flex',
 const workCard   = { background: 'rgba(255,255,255,0.95)', padding: '16px', borderRadius: '14px', boxShadow: '0 3px 12px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' };
 const reqCard    = { background: 'rgba(255,255,255,0.95)', padding: '16px', borderRadius: '14px', boxShadow: '0 3px 12px rgba(0,0,0,0.06)' };
 const delBtn     = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', flexShrink: 0 };
+const copyBtn    = { background: '#f0f0ff', color: '#6c5ce7', border: '1px solid #d4d0ff', padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' };
 const greenBtn   = { flex: 1, padding: '9px', background: '#2ecc71', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' };
 const redBtn     = { flex: 1, padding: '9px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' };
 

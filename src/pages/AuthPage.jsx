@@ -75,7 +75,7 @@ const AuthPage = () => {
     if (!emailPrompt) return;
     try {
       await sendPasswordResetEmail(getAuth(), emailPrompt.trim().toLowerCase());
-      alert("Password reset link sent! Check your email.");
+      alert("Password reset link sent! Check your email,please check spam folder also.");
     } catch (error) {
       alert("Password reset failed: " + error.message);
     }

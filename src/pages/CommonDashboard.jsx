@@ -172,6 +172,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   const [contactMsg,      setContactMsg]      = useState('');
   const [bidModal,        setBidModal]        = useState(null);
   const [allFollowers,    setAllFollowers]    = useState({});
+  const [highlightWorkId, setHighlightWorkId] = useState(null);   // ← NEW: shared-link work highlight
 
   const isOwnProfile = e => e?.toLowerCase()===user?.email?.toLowerCase();
   const followedKeys   = Object.keys(follows||{});
@@ -222,23 +223,35 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     return()=>unsub();
   },[]);
 
-  // Notification profile redirect
+  // Notification / shared-link profile redirect
   useEffect(()=>{
     if(!pendingProfile) return;
     const allTalentsList=[...talents.singer,...talents.painter,...talents.actor,...talents.dancer];
     const found=allTalentsList.find(t=>t.email?.toLowerCase()===pendingProfile.email?.toLowerCase());
     if(found){ setSelectedProfile(found); }
     else {
+      const fallbackRoleCfg = ROLE_CFG[pendingProfile.role] || { cat:'writer' };
       setSelectedProfile({
         email:      pendingProfile.email,
         name:       pendingProfile.name,
         profilePic: pendingProfile.pic,
         profession: pendingProfile.role||'',
-        category:   'writer',
+        category:   fallbackRoleCfg.cat,
       });
     }
+    setHighlightWorkId(pendingProfile.workId || null);   // ← NEW: remember which work to highlight/scroll to
     onClearPending?.();
   },[pendingProfile]);
+
+  // ── Scroll the shared work into view once its profile is open ──
+  useEffect(()=>{
+    if(!selectedProfile || !highlightWorkId) return;
+    const t = setTimeout(()=>{
+      const el = document.getElementById(`work-${highlightWorkId}`);
+      if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+    }, 200);
+    return ()=>clearTimeout(t);
+  },[selectedProfile, highlightWorkId]);
 
   const getFollowers=(email)=>{
     if(!email) return [];
@@ -497,7 +510,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             onSend={handleSendContact} onClose={()=>{setContactModal(null);setContactMsg('');}}/>
         )}
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
-          <button onClick={()=>setSelectedProfile(null)} style={backBtn}>← Back</button>
+          <button onClick={()=>{setSelectedProfile(null);setHighlightWorkId(null);}} style={backBtn}>← Back</button>
           {/* Follow/Unfollow for ANY user */}
           {!isMe&&(
             <button onClick={()=>iFollow?unfollowTalent(p.email):followTalent(p.email,name,pic)}
@@ -577,29 +590,49 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
           {p.category==='writer'&&writerStories.length>0&&(
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
               <p style={secLbl}>Stories ({writerStories.length})</p>
-              {writerStories.map(s=>(
-                <div key={s.id} style={{padding:'10px 12px',background:'#f8f9fa',borderRadius:10,marginBottom:8,cursor:'pointer'}}
-                  onClick={()=>{setSelectedProfile(null);setExpandedStory(s.id);}}>
-                  <div style={{fontWeight:700,color:'#4834d4',fontSize:14}}>{s.Name}</div>
-                  <div style={{fontSize:12,color:'#636e72'}}>{s.genre} · {s.logline?.slice(0,60)}...</div>
-                </div>
-              ))}
+              {writerStories.map(s=>{
+                const isHL = s.id===highlightWorkId;
+                return (
+                  <div key={s.id} id={`work-${s.id}`} style={{
+                    padding:'10px 12px',
+                    background: isHL ? '#fff3cd' : '#f8f9fa',
+                    borderRadius:10, marginBottom:8, cursor:'pointer',
+                    border: isHL ? '2px solid #fdcb6e' : '1px solid transparent',
+                    transition:'all 0.2s',
+                  }}
+                    onClick={()=>{setSelectedProfile(null);setExpandedStory(s.id);}}>
+                    <div style={{fontWeight:700,color:'#4834d4',fontSize:14}}>{s.Name}</div>
+                    <div style={{fontSize:12,color:'#636e72'}}>{s.genre} · {s.logline?.slice(0,60)}...</div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Singer: Songs */}
+          {/* Singer: Songs (audio or video) */}
           {p.category==='singer'&&p.songs&&(
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
               <p style={secLbl}>Songs ({Object.keys(p.songs).length})</p>
-              {Object.values(p.songs).map((s,i)=>(
-                <div key={i} style={{display:'flex',alignItems:'center',gap:10,background:'#f8f9fa',padding:10,borderRadius:10,marginBottom:8}}>
-                  <div style={{flex:'0 0 auto'}}>
-                    <div style={{fontWeight:600,fontSize:13}}>{s.title}</div>
-                    <div style={{fontSize:11,color:'#636e72'}}>{s.genre}</div>
+              {Object.entries(p.songs).map(([wid,s])=>{
+                const isHL = wid===highlightWorkId;
+                return (
+                  <div key={wid} id={`work-${wid}`} style={{
+                    display:'flex',alignItems:'center',gap:10,
+                    background: isHL ? '#fff3cd' : '#f8f9fa',
+                    padding:10, borderRadius:10, marginBottom:8,
+                    border: isHL ? '2px solid #fdcb6e' : '1px solid transparent',
+                    transition:'all 0.2s',
+                  }}>
+                    <div style={{flex:'0 0 auto'}}>
+                      <div style={{fontWeight:600,fontSize:13}}>{s.title}</div>
+                      <div style={{fontSize:11,color:'#636e72'}}>{s.genre}</div>
+                    </div>
+                    {s.mediaType==='video'
+                      ? <video controls src={s.fileUrl} style={{flex:1,borderRadius:8,maxHeight:160,minWidth:0}}/>
+                      : <audio controls src={s.fileUrl} style={{flex:1,height:32,minWidth:0}}/>}
                   </div>
-                  <audio controls src={s.fileUrl} style={{flex:1,height:32,minWidth:0}}/>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -608,7 +641,19 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
               <p style={secLbl}>Artworks — Copyright Protected ({Object.keys(p.artworks).length})</p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8}}>
-                {Object.values(p.artworks).map((a,i)=><ProtImg key={i} src={a.fileUrl} title={a.title}/>)}
+                {Object.entries(p.artworks).map(([wid,a])=>{
+                  const isHL = wid===highlightWorkId;
+                  return (
+                    <div key={wid} id={`work-${wid}`} style={{
+                      borderRadius:10,
+                      border: isHL ? '3px solid #fdcb6e' : '3px solid transparent',
+                      boxShadow: isHL ? '0 0 0 3px rgba(253,203,110,0.35)' : 'none',
+                      transition:'all 0.2s',
+                    }}>
+                      <ProtImg src={a.fileUrl} title={a.title}/>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -617,16 +662,23 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
           {(p.category==='actor'||p.category==='dancer')&&p.videos&&(
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
               <p style={secLbl}>{p.category==='actor'?'Videos':'Dance Videos'} ({Object.keys(p.videos).length})</p>
-              {Object.values(p.videos).map((v,i)=>(
-                <div key={i} style={{marginBottom:12}}>
-                  <div style={{fontWeight:600,fontSize:13,marginBottom:5}}>{v.title}</div>
-                  <video controls src={v.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:220}}/>
-                </div>
-              ))}
+              {Object.entries(p.videos).map(([wid,v])=>{
+                const isHL = wid===highlightWorkId;
+                return (
+                  <div key={wid} id={`work-${wid}`} style={{
+                    marginBottom:12, padding: isHL ? 8 : 0,
+                    border: isHL ? '2px solid #fdcb6e' : 'none',
+                    borderRadius:10, transition:'all 0.2s',
+                  }}>
+                    <div style={{fontWeight:600,fontSize:13,marginBottom:5}}>{v.title}</div>
+                    <video controls src={v.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:220}}/>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-        <div style={{textAlign:'center'}}><BackToDashboardBtn onClick={()=>setSelectedProfile(null)}/></div>
+        <div style={{textAlign:'center'}}><BackToDashboardBtn onClick={()=>{setSelectedProfile(null);setHighlightWorkId(null);}}/></div>
       </div>
     );
   }
@@ -779,7 +831,11 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                   </div>
                   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{w.title}</div>
                   <div style={{fontSize:12,color:'#636e72',marginBottom:8}}>{w.genre||w.style||w.type||''}</div>
-                  {activeTab==='singer'&&w.fileUrl&&<audio controls src={w.fileUrl} style={{width:'100%',height:32,marginBottom:8}}/>}
+                  {activeTab==='singer'&&w.fileUrl&&(
+                    w.mediaType==='video'
+                      ? <video controls src={w.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:200,marginBottom:8}}/>
+                      : <audio controls src={w.fileUrl} style={{width:'100%',height:32,marginBottom:8}}/>
+                  )}
                   {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={90}/>}
                   {(activeTab==='actor'||activeTab==='dancer')&&w.fileUrl&&(
                     <div style={{background:'#f8f9fa',borderRadius:10,padding:'8px 12px',fontSize:12,color:'#636e72',marginBottom:8,cursor:'pointer'}}

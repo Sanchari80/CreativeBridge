@@ -42,6 +42,27 @@ function App() {
     if (savedUser && !user) setUser(JSON.parse(savedUser));
   }, [setUser, user]);
 
+  // ── Read shareable work-link query params (?profile=&role=&work=) ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const profileEmail = params.get('profile');
+    const profileRole   = params.get('role');
+    const workId         = params.get('work');
+
+    if (profileEmail) {
+      setView('dashboard');
+      setPendingProfile({
+        email:  profileEmail,
+        role:   profileRole || '',
+        workId: workId || null,
+      });
+
+      // Clean the URL so refreshing doesn't re-trigger the redirect
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     const unsub = onValue(ref(db, 'requests'), snapshot => {

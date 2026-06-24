@@ -8,7 +8,7 @@ const CLOUD_NAME    = 'danbshghf';
 const UPLOAD_PRESET = 'CreativeBridge';
 
 const TALENT_CFG = {
-  Singer:  { label:'Song',    icon:'🎤', accept:'audio/*',  maxMB:50,  resourceType:'video', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' } },
+  Singer:  { label:'Song',    icon:'🎤', accept:'audio/*,video/*',  maxMB:100, resourceType:'video', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' } },
   Painter: { label:'Artwork', icon:'🎨', accept:'image/*',  maxMB:10,  resourceType:'image', extra:{ name:'style', ph:'Style (Abstract, Realism...)' } },
   Actor:   { label:'Video',   icon:'🎬', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' } },
   Dancer:  { label:'Video',   icon:'💃', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' } },
@@ -131,6 +131,14 @@ const TalentForm = ({ closeForm, user }) => {
   const dbPath   = `talents/${user?.role?.toLowerCase()}/${emailKey}`;
   const folder   = user?.role === 'Painter' ? 'artworks' : user?.role === 'Singer' ? 'songs' : 'videos';
 
+  // Detect whether selected file is audio or video (only relevant for Singer)
+  const getMediaType = (f) => {
+    if (!f) return null;
+    if (f.type?.startsWith('video/')) return 'video';
+    if (f.type?.startsWith('audio/')) return 'audio';
+    return null;
+  };
+
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
@@ -196,6 +204,7 @@ const TalentForm = ({ closeForm, user }) => {
       });
 
       // Step 3: Save work to Firebase
+      const mediaType = user.role === 'Singer' ? (getMediaType(file) || 'audio') : undefined;
       await push(ref(db, `${dbPath}/${folder}`), {
         title,
         fileUrl:       cloudUrl,
@@ -204,6 +213,7 @@ const TalentForm = ({ closeForm, user }) => {
         uploaderEmail: user.email,
         uploaderName:  user.name,
         uploaderPic:   user.profilePic || '/icon.png',
+        ...(mediaType ? { mediaType } : {}),
         ...(cfg.extra ? { [cfg.extra.name]: extra } : {}),
       });
 
@@ -244,7 +254,7 @@ const TalentForm = ({ closeForm, user }) => {
         {file ? (
           <>
             <span style={{ fontSize:28 }}>
-              {user.role==='Singer' ? '🎵' : user.role==='Painter' ? '🖼️' : '🎬'}
+              {user.role==='Singer' ? (getMediaType(file)==='video' ? '🎬' : '🎵') : user.role==='Painter' ? '🖼️' : '🎬'}
             </span>
             <p style={{ margin:'6px 0 2px', fontWeight:700, fontSize:14 }}>{file.name}</p>
             <p style={{ margin:0, fontSize:12, color:'#636e72' }}>
@@ -258,7 +268,7 @@ const TalentForm = ({ closeForm, user }) => {
               Tap to select file
             </p>
             <p style={{ margin:0, fontSize:12, color:'#94a3b8' }}>
-              {user.role==='Singer'  ? `MP3, WAV, M4A — max ${cfg.maxMB}MB` :
+              {user.role==='Singer'  ? `Audio (MP3, WAV) or Video (MP4, MOV) — max ${cfg.maxMB}MB` :
                user.role==='Painter' ? `JPG, PNG, WEBP — max ${cfg.maxMB}MB` :
                `MP4, MOV — max ${cfg.maxMB}MB`}
             </p>
