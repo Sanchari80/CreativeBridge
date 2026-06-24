@@ -80,7 +80,7 @@ function App() {
 
   const isTalent = TALENT_ROLES.includes(user?.role);
   const isHirer  = user?.role === 'Hirer' || user?.role === 'Looking for new stories';
-  const isAdmin  = user?.isAdmin === true;
+  const isAdmin  = user?.isAdmin === true || user?.role === 'Admin';
 
   return (
     <div className="app-container" style={appContainerStyle}>

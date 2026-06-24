@@ -154,6 +154,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     talentRequests, sendTalentRequest,
     follows, followTalent, unfollowTalent, isFollowing,
     promotedWorks, submitBid, bids,
+    deleteTalentWork,
   } = useContext(AppContext);
 
   const [activeTab,       setActiveTab]       = useState('writer');
@@ -802,6 +803,16 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                       </>
                     )}
                     {isOwner&&<button onClick={()=>setBidModal({work:w,category:activeTab})} style={{...followBtn,padding:'6px 10px',fontSize:11,background:'#a29bfe',color:'#fff'}}>💰 Promote</button>}
+                    {isOwner&&<button
+                      onClick={()=>{
+                        if(window.confirm("Delete this work?")){
+                          const roleMap={singer:'Singer',painter:'Painter',actor:'Actor',dancer:'Dancer'};
+                          deleteTalentWork(roleMap[activeTab], w.emailKey, w.id);
+                        }
+                      }}
+                      style={{...followBtn,padding:'6px 10px',fontSize:11,background:'#ff4757',color:'#fff'}}>
+                      🗑️
+                    </button>}
                   </div>
                 </div>
               );

@@ -54,6 +54,9 @@ export const AppProvider = ({ children, db }) => {
   const prevAdminNotifCount   = useRef(0);
   const prevBidNotifCount     = useRef(0);
 
+  // ── Admin detection (role-based OR isAdmin flag) ────────────────
+  const isAdminUser = user?.isAdmin === true || user?.role === 'Admin';
+
   // ── User sync ──────────────────────────────────────────────────
   useEffect(() => {
     if (!user?.email) { localStorage.removeItem('activeUser'); return; }
@@ -176,7 +179,7 @@ export const AppProvider = ({ children, db }) => {
 
   // ── Admin bid notifications ────────────────────────────────────
   useEffect(() => {
-    if (!user?.isAdmin) return;
+    if (!isAdminUser) return;
     const unsub = onValue(ref(db, 'adminNotifications'), snap => {
       const d = snap.val();
       if (d) {
@@ -191,7 +194,7 @@ export const AppProvider = ({ children, db }) => {
       } else setAdminNotifications([]);
     });
     return () => unsub();
-  }, [user?.isAdmin, db]);
+  }, [isAdminUser, db]);
 
   // ── User bid notifications ─────────────────────────────────────
   useEffect(() => {
