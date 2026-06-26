@@ -1088,8 +1088,29 @@ const backBtn=   {background:'none',border:'none',color:'#2d3436',cursor:'pointe
 const linkS=     {color:'#4834d4',fontWeight:'bold',textDecoration:'none',fontSize:14};
 const goldBadge= {background:'#fdcb6e',color:'#2d3436',padding:'3px 8px',borderRadius:20,fontSize:11,fontWeight:700};
 const silverBadge={background:'#b2bec3',color:'#fff',padding:'3px 8px',borderRadius:20,fontSize:11,fontWeight:700};
-const moOverlay= {position:'absolute',top:0,left:0,width:'100%',height:'50%',background:'rgba(0,0,0,0.7)',display:'flex',justifyContent:'center',alignItems:'center',zIndex:9999,backdropFilter:'blur(5px)'};
-const moBox=     {background:'#fff',padding:26,borderRadius:20,width:'90%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'};
+const moOverlay = {
+  position: 'fixed',           // ← fixed করো
+  top: 0, left: 0,
+  width: '100%',
+  height: '100%',               // ← পুরো স্ক্রিন
+  background: 'rgba(0,0,0,0.7)',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'flex-start',     // ← center থেকে flex-start
+  zIndex: 9999,
+  backdropFilter: 'blur(5px)',
+  overflowY: 'auto',            // ← scroll করতে দেয়
+  paddingTop: '20px',
+  paddingBottom: '20px',
+};
+const moBox = {
+  background: '#fff', padding: 26, borderRadius: 20,
+  width: '90%', maxWidth: 420,
+  maxHeight: 'none',            // ← 90vh থেকে none
+  overflowY: 'visible',         // ← auto থেকে visible (overlay নিজে scroll করবে)
+  flexShrink: 0,
+  marginBottom: '10px',
+};
 const ta=        {width:'100%',height:90,padding:10,borderRadius:10,border:'1px solid #ddd',marginBottom:14,boxSizing:'border-box',fontSize:13,resize:'none'};
 const cancelB=   {flex:1,padding:10,borderRadius:10,border:'1px solid #eee',cursor:'pointer',background:'#f8f9fa'};
 const confirmB=  {flex:1,padding:10,borderRadius:10,border:'none',background:'#2d3436',color:'#fff',cursor:'pointer',fontWeight:'bold'};
