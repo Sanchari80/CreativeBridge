@@ -27,26 +27,35 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
   const isTalent = TALENT_ROLES.includes(user?.role);
   const isHirer  = user?.role === 'Hirer' || user?.role === 'Looking for new stories';
 
+  // ── Story requests (Writer receives / Hirer sends — unchanged) ──
   const writerPending     = requests.filter(r => r.status === 'pending' && r.ownerPath === userKey).length;
-  const talentPending     = (talentRequests||[]).filter(r => r.status === 'pending' && r.ownerPath === userKey).length;
   const hirerUnreadStory  = requests.filter(r => r.status === 'approved' && r.fromEmail === user?.email && !r.read);
-  const hirerUnreadTalent = (talentRequests||[]).filter(r => r.status === 'approved' && r.fromEmail === user?.email && !r.read);
-  const hirerTotal        = hirerUnreadStory.length + hirerUnreadTalent.length;
+
+  // ── Contact requests — ANY role can send AND receive, so both
+  // directions are counted for everyone (not gated by role anymore) ──
+  const talentIncomingPending      = (talentRequests||[]).filter(r => r.status === 'pending' && r.ownerPath === userKey).length;
+  const talentOutgoingApprovedUnread = (talentRequests||[]).filter(r => r.status === 'approved' && r.fromEmail === user?.email && !r.read);
+  const talentTotal = talentIncomingPending + talentOutgoingApprovedUnread.length;
 
   // ── Bid notification counts ───────────────────────────────────
   const unreadBidNotifs   = (bidNotifications||[]).filter(n => !n.read).length;
   const unreadAdminNotifs = isAdmin ? (adminNotifications||[]).filter(n => !n.read).length : 0;
 
-  // Total bell count — role-based + bids + admin notifs
-  const baseCount  = isWriter ? writerPending : isTalent ? talentPending : isHirer ? hirerTotal : 0;
+  // Story count stays role-specific (Writer incoming / Hirer outgoing);
+  // contact count is universal for every role.
+  const storyCount = isWriter ? writerPending : isHirer ? hirerUnreadStory.length : 0;
+  const baseCount  = storyCount + talentTotal;
   const notifCount = baseCount + unreadBidNotifs + unreadAdminNotifs;
 
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
     setMenuOpen(false);
-    if (!showNotifications && isHirer) {
-      hirerUnreadStory.forEach(r  => update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`),       { read: true }));
-      hirerUnreadTalent.forEach(r => update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
+    if (!showNotifications) {
+      if (isHirer) {
+        hirerUnreadStory.forEach(r => update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
+      }
+      // Mark MY outgoing approved contact requests as read — works for any role
+      talentOutgoingApprovedUnread.forEach(r => update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
     }
   };
 

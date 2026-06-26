@@ -46,6 +46,13 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
     await remove(ref(db, path)).catch(e => alert("Error: " + e.message));
   };
 
+  // ── Mark an outgoing (sent) contact request as read once approved/declined ──
+  const markTalentNotifRead = async (item) => {
+    if (item.read) return;
+    try { await update(ref(db, `talentRequests/${item.ownerPath}/${item.firebaseKey}`), { read: true }); }
+    catch(e) {}
+  };
+
   const goToProfile = (email, name, pic, role) => {
     if (!email || !onViewProfile) return;
     onBack();
@@ -56,10 +63,16 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
     isWriter ? r.ownerPath?.toLowerCase() === emailKey
              : r.fromEmail?.toLowerCase() === user?.email?.toLowerCase()
   );
+
+  // ── Contact requests: ANY role can send AND receive, so we keep both
+  // directions — items where I'm the one being contacted (ownerPath===me)
+  // AND items where I'm the one who sent the request (fromEmail===me).
+  // Each item is then rendered based on its own direction, not a global role flag.
   const myTalentNotifs = talentRequests.filter(r =>
-    isTalent ? r.ownerPath === emailKey
-             : r.fromEmail?.toLowerCase() === user?.email?.toLowerCase()
+    r.ownerPath === emailKey ||
+    r.fromEmail?.toLowerCase() === user?.email?.toLowerCase()
   );
+
   const myFollowNotifs = followNotifications || [];
   const myBidNotifs    = bidNotifications    || [];
 
@@ -78,9 +91,12 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                 : allNotifs;
 
   const unreadFollow  = myFollowNotifs.filter(n => !n.read).length;
-  const unreadContact = isTalent
-    ? myTalentNotifs.filter(n => n.status === 'pending').length
-    : myTalentNotifs.filter(n => n.status === 'approved' && !n.read).length;
+
+  // ── Contact unread = (incoming pending requests) + (outgoing approved-but-unread) ──
+  const incomingPending          = myTalentNotifs.filter(n => n.ownerPath === emailKey && n.status === 'pending').length;
+  const outgoingApprovedUnread   = myTalentNotifs.filter(n => n.fromEmail?.toLowerCase() === user?.email?.toLowerCase() && n.status === 'approved' && !n.read).length;
+  const unreadContact = incomingPending + outgoingApprovedUnread;
+
   const unreadStory   = isWriter
     ? myStoryNotifs.filter(n => n.status === 'pending').length
     : myStoryNotifs.filter(n => n.status === 'approved' && !n.read).length;
@@ -210,41 +226,81 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
             </div>
           );
 
-          /* ── TALENT CONTACT ── */
-          if (item._type === 'talent') return (
-            <div key={item.firebaseKey || idx}
-              style={{ ...nCard, borderLeft:`4px solid ${sColor(item.status)}`, background: item.status==='pending'?'#fff9db':'#f9f9f9' }}>
-              <button onClick={() => deleteNotif(item,'talent')} style={delBtn}>🗑️</button>
-              <div style={{ display:'flex', alignItems:'flex-start', gap:'10px' }}>
-                <img src={item.fromPic || '/icon.png'} alt="" style={{ ...avSmall, cursor:'pointer' }} title="View Profile"
-                  onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')}
-                />
-                <div style={{ flex:1, fontSize:'13px', lineHeight:1.5 }}>
-                  {isTalent ? (
-                    <>
-                      <strong style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
-                        onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')}>
-                        {item.fromName}
-                      </strong>
-                      {item.fromProfession ? ` (${item.fromProfession})` : ''} wants to contact you.
-                      <div style={{ fontSize:'11px', color:sColor(item.status), marginTop:'3px', fontWeight:'700', textTransform:'capitalize' }}>{item.status}</div>
-                    </>
-                  ) : (
-                    <>Contact request to <strong>{item.talentName}</strong> is <strong style={{ color:sColor(item.status) }}>{item.status}</strong>!</>
-                  )}
+          /* ── TALENT CONTACT (works for ANY role, in either direction) ── */
+          if (item._type === 'talent') {
+            // Is this request someone contacting ME, or one I sent to someone else?
+            const isIncoming = item.ownerPath === emailKey;
+            const isOutgoingApprovedUnread = !isIncoming && item.status === 'approved' && !item.read;
+
+            return (
+              <div key={item.firebaseKey || idx}
+                style={{ ...nCard, borderLeft:`4px solid ${sColor(item.status)}`, background: item.status==='pending'?'#fff9db':'#f9f9f9', cursor: isOutgoingApprovedUnread ? 'pointer' : 'default' }}
+                onClick={() => { if (isOutgoingApprovedUnread) markTalentNotifRead(item); }}
+              >
+                <button onClick={e => { e.stopPropagation(); deleteNotif(item,'talent'); }} style={delBtn}>🗑️</button>
+
+                <div style={{ display:'flex', alignItems:'flex-start', gap:'10px' }}>
+                  <img
+                    src={isIncoming ? (item.fromPic||'/icon.png') : (item.talentPic||'/icon.png')}
+                    alt="" style={{ ...avSmall, cursor:'pointer' }} title="View Profile"
+                    onClick={e => {
+                      e.stopPropagation();
+                      isIncoming
+                        ? goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')
+                        : goToProfile(item.talentEmail, item.talentName, item.talentPic, '');
+                    }}
+                  />
+                  <div style={{ flex:1, fontSize:'13px', lineHeight:1.5 }}>
+                    {isIncoming ? (
+                      <>
+                        <strong style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
+                          onClick={e => { e.stopPropagation(); goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||''); }}>
+                          {item.fromName}
+                        </strong>
+                        {item.fromProfession ? ` (${item.fromProfession})` : ''} wants to contact you.
+                        <div style={{ fontSize:'11px', color:sColor(item.status), marginTop:'3px', fontWeight:'700', textTransform:'capitalize' }}>{item.status}</div>
+                      </>
+                    ) : (
+                      <>
+                        Your contact request to{' '}
+                        <strong style={{ cursor:'pointer', color:'#4834d4', textDecoration:'underline' }}
+                          onClick={e => { e.stopPropagation(); goToProfile(item.talentEmail, item.talentName, item.talentPic, ''); }}>
+                          {item.talentName}
+                        </strong>{' '}
+                        is <strong style={{ color:sColor(item.status) }}>{item.status}</strong>!
+                      </>
+                    )}
+                  </div>
+                  {isOutgoingApprovedUnread && <span style={{ width:'8px', height:'8px', background:'#2ecc71', borderRadius:'50%', flexShrink:0 }}/>}
                 </div>
+
+                {item.message && <div style={noteBox}>"{item.message}"</div>}
+
+                {/* Incoming: View sender's profile + Accept/Decline if still pending */}
+                {isIncoming && (
+                  <button onClick={e => { e.stopPropagation(); goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||''); }} style={profileBtn}>
+                    👤 View Profile
+                  </button>
+                )}
+                {isIncoming && item.status==='pending' && (
+                  <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
+                    <button onClick={e => { e.stopPropagation(); updateTalentRequest(item,'approved'); }} style={appBtn}>✅ Accept</button>
+                    <button onClick={e => { e.stopPropagation(); updateTalentRequest(item,'declined'); }} style={decBtn}>❌ Decline</button>
+                  </div>
+                )}
+                {isIncoming && item.status==='approved' && <p style={{ fontSize:'12px', color:'#2ecc71', margin:'6px 0 0' }}>✅ Contact info has been shared.</p>}
+
+                {/* Outgoing: View the talent's profile directly */}
+                {!isIncoming && (
+                  <button onClick={e => { e.stopPropagation(); goToProfile(item.talentEmail, item.talentName, item.talentPic, ''); }} style={{ ...profileBtn, background:'#2ecc71' }}>
+                    👤 View {item.talentName}'s Profile
+                  </button>
+                )}
+                {!isIncoming && item.status==='pending' && <p style={{ fontSize:'12px', color:'#f39c12', margin:'6px 0 0' }}>⏳ Waiting for approval...</p>}
+                {!isIncoming && item.status==='declined' && <p style={{ fontSize:'12px', color:'#e74c3c', margin:'6px 0 0' }}>❌ Your request was declined.</p>}
               </div>
-              {item.message && <div style={noteBox}>"{item.message}"</div>}
-              {isTalent && <button onClick={() => goToProfile(item.fromEmail, item.fromName, item.fromPic, item.fromProfession||'')} style={profileBtn}>👤 View Profile</button>}
-              {isTalent && item.status==='pending' && (
-                <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
-                  <button onClick={() => updateTalentRequest(item,'approved')} style={appBtn}>✅ Accept</button>
-                  <button onClick={() => updateTalentRequest(item,'declined')} style={decBtn}>❌ Decline</button>
-                </div>
-              )}
-              {isTalent && item.status==='approved' && <p style={{ fontSize:'12px', color:'#2ecc71', margin:'6px 0 0' }}>✅ Contact info has been shared.</p>}
-            </div>
-          );
+            );
+          }
 
           /* ── STORY ── */
           if (item._type === 'story') return (

@@ -98,13 +98,12 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user, db]);
 
-  // ── Talent requests ────────────────────────────────────────────
+  // ── Talent (contact) requests ────────────────────────────────────
+  // Any role can both send AND receive contact requests now, so the
+  // notification sounds below apply uniformly — not gated by role.
   useEffect(() => {
     if (!user) return;
-    const emailKey     = user.email.replace(/\./g, ',');
-    const TALENT_ROLES = ['Singer', 'Painter', 'Actor', 'Dancer', 'Writer'];
-    const isTalent     = TALENT_ROLES.includes(user.role);
-    const isHirer      = user.role === 'Hirer' || user.role === 'Looking for new stories';
+    const emailKey = user.email.replace(/\./g, ',');
 
     const unsub = onValue(ref(db, 'talentRequests'), snap => {
       const d = snap.val();
@@ -118,15 +117,15 @@ export const AppProvider = ({ children, db }) => {
         });
         setTalentRequests(all);
 
+        // Incoming: someone is sending ME a contact request (any role)
         const myPending = all.filter(r => r.ownerPath === emailKey && r.status === 'pending').length;
-        if (isTalent && prevTalentReqCount.current !== 0 && myPending > prevTalentReqCount.current)
+        if (prevTalentReqCount.current !== 0 && myPending > prevTalentReqCount.current)
           playSound('notify');
-        if (isTalent) prevTalentReqCount.current = myPending;
+        prevTalentReqCount.current = myPending;
 
-        if (isHirer) {
-          const approved = all.filter(r => r.fromEmail === user.email && r.status === 'approved' && !r.read);
-          if (approved.length > 0) playSound('approve');
-        }
+        // Outgoing: a request I sent just got approved (any role)
+        const approved = all.filter(r => r.fromEmail === user.email && r.status === 'approved' && !r.read);
+        if (approved.length > 0) playSound('approve');
       } else setTalentRequests([]);
     });
     return () => unsub();
