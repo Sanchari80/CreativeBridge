@@ -292,7 +292,7 @@ const TalentForm = ({ closeForm, user }) => {
             {file ? (
               <>
                 <span style={{ fontSize:28 }}>
-                  {user.role==='Singer' ? (getMediaType(file)==='video' ? '🎬' : '🎵') : user.role==='Painter' ? '🖼️' : '🎬'}
+                  {user.role==='Singer' ? (getMediaType(file)==='Audio' ? '🎬' : '🎵') : user.role==='Painter' ? '🖼️' : '🎬'}
                 </span>
                 <p style={{ margin:'6px 0 2px', fontWeight:700, fontSize:14 }}>{file.name}</p>
                 <p style={{ margin:0, fontSize:12, color:'#636e72' }}>
@@ -303,10 +303,10 @@ const TalentForm = ({ closeForm, user }) => {
               <>
                 <span style={{ fontSize:32 }}>{cfg.icon}</span>
                 <p style={{ margin:'8px 0 4px', fontWeight:700, fontSize:14 }}>
-                  Tap to select file
+                  Tap to select audio file only
                 </p>
                 <p style={{ margin:0, fontSize:12, color:'#94a3b8' }}>
-                  {user.role==='Singer'  ? `Audio (MP3, WAV) or Video (MP4, MOV) — max ${cfg.maxMB}MB` :
+                  {user.role==='Singer'  ? `Audio (MP3, WAV)— max ${cfg.maxMB}MB` :
                    user.role==='Painter' ? `JPG, PNG, WEBP — max ${cfg.maxMB}MB` :
                    `MP4, MOV — max ${cfg.maxMB}MB`}
                 </p>
