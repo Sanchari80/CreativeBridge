@@ -25,6 +25,18 @@ const ROLE_CFG = {
   'Looking for new stories': { color:'#636e72', label:'🔍 Hirer', cat:'hirer' },
 };
 
+// ── Detect Google Drive links and build an embeddable preview URL ──
+// Cloudinary URLs play fine with normal <video>/<audio> tags, but a raw
+// Google Drive "share" link is just an HTML viewer page — it can't be
+// used directly as a media `src`. We detect Drive links and embed them
+// via Drive's own /preview endpoint inside an <iframe> instead.
+const isDriveLink = (url) => /drive\.google\.com/.test(url || '');
+const driveEmbedUrl = (url) => {
+  if (!url) return null;
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  return m ? `https://drive.google.com/file/d/${m[1]}/preview` : url;
+};
+
 const BackToDashboardBtn = ({ onClick }) => (
   <button onClick={onClick} style={{ padding:'10px 20px', background:'#2d3436', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', marginTop:'15px' }}>
     ← Back to Dashboard
@@ -609,12 +621,13 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             </div>
           )}
 
-          {/* Singer: Songs (audio or video) */}
+          {/* Singer: Songs (audio, video, or Drive link) */}
           {p.category==='singer'&&p.songs&&(
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
               <p style={secLbl}>Songs ({Object.keys(p.songs).length})</p>
               {Object.entries(p.songs).map(([wid,s])=>{
                 const isHL = wid===highlightWorkId;
+                const fromDrive = isDriveLink(s.fileUrl);
                 return (
                   <div key={wid} id={`work-${wid}`} style={{
                     display:'flex',alignItems:'center',gap:10,
@@ -627,7 +640,9 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                       <div style={{fontWeight:600,fontSize:13}}>{s.title}</div>
                       <div style={{fontSize:11,color:'#636e72'}}>{s.genre}</div>
                     </div>
-                    {s.mediaType==='video'
+                    {fromDrive ? (
+                      <iframe src={driveEmbedUrl(s.fileUrl)} style={{flex:1,height:s.mediaType==='video'?160:80,border:'none',borderRadius:8,minWidth:0}} allow="autoplay" title={s.title}/>
+                    ) : s.mediaType==='video'
                       ? <video controls src={s.fileUrl} style={{flex:1,borderRadius:8,maxHeight:160,minWidth:0}}/>
                       : <audio controls src={s.fileUrl} style={{flex:1,height:32,minWidth:0}}/>}
                   </div>
@@ -658,12 +673,13 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
             </div>
           )}
 
-          {/* Actor/Dancer: Videos */}
+          {/* Actor/Dancer: Videos (Cloudinary or Drive link) */}
           {(p.category==='actor'||p.category==='dancer')&&p.videos&&(
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #eee'}}>
               <p style={secLbl}>{p.category==='actor'?'Videos':'Dance Videos'} ({Object.keys(p.videos).length})</p>
               {Object.entries(p.videos).map(([wid,v])=>{
                 const isHL = wid===highlightWorkId;
+                const fromDrive = isDriveLink(v.fileUrl);
                 return (
                   <div key={wid} id={`work-${wid}`} style={{
                     marginBottom:12, padding: isHL ? 8 : 0,
@@ -671,7 +687,9 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                     borderRadius:10, transition:'all 0.2s',
                   }}>
                     <div style={{fontWeight:600,fontSize:13,marginBottom:5}}>{v.title}</div>
-                    <video controls src={v.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:220}}/>
+                    {fromDrive
+                      ? <iframe src={driveEmbedUrl(v.fileUrl)} style={{width:'100%',height:220,border:'none',borderRadius:10}} allow="autoplay" title={v.title}/>
+                      : <video controls src={v.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:220}}/>}
                   </div>
                 );
               })}
@@ -817,6 +835,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
               const promoT=getPromoTokens(activeTab,w.id,w.emailKey);
               const reqSt=getReqStatus(w.uploaderEmail);
               const fCount=getFollowerCount(w.uploaderEmail);
+              const fromDrive = isDriveLink(w.fileUrl);
               return(
                 <div key={i} style={{...card,position:'relative'}}>
                   {promoT>0&&<span style={{position:'absolute',top:10,right:10,...(promoT===5?goldBadge:silverBadge)}}>{promoT===5?'🥇':'🥈'}</span>}
@@ -832,7 +851,9 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                   <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{w.title}</div>
                   <div style={{fontSize:12,color:'#636e72',marginBottom:8}}>{w.genre||w.style||w.type||''}</div>
                   {activeTab==='singer'&&w.fileUrl&&(
-                    w.mediaType==='video'
+                    fromDrive ? (
+                      <iframe src={driveEmbedUrl(w.fileUrl)} style={{width:'100%',height:w.mediaType==='video'?200:80,border:'none',borderRadius:10,marginBottom:8}} allow="autoplay" title={w.title}/>
+                    ) : w.mediaType==='video'
                       ? <video controls src={w.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:200,marginBottom:8}}/>
                       : <audio controls src={w.fileUrl} style={{width:'100%',height:32,marginBottom:8}}/>
                   )}

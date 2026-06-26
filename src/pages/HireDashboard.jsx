@@ -12,6 +12,17 @@ const CATS = [
   { id: 'dancer',  label: 'Dancers',               emoji: '💃', color: '#fd79a8' },
 ];
 
+// ── Detect Google Drive links and build an embeddable preview URL ──
+// (Cloudinary URLs play fine in normal <video>/<audio> tags, but a raw
+// Drive "share" link is just an HTML viewer page — it has to be embedded
+// via Drive's own /preview endpoint inside an <iframe> instead.)
+const isDriveLink = (url) => /drive\.google\.com/.test(url || '');
+const driveEmbedUrl = (url) => {
+  if (!url) return null;
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  return m ? `https://drive.google.com/file/d/${m[1]}/preview` : url;
+};
+
 const HireDashboard = () => {
   const { user, stories, sendTalentRequest, talentRequests } = useContext(AppContext);
 
@@ -167,19 +178,28 @@ const HireDashboard = () => {
             </div>
           )}
 
-          {/* Singer songs */}
+          {/* Singer songs (audio, video, or Drive link) */}
           {t.category === 'singer' && t.songs && (
             <div style={section}>
               <p style={sectionLabel}>Songs</p>
-              {Object.values(t.songs).map((song, i) => (
-                <div key={i} style={{ ...miniCard, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ flex: '0 0 auto' }}>
-                    <div style={{ fontWeight: '600', fontSize: '13px' }}>{song.title}</div>
-                    <div style={{ fontSize: '11px', color: '#636e72' }}>{song.genre}</div>
+              {Object.values(t.songs).map((song, i) => {
+                const fromDrive = isDriveLink(song.fileUrl);
+                return (
+                  <div key={i} style={{ ...miniCard, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                      <div style={{ fontWeight: '600', fontSize: '13px' }}>{song.title}</div>
+                      <div style={{ fontSize: '11px', color: '#636e72' }}>{song.genre}</div>
+                    </div>
+                    {fromDrive ? (
+                      <iframe src={driveEmbedUrl(song.fileUrl)} style={{ flex: 1, height: song.mediaType === 'video' ? 160 : 80, border: 'none', borderRadius: 8, minWidth: 0 }} allow="autoplay" title={song.title} />
+                    ) : song.mediaType === 'video' ? (
+                      <video controls src={song.fileUrl} style={{ flex: 1, borderRadius: 8, maxHeight: 160, minWidth: 0 }} />
+                    ) : (
+                      <audio controls src={song.fileUrl} style={{ flex: 1, height: '32px', minWidth: 0 }} />
+                    )}
                   </div>
-                  <audio controls src={song.fileUrl} style={{ flex: 1, height: '32px', minWidth: 0 }} />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -195,16 +215,23 @@ const HireDashboard = () => {
             </div>
           )}
 
-          {/* Actor/Dancer videos */}
+          {/* Actor/Dancer videos (Cloudinary or Drive link) */}
           {(t.category === 'actor' || t.category === 'dancer') && t.videos && (
             <div style={section}>
               <p style={sectionLabel}>{t.category === 'actor' ? 'Videos' : 'Dance Videos'}</p>
-              {Object.values(t.videos).map((vid, i) => (
-                <div key={i} style={{ marginBottom: '12px' }}>
-                  <div style={{ fontWeight: '600', marginBottom: '5px', fontSize: '13px' }}>{vid.title}</div>
-                  <video controls src={vid.fileUrl} style={{ width: '100%', borderRadius: '10px', maxHeight: '220px' }} />
-                </div>
-              ))}
+              {Object.values(t.videos).map((vid, i) => {
+                const fromDrive = isDriveLink(vid.fileUrl);
+                return (
+                  <div key={i} style={{ marginBottom: '12px' }}>
+                    <div style={{ fontWeight: '600', marginBottom: '5px', fontSize: '13px' }}>{vid.title}</div>
+                    {fromDrive ? (
+                      <iframe src={driveEmbedUrl(vid.fileUrl)} style={{ width: '100%', height: '220px', border: 'none', borderRadius: '10px' }} allow="autoplay" title={vid.title} />
+                    ) : (
+                      <video controls src={vid.fileUrl} style={{ width: '100%', borderRadius: '10px', maxHeight: '220px' }} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

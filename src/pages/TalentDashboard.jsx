@@ -1,14 +1,17 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ref, onValue, push, set } from "firebase/database";
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { db, storage } from '../App.jsx';
+import { db } from '../App.jsx';
+
+// ── Cloudinary config (same as PostForm.jsx) ────────────────────
+const CLOUD_NAME    = 'danbshghf';
+const UPLOAD_PRESET = 'CreativeBridge';
 
 const CONFIG = {
-  Singer:  { folder: 'songs',    label: 'Songs',    icon: '🎤', accept: 'audio/*,video/*',  hint: 'Audio (MP3, WAV, FLAC) or Video (MP4, MOV) — max 100MB' },
-  Painter: { folder: 'artworks', label: 'Artworks', icon: '🎨', accept: 'image/*',  hint: 'JPG, PNG — সম্পূর্ণ Copyright protected' },
-  Actor:   { folder: 'videos',   label: 'Videos',   icon: '🎬', accept: 'video/*',  hint: 'MP4, MOV — max 2 mins · 500MB' },
-  Dancer:  { folder: 'videos',   label: 'Videos',   icon: '💃', accept: 'video/*',  hint: 'MP4, MOV — max 2 mins · 500MB' },
+  Singer:  { folder: 'songs',    label: 'Songs',    icon: '🎤', accept: 'audio/*,video/*',  resourceType:'video', maxMB:100, hint: 'Audio (MP3, WAV, FLAC) or Video (MP4, MOV) — max 100MB. Bigger video? Paste a Drive link instead.', allowLink:true },
+  Painter: { folder: 'artworks', label: 'Artworks', icon: '🎨', accept: 'image/*',          resourceType:'image', maxMB:10,  hint: 'JPG, PNG — সম্পূর্ণ Copyright protected', allowLink:false },
+  Actor:   { folder: 'videos',   label: 'Videos',   icon: '🎬', accept: 'video/*',          resourceType:'video', maxMB:100, hint: 'MP4, MOV — max 100MB. Bigger video? Paste a Drive link instead.', allowLink:true },
+  Dancer:  { folder: 'videos',   label: 'Videos',   icon: '💃', accept: 'video/*',          resourceType:'video', maxMB:100, hint: 'MP4, MOV — max 100MB. Bigger video? Paste a Drive link instead.', allowLink:true },
 };
 
 const EXTRA = {
@@ -29,6 +32,9 @@ const TalentDashboard = () => {
   const [progress, setProgress]         = useState(0);
   const [uploading, setUploading]       = useState(false);
   const [copiedId, setCopiedId]         = useState(null);
+  const [uploadMode, setUploadMode]     = useState('file');   // ← NEW: 'file' or 'link'
+  const [driveLink, setDriveLink]       = useState('');       // ← NEW: drive link input
+  const [linkMediaType, setLinkMediaType] = useState('video'); // ← NEW: audio/video choice for link mode (Singer)
   const fileInputRef                    = useRef(null);
 
   const role     = user?.role;
@@ -89,53 +95,87 @@ const TalentDashboard = () => {
     }
   };
 
+  // ── Upload selected file to Cloudinary with progress ────────────
+  const uploadToCloudinary = () => new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file',          file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+    formData.append('folder',        'CreativeBridge');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${cfg.resourceType}/upload`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) setProgress(Math.round(e.loaded / e.total * 100));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        resolve(data.secure_url);
+      } else {
+        reject(new Error('Upload failed: ' + xhr.statusText));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.send(formData);
+  });
+
   const handleUpload = async () => {
     if (!form.title.trim()) return alert("Title দিন!");
-    if (!file)              return alert("File select করুন!");
+
+    if (uploadMode === 'file') {
+      if (!file) return alert("File select করুন!");
+    } else {
+      if (!driveLink.trim()) return alert("Drive link দিন!");
+      if (!driveLink.trim().startsWith('http')) return alert("সঠিক link দিন (http দিয়ে শুরু হতে হবে)!");
+    }
 
     setUploading(true);
     setProgress(0);
 
     try {
-      const path     = `talents/${role.toLowerCase()}/${emailKey}/${cfg.folder}/${Date.now()}_${file.name}`;
-      const fRef     = storageRef(storage, path);
-      const task     = uploadBytesResumable(fRef, file);
+      let finalUrl;
+      let mediaType;
 
-      task.on('state_changed',
-        snap => setProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
-        err  => { setUploading(false); alert("Upload failed: " + err.message); },
-        async () => {
-          const url = await getDownloadURL(task.snapshot.ref);
+      if (uploadMode === 'file') {
+        finalUrl = await uploadToCloudinary();
+        mediaType = role === 'Singer' ? (getMediaType(file) || 'audio') : undefined;
+      } else {
+        finalUrl = driveLink.trim();
+        mediaType = role === 'Singer' ? linkMediaType : undefined;
+        setProgress(100);
+      }
 
-          // Profile info save (first upload বা update)
-          await set(ref(db, `${dbPath}/profile`), {
-            name:       user.name,
-            email:      user.email,
-            profilePic: user.profilePic || '/icon.png',
-            profession: user.profession || role,
-            address:    user.address    || '',
-            phone:      user.phone      || '',
-            bio:        user.bio        || '',
-          });
+      // Profile info save (first upload বা update)
+      await set(ref(db, `${dbPath}/profile`), {
+        name:       user.name,
+        email:      user.email,
+        profilePic: user.profilePic || '/icon.png',
+        profession: user.profession || role,
+        address:    user.address    || '',
+        phone:      user.phone      || '',
+        bio:        user.bio        || '',
+      });
 
-          // Work metadata save
-          const mediaType = role === 'Singer' ? (getMediaType(file) || 'audio') : undefined;
-          await push(ref(db, `${dbPath}/${cfg.folder}`), {
-            title:       form.title,
-            fileUrl:     url,
-            uploadedAt:  Date.now(),
-            ...(mediaType ? { mediaType } : {}),
-            ...(extraCfg ? { [extraCfg.name]: form.extra } : {}),
-          });
+      // Work metadata save
+      await push(ref(db, `${dbPath}/${cfg.folder}`), {
+        title:       form.title,
+        fileUrl:     finalUrl,
+        uploadedAt:  Date.now(),
+        ...(mediaType ? { mediaType } : {}),
+        ...(extraCfg ? { [extraCfg.name]: form.extra } : {}),
+      });
 
-          setUploading(false);
-          setProgress(0);
-          setFile(null);
-          setForm({ title: '', extra: '' });
-          setShowUpload(false);
-          alert("Upload successful!");
-        }
-      );
+      setUploading(false);
+      setProgress(0);
+      setFile(null);
+      setDriveLink('');
+      setForm({ title: '', extra: '' });
+      setShowUpload(false);
+      setUploadMode('file');
+      alert("Upload successful!");
     } catch (e) {
       setUploading(false);
       alert("Error: " + e.message);
@@ -196,22 +236,98 @@ const TalentDashboard = () => {
             />
           )}
 
-          <div style={dropZone} onClick={() => fileInputRef.current?.click()}>
-            {file ? (
-              <>
-                <span style={{ fontSize: '24px' }}>✅</span>
-                <p style={{ margin: '6px 0 2px', fontWeight: '600', fontSize: '14px' }}>{file.name}</p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#636e72' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-              </>
-            ) : (
-              <>
-                <span style={{ fontSize: '32px' }}>{role === 'Singer' ? '🎵' : role === 'Painter' ? '🖼' : '🎬'}</span>
-                <p style={{ margin: '8px 0 4px', fontWeight: '600', fontSize: '14px' }}>Click to choose file</p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#636e72' }}>{cfg.hint}</p>
-              </>
-            )}
-          </div>
-          <input ref={fileInputRef} type="file" accept={cfg.accept} onChange={e => setFile(e.target.files[0] || null)} style={{ display: 'none' }} />
+          {/* Mode toggle: File upload vs Drive Link (not shown for Painter) */}
+          {cfg.allowLink && (
+            <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+              <button
+                onClick={() => setUploadMode('file')}
+                style={{ ...modeBtn, ...(uploadMode==='file' ? modeBtnActive : {}) }}
+              >
+                📤 Upload File
+              </button>
+              <button
+                onClick={() => setUploadMode('link')}
+                style={{ ...modeBtn, ...(uploadMode==='link' ? modeBtnActive : {}) }}
+              >
+                🔗 Paste Drive Link
+              </button>
+            </div>
+          )}
+
+          {/* ── FILE MODE ── */}
+          {uploadMode === 'file' && (
+            <>
+              <div style={dropZone} onClick={() => fileInputRef.current?.click()}>
+                {file ? (
+                  <>
+                    <span style={{ fontSize: '24px' }}>✅</span>
+                    <p style={{ margin: '6px 0 2px', fontWeight: '600', fontSize: '14px' }}>{file.name}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#636e72' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '32px' }}>{role === 'Singer' ? '🎵' : role === 'Painter' ? '🖼' : '🎬'}</span>
+                    <p style={{ margin: '8px 0 4px', fontWeight: '600', fontSize: '14px' }}>Click to choose file</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#636e72' }}>{cfg.hint}</p>
+                  </>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={cfg.accept}
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (!f) return;
+                  const maxBytes = (cfg.maxMB || 50) * 1024 * 1024;
+                  if (f.size > maxBytes) {
+                    alert(`File too large! Maximum size is ${cfg.maxMB}MB. Use "Paste Drive Link" instead for bigger files.`);
+                    e.target.value = '';
+                    return;
+                  }
+                  setFile(f);
+                }}
+                style={{ display: 'none' }}
+              />
+            </>
+          )}
+
+          {/* ── LINK MODE ── */}
+          {uploadMode === 'link' && (
+            <div style={linkBox}>
+              <p style={linkLabel}>🔗 Paste your Google Drive (or any) link *</p>
+              <input
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={driveLink}
+                onChange={e => setDriveLink(e.target.value)}
+                style={inp}
+              />
+              <p style={linkHint}>
+                Upload your video to Google Drive → Share → "Anyone with the link" → paste the link here.
+              </p>
+
+              {role === 'Singer' && (
+                <div style={{ marginTop:8 }}>
+                  <p style={{ fontSize:12, fontWeight:700, color:'#636e72', margin:'0 0 6px' }}>This link is:</p>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button
+                      onClick={() => setLinkMediaType('audio')}
+                      style={{ ...modeBtn, flex:1, ...(linkMediaType==='audio' ? modeBtnActive : {}) }}
+                    >
+                      🎵 Audio
+                    </button>
+                    <button
+                      onClick={() => setLinkMediaType('video')}
+                      style={{ ...modeBtn, flex:1, ...(linkMediaType==='video' ? modeBtnActive : {}) }}
+                    >
+                      🎬 Video
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {role === 'Painter' && (
             <div style={noticeBox}>
@@ -219,7 +335,7 @@ const TalentDashboard = () => {
             </div>
           )}
 
-          {uploading && (
+          {uploading && uploadMode === 'file' && (
             <div style={{ marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                 <span style={{ fontSize: '13px', color: '#636e72' }}>Uploading...</span>
@@ -232,7 +348,7 @@ const TalentDashboard = () => {
           )}
 
           <button onClick={handleUpload} disabled={uploading} style={{ ...uploadBtn, width: '100%', padding: '13px', opacity: uploading ? 0.7 : 1 }}>
-            {uploading ? `Uploading... ${progress}%` : '🚀 Publish'}
+            {uploading ? (uploadMode==='file' ? `Uploading... ${progress}%` : 'Saving...') : '🚀 Publish'}
           </button>
         </div>
       )}
@@ -360,5 +476,10 @@ const delBtn     = { background: 'none', border: 'none', cursor: 'pointer', font
 const copyBtn    = { background: '#f0f0ff', color: '#6c5ce7', border: '1px solid #d4d0ff', padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' };
 const greenBtn   = { flex: 1, padding: '9px', background: '#2ecc71', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' };
 const redBtn     = { flex: 1, padding: '9px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' };
+const modeBtn       = { flex:1, padding:'9px 12px', border:'1.5px solid #eee', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, background:'#f8f9fa', color:'#636e72' };
+const modeBtnActive = { background:'#2d3436', color:'#fff', border:'1.5px solid #2d3436' };
+const linkBox    = { border:'2px dashed #dfe6e9', borderRadius:12, padding:14, marginBottom:12, background:'#f8f9ff' };
+const linkLabel  = { fontSize:12, fontWeight:700, color:'#6c5ce7', margin:'0 0 8px' };
+const linkHint   = { fontSize:11, color:'#94a3b8', margin:'6px 0 0', lineHeight:1.5 };
 
 export default TalentDashboard;

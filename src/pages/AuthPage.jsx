@@ -13,13 +13,15 @@ const ROLE_OPTIONS = [
   { value: 'Hirer',   emoji: '🔍', label: 'Hirer',            desc: 'Hire talented individuals' },
 ];
 
+const EMPTY_FORM = {
+  name: '', email: '', password: '', role: 'Writer',
+  profession: '', phone: '', whatsapp: '', facebook: '', address: '',
+};
+
 const AuthPage = () => {
   const { setUser } = useContext(AppContext);
   const [view, setView] = useState('login');
-  const [form, setForm] = useState({
-    name: '', email: '', password: '', role: 'Writer',
-    profession: '', phone: '', whatsapp: '', facebook: '', address: '',
-  });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
 
   const set_ = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -37,6 +39,7 @@ const AuthPage = () => {
           const foundUser = snapshot.val();
           localStorage.setItem('activeUser', JSON.stringify(foundUser));
           setUser(foundUser);
+          setForm({ ...EMPTY_FORM });   // ← clear form so stale data never lingers after logout/login
         } else {
           alert("Account not found in database.");
         }
@@ -54,6 +57,7 @@ const AuthPage = () => {
         await set(ref(db, `users/${emailKey}`), newUser);
         localStorage.setItem('activeUser', JSON.stringify(newUser));
         setUser(newUser);
+        setForm({ ...EMPTY_FORM });     // ← clear form after successful signup too
         alert("Account created successfully!");
       } catch (error) {
         if (error.code === 'auth/email-already-in-use') {
@@ -87,7 +91,7 @@ const AuthPage = () => {
         <div style={authCard}>
 
           {view === 'signup' && (
-            <button onClick={() => setView('login')} style={backBtn}>← Back to Login</button>
+            <button onClick={() => { setView('login'); setForm({ ...EMPTY_FORM }); }} style={backBtn}>← Back to Login</button>
           )}
 
           <img src="/icon.png" alt="Icon" style={{ width: '50px', marginBottom: '15px' }} />
@@ -121,28 +125,28 @@ const AuthPage = () => {
                 ))}
               </div>
 
-              <input placeholder="Full Name *" style={inp}
+              <input placeholder="Full Name *" style={inp} value={form.name}
                 onChange={e => set_('name', e.target.value)} onKeyDown={handleKeyDown}/>
               <input placeholder={form.role === 'Hirer' ? 'Profession / Company Name *' : 'Profession / Expertise *'}
-                style={inp} onChange={e => set_('profession', e.target.value)} onKeyDown={handleKeyDown}/>
-              <input placeholder="Full Address (Road, Area, District) *" style={inp}
+                style={inp} value={form.profession} onChange={e => set_('profession', e.target.value)} onKeyDown={handleKeyDown}/>
+              <input placeholder="Full Address (Road, Area, District) *" style={inp} value={form.address}
                 onChange={e => set_('address', e.target.value)} onKeyDown={handleKeyDown}/>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <input placeholder="Phone Number *" style={{ ...inp, margin: 0 }}
+                <input placeholder="Phone Number *" style={{ ...inp, margin: 0 }} value={form.phone}
                   onChange={e => set_('phone', e.target.value)} onKeyDown={handleKeyDown}/>
-                <input placeholder="WhatsApp" style={{ ...inp, margin: 0 }}
+                <input placeholder="WhatsApp" style={{ ...inp, margin: 0 }} value={form.whatsapp}
                   onChange={e => set_('whatsapp', e.target.value)} onKeyDown={handleKeyDown}/>
               </div>
-              <input placeholder="Facebook Profile Link" style={inp}
+              <input placeholder="Facebook Profile Link" style={inp} value={form.facebook}
                 onChange={e => set_('facebook', e.target.value)} onKeyDown={handleKeyDown}/>
             </>
           )}
 
           {/* COMMON */}
-          <input placeholder="Email *" type="email" style={inp}
+          <input placeholder="Email *" type="email" style={inp} value={form.email}
             onChange={e => set_('email', e.target.value)} onKeyDown={handleKeyDown}/>
-          <input placeholder="Password *" type="password" style={inp}
+          <input placeholder="Password *" type="password" style={inp} value={form.password}
             onChange={e => set_('password', e.target.value)} onKeyDown={handleKeyDown}/>
 
           {view === 'login' && (
@@ -160,7 +164,7 @@ const AuthPage = () => {
           {view === 'login' && (
             <p style={{ marginTop: '20px', fontSize: '14px' }}>
               Don't have an account?{' '}
-              <span onClick={() => setView('signup')} style={{ color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold' }}>
+              <span onClick={() => { setView('signup'); setForm({ ...EMPTY_FORM }); }} style={{ color: '#6c5ce7', cursor: 'pointer', fontWeight: 'bold' }}>
                 Sign Up
               </span>
             </p>
