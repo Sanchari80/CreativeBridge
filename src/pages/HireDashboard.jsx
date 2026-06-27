@@ -5,6 +5,7 @@ import { db } from '../App.jsx';
 
 const CATS = [
   { id: 'all',     label: 'All Talent',           emoji: '⭐', color: '#2d3436' },
+  { id: 'saved',   label: 'Saved',                emoji: '❤️', color: '#e84393' },
   { id: 'writer',  label: 'Script Writers',        emoji: '✍️', color: '#4834d4' },
   { id: 'singer',  label: 'Singers',               emoji: '🎤', color: '#00b894' },
   { id: 'painter', label: 'Painters / Designers',  emoji: '🎨', color: '#e17055' },
@@ -32,6 +33,22 @@ const HireDashboard = () => {
   const [message, setMessage]             = useState('');
   const [selectedTalent, setSelectedTalent] = useState(null);
   const [searchQuery, setSearchQuery]     = useState('');
+
+  // ── Personally saved talents (Hirer-only bookmarking, kept on this device) ──
+  const [savedTalents, setSavedTalents] = useState(() => {
+    const s = localStorage.getItem('savedTalents');
+    return s ? JSON.parse(s) : [];
+  });
+
+  const isSaved = (email) => !!email && savedTalents.includes(email.toLowerCase());
+
+  const toggleSaveTalent = (email) => {
+    if (!email) return;
+    const e = email.toLowerCase();
+    const next = savedTalents.includes(e) ? savedTalents.filter(x => x !== e) : [...savedTalents, e];
+    setSavedTalents(next);
+    localStorage.setItem('savedTalents', JSON.stringify(next));
+  };
 
   // Firebase থেকে singer/painter/actor/dancer fetch
   useEffect(() => {
@@ -89,7 +106,9 @@ const HireDashboard = () => {
     ...talents.dancer,
   ];
 
-  const filtered = (activeCat === 'all' ? allTalents :
+  const filtered = (
+    activeCat === 'all'    ? allTalents :
+    activeCat === 'saved'  ? allTalents.filter(t => isSaved(t.email)) :
     activeCat === 'writer' ? writerProfiles :
     talents[activeCat] || []
   ).filter(t => {
@@ -135,7 +154,10 @@ const HireDashboard = () => {
               <p style={metaText}>📍 {t.address || t.city || 'Bangladesh'}</p>
               {t.profession && <p style={metaText}>💼 {t.profession}</p>}
             </div>
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+              <button onClick={() => toggleSaveTalent(t.email)} style={{ ...saveDetailBtn, background: isSaved(t.email) ? '#e84393' : '#fff', color: isSaved(t.email) ? '#fff' : '#e84393', border: `1.5px solid #e84393` }}>
+                {isSaved(t.email) ? '❤️ Saved' : '🤍 Save'}
+              </button>
               {status === null     && <button onClick={() => setContactModal(t)} style={reqBtn}>📩 Send Contact Request</button>}
               {status === 'pending'   && <div style={pendingBadge}>⏳ Request Pending</div>}
               {status === 'approved'  && <div style={approvedBadge}>✅ Approved</div>}
@@ -252,7 +274,7 @@ const HireDashboard = () => {
             color:        activeCat === cat.id ? '#fff'    : '#2d3436',
             borderColor:  activeCat === cat.id ? '#2d3436' : '#eee',
           }}>
-            {cat.emoji} {cat.label}
+            {cat.emoji} {cat.label}{cat.id === 'saved' && savedTalents.length > 0 ? ` (${savedTalents.length})` : ''}
           </button>
         ))}
       </div>
@@ -274,8 +296,8 @@ const HireDashboard = () => {
       {/* Grid */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#b2bec3' }}>
-          <p style={{ fontSize: '40px' }}>🎭</p>
-          <p>No talent found in this category yet.</p>
+          <p style={{ fontSize: '40px' }}>{activeCat === 'saved' ? '❤️' : '🎭'}</p>
+          <p>{activeCat === 'saved' ? "You haven't saved anyone yet." : 'No talent found in this category yet.'}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: '14px' }}>
@@ -290,6 +312,9 @@ const HireDashboard = () => {
                     <div style={{ fontWeight: '700', fontSize: '14px' }}>{t.name}</div>
                     <div style={{ fontSize: '11px', color: '#636e72' }}>📍 {(t.address || '').split(',')[0] || 'Bangladesh'}</div>
                   </div>
+                  <button onClick={e => { e.stopPropagation(); toggleSaveTalent(t.email); }} style={saveIconBtn} title={isSaved(t.email) ? 'Unsave' : 'Save'}>
+                    {isSaved(t.email) ? '❤️' : '🤍'}
+                  </button>
                   <span style={{ ...catTagStyle, background: catObj?.color + '22', color: catObj?.color, fontSize: '10px' }}>
                     {catObj?.emoji}
                   </span>
@@ -400,6 +425,8 @@ const approvedBadge  = { background: '#d4edda', color: '#2ecc71', padding: '3px 
 const declinedBadge  = { background: '#fdecea', color: '#e74c3c', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' };
 const smallReqBtn    = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '11px' };
 const viewBtn        = { background: 'none', border: 'none', color: '#4834d4', cursor: 'pointer', fontWeight: '700', fontSize: '12px' };
+const saveIconBtn    = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px', flexShrink: 0 };
+const saveDetailBtn  = { padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' };
 const modalOverlay   = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
 const modalBox       = { background: '#fff', padding: '28px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
 const textarea       = { width: '100%', height: '100px', padding: '10px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '14px', boxSizing: 'border-box', fontSize: '13px', resize: 'none' };

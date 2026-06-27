@@ -5,7 +5,10 @@ import { ref, update } from "firebase/database";
 import { db, TALENT_ROLES } from "../App";
 
 const Navbar = ({ view, setView, setShowNotifications, showNotifications, setShowPostForm, handleLogout, liveVisitors, isAdmin }) => {
-  const { user, requests, talentRequests, adminNotifications, bidNotifications } = useContext(AppContext);
+  const {
+    user, requests, talentRequests, adminNotifications, bidNotifications,
+    followNotifications, markFollowNotifRead, markBidNotifRead, markAdminNotifRead,
+  } = useContext(AppContext);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -37,16 +40,22 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
   const talentOutgoingApprovedUnread = (talentRequests||[]).filter(r => r.status === 'approved' && r.fromEmail === user?.email && !r.read);
   const talentTotal = talentIncomingPending + talentOutgoingApprovedUnread.length;
 
-  // ── Bid notification counts ───────────────────────────────────
-  const unreadBidNotifs   = (bidNotifications||[]).filter(n => !n.read).length;
-  const unreadAdminNotifs = isAdmin ? (adminNotifications||[]).filter(n => !n.read).length : 0;
+  // ── Bid / Follow notification counts ───────────────────────────
+  const unreadBidNotifs    = (bidNotifications||[]).filter(n => !n.read).length;
+  const unreadFollowNotifs = (followNotifications||[]).filter(n => !n.read).length;
+  const unreadAdminNotifs  = isAdmin ? (adminNotifications||[]).filter(n => !n.read).length : 0;
 
   // Story count stays role-specific (Writer incoming / Hirer outgoing);
   // contact count is universal for every role.
   const storyCount = isWriter ? writerPending : isHirer ? hirerUnreadStory.length : 0;
   const baseCount  = storyCount + talentTotal;
-  const notifCount = baseCount + unreadBidNotifs + unreadAdminNotifs;
+  const notifCount = baseCount + unreadBidNotifs + unreadFollowNotifs + unreadAdminNotifs;
 
+  // ── Opening the bell clears EVERY unread notification type ──────
+  // (previously only story/contact approvals were marked read here —
+  // bid and follow notifications were only cleared by clicking each
+  // card individually inside the panel, so the badge could stay stuck
+  // even after the person had "read" everything by opening the tray.)
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
     setMenuOpen(false);
@@ -54,8 +63,12 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
       if (isHirer) {
         hirerUnreadStory.forEach(r => update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
       }
-      // Mark MY outgoing approved contact requests as read — works for any role
+      // Outgoing approved contact requests — works for any role
       talentOutgoingApprovedUnread.forEach(r => update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { read: true }));
+      // Bid + Follow notifications — mark everything unread as read now
+      (bidNotifications||[]).filter(n => !n.read).forEach(n => markBidNotifRead(n.firebaseKey));
+      (followNotifications||[]).filter(n => !n.read).forEach(n => markFollowNotifRead(n.firebaseKey));
+      if (isAdmin) (adminNotifications||[]).filter(n => !n.read).forEach(n => markAdminNotifRead(n.firebaseKey));
     }
   };
 
@@ -101,6 +114,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
           <div style={{height:1,background:'#f0f0f0',margin:'2px 0'}}/>
 
           <ColBtn active={view==='dashboard'} onClick={()=>go('dashboard')}>🏠 Dashboard</ColBtn>
+          <ColBtn active={view==='search'}    onClick={()=>go('search')}    color="#00b894">🔍 Search</ColBtn>
           {isTalent && <ColBtn active={view==='mywork'} onClick={()=>go('mywork')}>🗂 My Work</ColBtn>}
           {isHirer  && <ColBtn active={view==='hire'}   onClick={()=>go('hire')}   color="#6c5ce7">🔍 Hire View</ColBtn>}
           {isAdmin  && <ColBtn active={view==='admin'}  onClick={()=>go('admin')}  color="#e17055">🛡️ Admin</ColBtn>}
@@ -164,6 +178,9 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
           <span style={{display:'flex',alignItems:'center',gap:4,background:'#e8f5e9',border:'1px solid #c8e6c9',padding:'3px 8px',borderRadius:20,fontSize:10,color:'#2e7d32',fontWeight:700}}>
             <span style={{width:5,height:5,background:'#4caf50',borderRadius:'50%',display:'inline-block'}}/>{liveVisitors}
           </span>
+          <button onClick={()=>go('search')} style={{background:'#f8f8fc',border:'none',fontSize:16,cursor:'pointer',width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}} title="Search">
+            🔍
+          </button>
           <button onClick={handleNotificationClick} style={{position:'relative',background:'#f8f8fc',border:'none',fontSize:16,cursor:'pointer',width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}}>
             🔔
             {notifCount>0 && <span style={{position:'absolute',top:-2,right:-2,background:'#ff4757',color:'#fff',borderRadius:'50%',padding:'1px 4px',fontSize:8,fontWeight:800,border:'1.5px solid #fff'}}>{notifCount}</span>}
@@ -208,6 +225,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
           {catEmoji[user?.role]||'👤'} {user?.role}
         </span>
         <Btn active={view==='dashboard'} onClick={()=>setView('dashboard')}>🏠 Dashboard</Btn>
+        <Btn active={view==='search'}    onClick={()=>setView('search')}    color="#00b894">🔍 Search</Btn>
         {isTalent && <Btn active={view==='mywork'} onClick={()=>setView('mywork')}>🗂 My Work</Btn>}
         {isHirer   && <Btn active={view==='hire'}  onClick={()=>setView('hire')}  color="#6c5ce7">🔍 Hire</Btn>}
         {isAdmin   && <Btn active={view==='admin'} onClick={()=>setView('admin')} color="#e17055">🛡️</Btn>}

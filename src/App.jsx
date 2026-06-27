@@ -4,6 +4,7 @@ import AuthPage from './pages/AuthPage.jsx';
 import CommonDashboard from './pages/CommonDashboard';
 import PostForm from './pages/PostForm';
 import ProfilePage from './pages/ProfilePage';
+import SearchPage from './pages/SearchPage';
 import NotificationSystem from './components/NotificationSystem';
 import Navbar from './components/Navbar';
 import HireDashboard from './pages/HireDashboard';
@@ -35,7 +36,7 @@ function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [view,              setView]              = useState('dashboard');
   const [liveVisitors,      setLiveVisitors]      = useState(0);
-  const [pendingProfile,    setPendingProfile]    = useState(null); // ← notification profile redirect
+  const [pendingProfile,    setPendingProfile]    = useState(null); // ← notification / search profile redirect
 
   useEffect(() => {
     const savedUser = localStorage.getItem('activeUser');
@@ -152,6 +153,14 @@ function App() {
           <CommonDashboard
             pendingProfile={pendingProfile}
             onClearPending={() => setPendingProfile(null)}
+          />
+        )}
+        {view === 'search'  && (
+          <SearchPage
+            onViewProfile={(profile) => {
+              setView('dashboard');
+              setPendingProfile(profile);
+            }}
           />
         )}
         {view === 'hire'    && isHirer && <HireDashboard />}
