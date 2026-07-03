@@ -10,7 +10,6 @@ const TABS = [
   { id:'painter',   label:'🎨 Art',       color:'#e17055' },
   { id:'actor',     label:'🎬 Actors',    color:'#f39c12' },
   { id:'dancer',    label:'💃 Dancers',   color:'#fd79a8' },
-  { id:'requests',  label:'📋 Requests',  color:'#6c5ce7' },
 ];
 const GENRES = ["All","Thriller","Romance","Drama","Action","Comedy","Horror","Sci-Fi","Saved"];
 
@@ -417,10 +416,6 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     'writer'
   );
 
-  const myRequestedWorks=talentRequests?.filter(r=>
-    r.fromEmail?.toLowerCase()===user?.email?.toLowerCase()
-  )||[];
-
   // ── All followed user profiles (for Following tab) ─────────────
   const followingProfiles = React.useMemo(() => {
     return followedEmails
@@ -682,14 +677,20 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                 const fromDrive = isDriveLink(v.fileUrl);
                 return (
                   <div key={wid} id={`work-${wid}`} style={{
-                    marginBottom:12, padding: isHL ? 8 : 0,
-                    border: isHL ? '2px solid #fdcb6e' : 'none',
-                    borderRadius:10, transition:'all 0.2s',
+                    marginBottom:12, padding: isHL ? 8 : 4,
+                    border: isHL ? '2px solid #fdcb6e' : '1px solid #f0f0f0',
+                    borderRadius:10, transition:'all 0.2s', background:'#fafafa',
                   }}>
-                    <div style={{fontWeight:600,fontSize:13,marginBottom:5}}>{v.title}</div>
-                    {fromDrive
-                      ? <iframe src={driveEmbedUrl(v.fileUrl)} style={{width:'100%',height:220,border:'none',borderRadius:10}} allow="autoplay" title={v.title}/>
-                      : <video controls src={v.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:220}}/>}
+                    <div style={{fontWeight:600,fontSize:13,marginBottom:8,padding:'0 4px'}}>{v.title}</div>
+                    {v.fileUrl ? (
+                      fromDrive
+                        ? <iframe src={driveEmbedUrl(v.fileUrl)} style={{width:'100%',height:220,border:'none',borderRadius:8}} allow="autoplay" title={v.title}/>
+                        : <video controls src={v.fileUrl} style={{width:'100%',borderRadius:8,maxHeight:220,display:'block'}}/>
+                    ) : (
+                      <div style={{background:'#fff3cd',border:'1px solid #ffc107',borderRadius:8,padding:'10px 12px',fontSize:12,color:'#856404'}}>
+                        ⚠️ Video file missing — please delete this entry and re-upload from "My Work" page using the new upload system.
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -702,7 +703,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   }
 
   // MAIN BROWSE
-  const tabCount={requests:myRequestedWorks.length,following:followedKeys.length};
+  const tabCount={following:followedKeys.length};
 
   return(
     <div>
@@ -897,34 +898,9 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
           </div>
         );
       })()}
-
-      {/* REQUESTS TAB */}
-      {activeTab==='requests'&&(
-        <div style={{padding:16}}>
-          {myRequestedWorks.length===0?<Empty emoji="📋" text="No contact requests sent yet."/>:(
-            <div style={{display:'flex',flexDirection:'column',gap:12}}>
-              {myRequestedWorks.map((r,i)=>(
-                <div key={i} style={{...card,borderLeft:`4px solid ${r.status==='approved'?'#2ecc71':r.status==='declined'?'#e74c3c':'#f39c12'}`}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <img src={r.talentPic||'/icon.png'} alt="" style={av45}/>
-                    <div style={{flex:1}}>
-                      <strong>{r.talentName}</strong>
-                      <div style={{fontSize:12,color:'#636e72'}}>{r.message?.slice(0,60)}</div>
-                    </div>
-                    <span style={{...(r.status==='approved'?aChip:r.status==='declined'?dChip:pChip),fontSize:11}}>
-                      {r.status==='approved'?'✅ Accepted':r.status==='declined'?'❌ Declined':'⏳ Pending'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
-
 /* ── Sub Components (unchanged) ── */
 const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onViewProfile,promoTokens,followerCount,onBid})=>{
   const isOwner=s.writerEmail===user?.email||s.email===user?.email;
@@ -1057,7 +1033,7 @@ const ProtImg=({src,title,height=130})=>{
       {blob?<img src={blob} alt={title} draggable={false} style={{width:'100%',height,objectFit:'cover',pointerEvents:'none'}}/>
            :<div style={{height,background:'#f1f2f6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#aaa'}}>Loading...</div>}
       <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
-      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.55)',color:'#fff',padding:'4px 8px',fontSize:11,zIndex:2}}>🔒 {title}</div>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.55)',color:'#fff',padding:'4px 8px',fontSize:12,zIndex:2}}>🔒 {title}</div>
     </div>
   );
 };
@@ -1089,25 +1065,25 @@ const linkS=     {color:'#4834d4',fontWeight:'bold',textDecoration:'none',fontSi
 const goldBadge= {background:'#fdcb6e',color:'#2d3436',padding:'3px 8px',borderRadius:20,fontSize:11,fontWeight:700};
 const silverBadge={background:'#b2bec3',color:'#fff',padding:'3px 8px',borderRadius:20,fontSize:11,fontWeight:700};
 const moOverlay = {
-  position: 'fixed',           // ← fixed করো
+  position: 'fixed',
   top: 0, left: 0,
   width: '100%',
-  height: '100%',               // ← পুরো স্ক্রিন
+  height: '100%',
   background: 'rgba(0,0,0,0.7)',
   display: 'flex',
   justifyContent: 'center',
-  alignItems: 'flex-start',     // ← center থেকে flex-start
+  alignItems: 'flex-start',
   zIndex: 9999,
   backdropFilter: 'blur(5px)',
-  overflowY: 'auto',            // ← scroll করতে দেয়
+  overflowY: 'auto',
   paddingTop: '20px',
   paddingBottom: '20px',
 };
 const moBox = {
   background: '#fff', padding: 26, borderRadius: 20,
   width: '90%', maxWidth: 420,
-  maxHeight: 'none',            // ← 90vh থেকে none
-  overflowY: 'visible',         // ← auto থেকে visible (overlay নিজে scroll করবে)
+  maxHeight: 'none',
+  overflowY: 'visible',
   flexShrink: 0,
   marginBottom: '10px',
 };
