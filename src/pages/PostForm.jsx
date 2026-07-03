@@ -7,11 +7,14 @@ import { db } from '../App.jsx';
 const CLOUD_NAME    = 'danbshghf';
 const UPLOAD_PRESET = 'CreativeBridge';
 
+// allowLink:true  → Singer gets a toggle (file OR Drive link)
+// linkOnly:true   → Actor/Dancer skip the toggle — Drive link input always shown directly
+// (no flag)       → Painter gets file upload only
 const TALENT_CFG = {
   Singer:  { label:'Song',    icon:'🎤', accept:'audio/*,video/*',  maxMB:100, resourceType:'video', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' }, allowLink:true  },
   Painter: { label:'Artwork', icon:'🎨', accept:'image/*',  maxMB:10,  resourceType:'image', extra:{ name:'style', ph:'Style (Abstract, Realism...)' },          allowLink:false },
-  Actor:   { label:'Video',   icon:'🎬', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' },         allowLink:true  },
-  Dancer:  { label:'Video',   icon:'💃', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' },         allowLink:true  },
+  Actor:   { label:'Video',   icon:'🎬', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' },         linkOnly:true   },
+  Dancer:  { label:'Video',   icon:'💃', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' },         linkOnly:true   },
 };
 
 const PostForm = ({ closeForm }) => {
@@ -186,7 +189,11 @@ const TalentForm = ({ closeForm, user }) => {
   const handleSubmit = async () => {
     if (!title.trim()) return alert("Please enter a title!");
 
-    if (uploadMode === 'file') {
+    if (cfg.linkOnly) {
+      // Actor / Dancer: always Drive link
+      if (!driveLink.trim())                    return alert("Google Drive link দিন!");
+      if (!driveLink.trim().startsWith('http')) return alert("সঠিক link দিন (https:// দিয়ে শুরু)!");
+    } else if (uploadMode === 'file') {
       if (!file) return alert("Please select a file!");
     } else {
       if (!driveLink.trim()) return alert("Please paste a Drive link!");
@@ -200,7 +207,12 @@ const TalentForm = ({ closeForm, user }) => {
       let finalUrl;
       let mediaType;
 
-      if (uploadMode === 'file') {
+      if (cfg.linkOnly) {
+        // Actor / Dancer: Drive link only
+        finalUrl  = driveLink.trim();
+        mediaType = undefined;
+        setProg(100);
+      } else if (uploadMode === 'file') {
         // Step 1: Upload to Cloudinary
         finalUrl = await uploadToCloudinary();
         setUploaded(finalUrl);
@@ -264,7 +276,20 @@ const TalentForm = ({ closeForm, user }) => {
         />
       )}
 
-      {/* Mode toggle: File upload vs Drive Link (not shown for Painter) */}
+      {/* ── ACTOR / DANCER: Drive link input shown directly, no toggle ── */}
+      {cfg.linkOnly && (
+        <div style={linkBox}>
+          <p style={linkLabel}>🔗 Google Drive Video Link *</p>
+          <input type="url" placeholder="https://drive.google.com/file/d/..."
+            value={driveLink} onChange={e => setDriveLink(e.target.value)} style={inp}/>
+          <div style={{ background:'#f0f4ff', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#4834d4' }}>
+            <strong>কীভাবে link নেবে:</strong><br/>
+            Google Drive তে video upload → Right click → Share → "Anyone with the link" → Copy link → এখানে paste করো
+          </div>
+        </div>
+      )}
+
+      {/* ── SINGER: toggle between file upload and Drive link ── */}
       {cfg.allowLink && (
         <div style={{ display:'flex', gap:8, marginBottom:10 }}>
           <button
@@ -282,8 +307,8 @@ const TalentForm = ({ closeForm, user }) => {
         </div>
       )}
 
-      {/* ── FILE MODE ── */}
-      {uploadMode === 'file' && (
+      {/* ── FILE MODE (Singer or Painter) ── */}
+      {!cfg.linkOnly && uploadMode === 'file' && (
         <>
           <div
             style={{ ...dropZone, borderColor: file ? '#6c5ce7' : '#dfe6e9' }}
@@ -292,7 +317,7 @@ const TalentForm = ({ closeForm, user }) => {
             {file ? (
               <>
                 <span style={{ fontSize:28 }}>
-                  {user.role==='Singer' ? (getMediaType(file)==='Audio' ? '🎬' : '🎵') : user.role==='Painter' ? '🖼️' : '🎬'}
+                  {user.role==='Singer' ? (getMediaType(file)==='video' ? '🎬' : '🎵') : user.role==='Painter' ? '🖼️' : '🎬'}
                 </span>
                 <p style={{ margin:'6px 0 2px', fontWeight:700, fontSize:14 }}>{file.name}</p>
                 <p style={{ margin:0, fontSize:12, color:'#636e72' }}>
@@ -303,10 +328,10 @@ const TalentForm = ({ closeForm, user }) => {
               <>
                 <span style={{ fontSize:32 }}>{cfg.icon}</span>
                 <p style={{ margin:'8px 0 4px', fontWeight:700, fontSize:14 }}>
-                  Tap to select audio file only
+                  Tap to select file
                 </p>
                 <p style={{ margin:0, fontSize:12, color:'#94a3b8' }}>
-                  {user.role==='Singer'  ? `Audio (MP3, WAV)— max ${cfg.maxMB}MB` :
+                  {user.role==='Singer'  ? `Audio (MP3, WAV) or Video (MP4, MOV) — max ${cfg.maxMB}MB` :
                    user.role==='Painter' ? `JPG, PNG, WEBP — max ${cfg.maxMB}MB` :
                    `MP4, MOV — max ${cfg.maxMB}MB`}
                 </p>
@@ -323,8 +348,8 @@ const TalentForm = ({ closeForm, user }) => {
         </>
       )}
 
-      {/* ── LINK MODE ── */}
-      {uploadMode === 'link' && (
+      {/* ── LINK MODE (Singer only) ── */}
+      {!cfg.linkOnly && uploadMode === 'link' && (
         <div style={linkBox}>
           <p style={linkLabel}>🔗 Paste your Google Drive (or any) link *</p>
           <input
@@ -375,8 +400,8 @@ const TalentForm = ({ closeForm, user }) => {
         </div>
       )}
 
-      {/* Upload progress */}
-      {busy && uploadMode === 'file' && (
+      {/* Upload progress — only for actual file uploads, not Drive links */}
+      {busy && !cfg.linkOnly && uploadMode === 'file' && (
         <div style={{ marginBottom:12 }}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
             <span style={{ fontSize:12, color:'#636e72' }}>
@@ -399,7 +424,7 @@ const TalentForm = ({ closeForm, user }) => {
         disabled={busy}
         onClick={handleSubmit}
       >
-        {busy ? (uploadMode==='file' ? `Uploading... ${prog}%` : 'Saving...') : `🚀 Publish ${cfg.label}`}
+        {busy ? (cfg.linkOnly || uploadMode==='link' ? 'Saving...' : `Uploading... ${prog}%`) : `🚀 Publish ${cfg.label}`}
       </button>
     </div>
   );
