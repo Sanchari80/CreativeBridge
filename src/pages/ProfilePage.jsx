@@ -11,6 +11,7 @@ const ProfilePage = ({ onBack }) => {
   const [editing, setEditing]   = useState(false);
   const [works, setWorks]       = useState([]);
   const [saving, setSaving]     = useState(false);
+  const [copied, setCopied] = useState(false);
   const [form, setForm]         = useState({
     name:       user?.name       || '',
     profession: user?.profession || '',
@@ -41,6 +42,14 @@ const ProfilePage = ({ onBack }) => {
     });
     return () => u();
   }, [user?.role, emailKey, isTalent]);
+
+  const handleCopyLink = async () => {
+  const link = `${window.location.origin}${window.location.pathname}?profile=${user.email}&role=${user.role || ''}`;
+  try { await navigator.clipboard.writeText(link); }
+  catch { const t=document.createElement('textarea'); t.value=link; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }
+  setCopied(true);
+  setTimeout(() => setCopied(false), 2500);
+};
 
   // ── Profile picture update ──────────────────────────────────────────────────
   const handleImageChange = async (e) => {
@@ -147,6 +156,7 @@ const ProfilePage = ({ onBack }) => {
     <div style={containerStyle}>
       <div style={{ width: '100%', maxWidth: '600px', marginBottom: '10px' }}>
         <button onClick={onBack} style={backBtn}>← Back to Dashboard</button>
+        
       </div>
 
       <div style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -162,7 +172,29 @@ const ProfilePage = ({ onBack }) => {
               <label htmlFor="photo-upload" style={camBtn} title="Update Photo">📷</label>
               <input id="photo-upload" type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
             </div>
-            <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#b2bec3' }}>📷 icon এ click করে photo update করুন</p>
+            <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#b2bec3' }}>📷 click the icon and upload the profile picture</p>
+            {/* ── Copy Profile Link ── */}
+<button
+  onClick={handleCopyLink}
+  style={{
+    padding: '9px 16px',
+    background: copied ? '#2ecc71' : '#2d3436',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: 700,
+    fontSize: '13px',
+    transition: 'background 0.2s',
+  }}
+>
+  {copied ? '✅ Link Copied!' : '🔗 Copy Profile Link'}
+</button>
+
+{/* Hint */}
+<div style={{ background:'#f0f4ff', border:'1px solid #d4d0ff', borderRadius:10, padding:'10px 14px', fontSize:12, color:'#4834d4', marginTop:8 }}>
+  🔗 Share this link anywhere — anyone who clicks it will land directly on your profile.
+</div>
           </div>
 
           {editing ? (
@@ -214,7 +246,7 @@ const ProfilePage = ({ onBack }) => {
           <CardHeader title="🔒 Contact Info" onEdit={() => setEditing(!editing)} editing={editing} />
 
           <div style={noticeBox}>
-            ℹ️ এই তথ্য শুধুমাত্র approved hirer দের কাছে reveal হবে — অন্য কেউ দেখতে পাবে না।
+            ℹ️ Only approved hirer will see your details
           </div>
 
           {editing ? (
@@ -248,7 +280,7 @@ const ProfilePage = ({ onBack }) => {
           <div style={card}>
             <h3 style={cardTitle}>✍️ My Stories ({myStories.length})</h3>
             {myStories.length === 0 ? (
-              <p style={emptyText}>এখনো কোনো story post করা হয়নি।</p>
+              <p style={emptyText}>No story posted yet</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {myStories.map(s => (
@@ -279,7 +311,7 @@ const ProfilePage = ({ onBack }) => {
               {' '}({works.length})
             </h3>
             {works.length === 0 ? (
-              <p style={emptyText}>এখনো কোনো কাজ upload করা হয়নি। "My Work" এ গিয়ে upload করুন।</p>
+              <p style={emptyText}>No work uploaded yet</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {works.map(w => (
