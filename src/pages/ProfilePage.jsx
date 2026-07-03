@@ -43,10 +43,16 @@ const ProfilePage = ({ onBack }) => {
     return () => u();
   }, [user?.role, emailKey, isTalent]);
 
-  const handleCopyLink = async () => {
-  const link = `${window.location.origin}${window.location.pathname}?profile=${user.email}&role=${user.role || ''}`;
+const handleCopyLink = async () => {
+  const link = `${window.location.origin}${window.location.pathname}?profile=${user.email}`;
   try { await navigator.clipboard.writeText(link); }
-  catch { const t=document.createElement('textarea'); t.value=link; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }
+  catch {
+    const t = document.createElement('textarea');
+    t.value = link;
+    document.body.appendChild(t); t.select();
+    document.execCommand('copy');
+    document.body.removeChild(t);
+  }
   setCopied(true);
   setTimeout(() => setCopied(false), 2500);
 };
