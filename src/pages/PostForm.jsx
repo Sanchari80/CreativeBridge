@@ -11,10 +11,10 @@ const UPLOAD_PRESET = 'CreativeBridge';
 // linkOnly:true   → Actor/Dancer skip the toggle — Drive link input always shown directly
 // (no flag)       → Painter gets file upload only
 const TALENT_CFG = {
-  Singer:  { label:'Song',    icon:'🎤', accept:'audio/*,video/*',  maxMB:100, resourceType:'video', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' }, allowLink:true  },
-  Painter: { label:'Artwork', icon:'🎨', accept:'image/*',  maxMB:10,  resourceType:'image', extra:{ name:'style', ph:'Style (Abstract, Realism...)' },          allowLink:false },
-  Actor:   { label:'Video',   icon:'🎬', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' },         linkOnly:true   },
-  Dancer:  { label:'Video',   icon:'💃', accept:'video/*',  maxMB:100, resourceType:'video', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' },         linkOnly:true   },
+  Singer:  { label:'Song',    icon:'🎤', accept:'audio/*,video/*',  maxMB:100, resourceType:'auto', extra:{ name:'genre', ph:'Genre (Folk, Pop, Classical...)' }, allowLink:true  },
+  Painter: { label:'Artwork', icon:'🎨', accept:'image/*',  maxMB:10,  resourceType:'auto', extra:{ name:'style', ph:'Style (Abstract, Realism...)' },          allowLink:false },
+  Actor:   { label:'Video',   icon:'🎬', accept:'video/*',  maxMB:100, resourceType:'auto', extra:{ name:'type',  ph:'Type (Actor, Anchor, Host...)' },         linkOnly:true   },
+  Dancer:  { label:'Video',   icon:'💃', accept:'video/*',  maxMB:100, resourceType:'auto', extra:{ name:'style', ph:'Dance Style (Bharatnatyam...)' },         linkOnly:true   },
 };
 
 const PostForm = ({ closeForm }) => {
