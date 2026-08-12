@@ -14,6 +14,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 import { getStorage } from "firebase/storage";
+import ReleasePage from './pages/ReleasePage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
@@ -167,6 +168,7 @@ function App() {
         {view === 'mywork'  && isTalent && <TalentDashboard />}
         {view === 'profile' && <ProfilePage onBack={() => setView('dashboard')} />}
         {view === 'admin'   && isAdmin  && <AdminDashboard />}
+        {view === 'releases' && <ReleasePage />}
       </main>
 
       {/* ── Footer ── */}

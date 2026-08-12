@@ -1,4 +1,3 @@
-// AppContext.jsx — full updated
 import React, { createContext, useState, useEffect, useRef } from 'react';
 import { ref, onValue, remove, push, set, update } from "firebase/database";
 
@@ -45,16 +44,14 @@ export const AppProvider = ({ children, db }) => {
   const [activeStoryId,       setActiveStoryId]        = useState(null);
   const [bids,                setBids]                 = useState([]);
   const [promotedWorks,       setPromotedWorks]        = useState({});
-  // ── NEW ────────────────────────────────────────────────────────
   const [adminNotifications,  setAdminNotifications]   = useState([]);
   const [bidNotifications,    setBidNotifications]     = useState([]);
 
-  const prevTalentReqCount    = useRef(0);
-  const prevFollowNotiCount   = useRef(0);
-  const prevAdminNotifCount   = useRef(0);
-  const prevBidNotifCount     = useRef(0);
+  const prevTalentReqCount  = useRef(0);
+  const prevFollowNotiCount = useRef(0);
+  const prevAdminNotifCount = useRef(0);
+  const prevBidNotifCount   = useRef(0);
 
-  // ── Admin detection (role-based OR isAdmin flag) ────────────────
   const isAdminUser = user?.isAdmin === true || user?.role === 'Admin';
 
   // ── User sync ──────────────────────────────────────────────────
@@ -98,13 +95,10 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [user, db]);
 
-  // ── Talent (contact) requests ────────────────────────────────────
-  // Any role can both send AND receive contact requests now, so the
-  // notification sounds below apply uniformly — not gated by role.
+  // ── Talent contact requests ────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const emailKey = user.email.replace(/\./g, ',');
-
     const unsub = onValue(ref(db, 'talentRequests'), snap => {
       const d = snap.val();
       if (d) {
@@ -116,14 +110,10 @@ export const AppProvider = ({ children, db }) => {
             );
         });
         setTalentRequests(all);
-
-        // Incoming: someone is sending ME a contact request (any role)
         const myPending = all.filter(r => r.ownerPath === emailKey && r.status === 'pending').length;
         if (prevTalentReqCount.current !== 0 && myPending > prevTalentReqCount.current)
           playSound('notify');
         prevTalentReqCount.current = myPending;
-
-        // Outgoing: a request I sent just got approved (any role)
         const approved = all.filter(r => r.fromEmail === user.email && r.status === 'approved' && !r.read);
         if (approved.length > 0) playSound('approve');
       } else setTalentRequests([]);
@@ -176,7 +166,7 @@ export const AppProvider = ({ children, db }) => {
     return () => unsub();
   }, [db]);
 
-  // ── Admin bid notifications ────────────────────────────────────
+  // ── Admin notifications ────────────────────────────────────────
   useEffect(() => {
     if (!isAdminUser) return;
     const unsub = onValue(ref(db, 'adminNotifications'), snap => {
@@ -311,7 +301,6 @@ export const AppProvider = ({ children, db }) => {
     } catch(e) { alert("Follow failed: " + e.message); }
   };
 
-  // ── Unfollow ───────────────────────────────────────────────────
   const unfollowTalent = async (talentEmail) => {
     if (!user) return;
     const myKey     = user.email.replace(/\./g, ',');
@@ -330,13 +319,11 @@ export const AppProvider = ({ children, db }) => {
     catch(e) {}
   };
 
-  // ── Mark admin notification read ───────────────────────────────
   const markAdminNotifRead = async (notifId) => {
     try { await update(ref(db, `adminNotifications/${notifId}`), { read: true }); }
     catch(e) {}
   };
 
-  // ── Mark bid notification read (user side) ─────────────────────
   const markBidNotifRead = async (notifId) => {
     const emailKey = user?.email?.replace(/\./g, ',');
     try { await update(ref(db, `bidNotifications/${emailKey}/${notifId}`), { read: true }); }
@@ -348,7 +335,6 @@ export const AppProvider = ({ children, db }) => {
     if (!user) return alert("Please Login!");
     const amount = tokens === 5 ? 500 : 200;
     try {
-      // Save bid
       const bidRef = push(ref(db, 'bids'));
       await set(bidRef, {
         userEmail:         user.email,
@@ -361,29 +347,22 @@ export const AppProvider = ({ children, db }) => {
         status:            'pending',
         timestamp:         Date.now()
       });
-
-      // ── Notify admin ─────────────────────────────────────────
       await push(ref(db, 'adminNotifications'), {
         type:        'new_bid',
         bidId:       bidRef.key,
         userName:    user.name || '',
         userPic:     user.profilePic || '/icon.png',
         userEmail:   user.email,
-        workTitle,
-        category,
-        tokens,
-        amount,
+        workTitle, category, tokens, amount,
         workLink:    workLink || '',
         paymentScreenshot: paymentScreenshot || '',
         read:        false,
         timestamp:   Date.now()
       });
-
-      alert("Bid submitted! Admin will verify your payment and approve within 24 hours.");
+      alert("Bid submitted! Admin will verify and approve within 24 hours.");
     } catch(e) { alert("Bid failed: " + e.message); }
   };
 
-  // ── Admin: approve bid ─────────────────────────────────────────
   const approveBid = async (bid) => {
     try {
       const now = Date.now();
@@ -397,8 +376,6 @@ export const AppProvider = ({ children, db }) => {
         approvedAt:   now
       };
       await update(ref(db), updates);
-
-      // ── Notify the user whose bid was approved ───────────────
       await push(ref(db, `bidNotifications/${bid.userEmailKey}`), {
         type:      'bid_approved',
         workTitle: bid.workTitle,
@@ -409,22 +386,16 @@ export const AppProvider = ({ children, db }) => {
         read:      false,
         timestamp: now
       });
-
-      // Mark related admin notification as read
       const relatedNotif = adminNotifications.find(n => n.bidId === bid.id);
-      if (relatedNotif?.firebaseKey) {
+      if (relatedNotif?.firebaseKey)
         await update(ref(db, `adminNotifications/${relatedNotif.firebaseKey}`), { read: true });
-      }
     } catch(e) { alert("Approve failed: " + e.message); }
   };
 
-  // ── Admin: reject bid ──────────────────────────────────────────
   const rejectBid = async (bidId) => {
     try {
       const bid = bids.find(b => b.id === bidId);
       await update(ref(db, `bids/${bidId}`), { status: 'rejected' });
-
-      // ── Notify the user whose bid was rejected ───────────────
       if (bid?.userEmailKey) {
         await push(ref(db, `bidNotifications/${bid.userEmailKey}`), {
           type:      'bid_rejected',
@@ -432,17 +403,69 @@ export const AppProvider = ({ children, db }) => {
           category:  bid.category  || '',
           tokens:    bid.tokens    || 0,
           amount:    bid.amount    || 0,
-          message:   `❌ Your bid for "${bid.workTitle}" was not approved. Please contact admin for details.`,
+          message:   `❌ Your bid for "${bid.workTitle}" was not approved.`,
           read:      false,
           timestamp: Date.now()
         });
       }
-
-      // Mark related admin notification as read
       const relatedNotif = adminNotifications.find(n => n.bidId === bidId);
-      if (relatedNotif?.firebaseKey) {
+      if (relatedNotif?.firebaseKey)
         await update(ref(db, `adminNotifications/${relatedNotif.firebaseKey}`), { read: true });
-      }
+    } catch(e) { alert("Reject failed: " + e.message); }
+  };
+
+  // ── Release / Ad submit ────────────────────────────────────────
+  const submitRelease = async ({
+    type, title, description, youtubeLink,
+    thumbnail, adCategory, adContact,
+    paymentAmount, paymentScreenshot,
+  }) => {
+    if (!user) return alert("Please Login!");
+    try {
+      await push(ref(db, 'releases'), {
+        type,
+        title,
+        description:    description    || '',
+        youtubeLink:    youtubeLink    || '',
+        thumbnail:      thumbnail      || '',
+        adCategory:     adCategory     || '',
+        adContact:      adContact      || '',
+        submitterEmail: user.email,
+        submitterName:  user.name      || '',
+        submitterPic:   user.profilePic || '/icon.png',
+        paymentAmount,
+        paymentScreenshot,
+        status:    'pending',
+        createdAt: Date.now(),
+      });
+      await push(ref(db, 'adminNotifications'), {
+        type:             'new_release',
+        releaseType:      type,
+        title,
+        userEmail:        user.email,
+        userName:         user.name || '',
+        userPic:          user.profilePic || '/icon.png',
+        paymentAmount,
+        paymentScreenshot,
+        read:             false,
+        timestamp:        Date.now(),
+      });
+    } catch(e) { alert("Submit failed: " + e.message); }
+  };
+
+  // ── Release approve / reject (admin) ──────────────────────────
+  const approveRelease = async (releaseId) => {
+    try {
+      await update(ref(db, `releases/${releaseId}`), {
+        status:     'approved',
+        approvedAt: Date.now(),
+      });
+    } catch(e) { alert("Approve failed: " + e.message); }
+  };
+
+  const rejectRelease = async (releaseId) => {
+    try {
+      await update(ref(db, `releases/${releaseId}`), { status: 'rejected' });
     } catch(e) { alert("Reject failed: " + e.message); }
   };
 
@@ -463,6 +486,7 @@ export const AppProvider = ({ children, db }) => {
       followTalent, unfollowTalent, isFollowing, markFollowNotifRead,
       markAdminNotifRead, markBidNotifRead,
       submitBid, approveBid, rejectBid,
+      submitRelease, approveRelease, rejectRelease,
       logout
     }}>
       {children}

@@ -115,6 +115,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
 
           <ColBtn active={view==='dashboard'} onClick={()=>go('dashboard')}>🏠 Dashboard</ColBtn>
           <ColBtn active={view==='search'}    onClick={()=>go('search')}    color="#00b894">🔍 Search</ColBtn>
+          <ColBtn active={view==='releases'} onClick={()=>go('releases')} color="#f9ca24">🎭 Releases</ColBtn>
           {isTalent && <ColBtn active={view==='mywork'} onClick={()=>go('mywork')}>🗂 My Work</ColBtn>}
           {isHirer  && <ColBtn active={view==='hire'}   onClick={()=>go('hire')}   color="#6c5ce7">🔍 Hire View</ColBtn>}
           {isAdmin  && <ColBtn active={view==='admin'}  onClick={()=>go('admin')}  color="#e17055">🛡️ Admin</ColBtn>}
@@ -226,6 +227,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
         </span>
         <Btn active={view==='dashboard'} onClick={()=>setView('dashboard')}>🏠 Dashboard</Btn>
         <Btn active={view==='search'}    onClick={()=>setView('search')}    color="#00b894">🔍 Search</Btn>
+        <Btn active={view==='releases'} onClick={()=>setView('releases')} color="#f9ca24">🎭 Releases</Btn>
         {isTalent && <Btn active={view==='mywork'} onClick={()=>setView('mywork')}>🗂 My Work</Btn>}
         {isHirer   && <Btn active={view==='hire'}  onClick={()=>setView('hire')}  color="#6c5ce7">🔍 Hire</Btn>}
         {isAdmin   && <Btn active={view==='admin'} onClick={()=>setView('admin')} color="#e17055">🛡️</Btn>}
