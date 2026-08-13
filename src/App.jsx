@@ -173,11 +173,7 @@ function App() {
 
       {/* ── Footer ── */}
       <footer style={footerStyle}>
-        <img
-          src="/SKT logo.jpg"
-          alt="SKT Logo"
-          style={{ width: 52, borderRadius: 10, marginBottom: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-        />
+        <img src="/SKT logo.jpg" alt="SKT Logo" style={{ width:38, borderRadius:8, marginBottom:6, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}/>
         <div style={{
           fontFamily: "'Playfair Display',serif",
           fontWeight: 800, fontSize: 15,
@@ -267,16 +263,6 @@ const mainStyle = {
   zIndex: 1,
 };
 
-const footerStyle = {
-  textAlign: 'center',
-  padding: '40px 20px',
-  background: 'rgba(255,255,255,0.93)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  borderTop: '1px solid rgba(201,168,76,0.18)',
-  marginTop: 50,
-  position: 'relative',
-  zIndex: 1,
-};
+const footerStyle = { textAlign:'center', padding:'16px 20px', background:'rgba(255,255,255,0.93)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderTop:'1px solid rgba(201,168,76,0.18)', marginTop:20, position:'relative', zIndex:1 };
 
 export default App;
