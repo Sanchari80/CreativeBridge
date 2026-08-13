@@ -25,8 +25,8 @@ const AD_CATS = [
   'Event Management', 'Photography / Videography', 'Other',
 ];
 
-const DRAMA_PRICE = 500;
-const AD_PRICE    = 300;
+const DRAMA_PRICE = '$500';
+const AD_PRICE    = '$300';
 
 const ReleasePage = () => {
   const { user, submitRelease } = useContext(AppContext);
@@ -130,7 +130,7 @@ const ReleasePage = () => {
 
             {/* Type toggle */}
             <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-              {[{t:'drama',label:'🎬 Drama Release',price:`৳${DRAMA_PRICE}`},{t:'ad',label:'📢 Creative Ad',price:`৳${AD_PRICE}`}].map(o=>(
+              {[{t:'drama',label:'🎬 Drama Release',price:`${DRAMA_PRICE}`},{t:'ad',label:'📢 Creative Ad',price:`${AD_PRICE}`}].map(o=>(
                 <div key={o.t} onClick={()=>{setFormType(o.t);setStep(1);}} style={{ flex:1, padding:12, borderRadius:12, border:`2px solid ${formType===o.t?'#6c5ce7':'#eee'}`, cursor:'pointer', textAlign:'center', background:formType===o.t?'#f0f0ff':'#fff' }}>
                   <div style={{ fontWeight:700, fontSize:13 }}>{o.label}</div>
                   <div style={{ fontSize:12, color:'#6c5ce7', marginTop:4 }}>{o.price} / post</div>
@@ -179,7 +179,7 @@ const ReleasePage = () => {
                 <div style={{ background:'linear-gradient(135deg,#141e30,#243b55)', borderRadius:14, padding:16, marginBottom:14, color:'#fff' }}>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginBottom:8, textTransform:'uppercase', letterSpacing:1 }}>Payment Required</div>
                   <div style={{ fontSize:24, fontWeight:900, color:'#fdcb6e', marginBottom:4 }}>
-                    ৳{formType==='drama'?DRAMA_PRICE:AD_PRICE}
+                    {formType==='drama'?DRAMA_PRICE:AD_PRICE}
                   </div>
                   <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)' }}>for "{title}"</div>
                 </div>
@@ -222,8 +222,8 @@ const ReleasePage = () => {
           Watch short dramas • Discover music academies, dance studios & more
         </p>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-          <button onClick={()=>{setFormType('drama');setShowForm(true);}} style={heroBtnDark}>🎬 Submit Drama Release — ৳{DRAMA_PRICE}</button>
-          <button onClick={()=>{setFormType('ad');setShowForm(true);}} style={heroBtnLight}>📢 Post Creative Ad — ৳{AD_PRICE}</button>
+          <button onClick={()=>{setFormType('drama');setShowForm(true);}} style={heroBtnDark}>🎬 Submit Drama Release — {DRAMA_PRICE}</button>
+          <button onClick={()=>{setFormType('ad');setShowForm(true);}} style={heroBtnLight}>📢 Post Creative Ad — {AD_PRICE}</button>
         </div>
       </div>
 
