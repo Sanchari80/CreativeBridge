@@ -25,8 +25,8 @@ const AD_CATS = [
   'Event Management', 'Photography / Videography', 'Other',
 ];
 
-const DRAMA_PRICE = '$500';
-const AD_PRICE    = '$300';
+const DRAMA_PRICE = 500;
+const AD_PRICE    = 300;
 
 const ReleasePage = () => {
   const { user, submitRelease } = useContext(AppContext);
@@ -35,6 +35,7 @@ const ReleasePage = () => {
   const [showForm,    setShowForm]    = useState(false);
   const [formType,    setFormType]    = useState('drama');
   const [watching,    setWatching]    = useState(null); // release to watch in modal
+  const [playing,     setPlaying]     = useState(false); // true = iframe loaded
   const [step,        setStep]        = useState(1);    // form steps
 
   // form fields
@@ -97,22 +98,72 @@ const ReleasePage = () => {
 
       {/* ── Watch Modal ── */}
       {watching && (
-        <div style={overlay} onClick={() => setWatching(null)}>
+        <div style={overlay} onClick={() => { setWatching(null); setPlaying(false); }}>
           <div style={watchBox} onClick={e => e.stopPropagation()}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <h3 style={{ margin:0, color:'#2d3436', fontSize:16 }}>{watching.title}</h3>
-              <button onClick={() => setWatching(null)} style={closeBtn}>✕</button>
+              <h3 style={{ margin:0, color:'#2d3436', fontSize:16, flex:1, paddingRight:10 }}>{watching.title}</h3>
+              <button onClick={() => { setWatching(null); setPlaying(false); }} style={closeBtn}>✕</button>
             </div>
+
             {watching.type === 'drama' && watching.youtubeLink ? (
-              <iframe src={ytEmbed(watching.youtubeLink)} title={watching.title}
-                style={{ width:'100%', height:300, border:'none', borderRadius:12 }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen/>
+              <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'#000', aspectRatio:'16/9' }}>
+                {!playing ? (
+                  /* ── Thumbnail + Play button (no heavy iframe yet) ── */
+                  <>
+                    <img
+                      src={watching.thumbnail || ytThumb(watching.youtubeLink)}
+                      alt={watching.title}
+                      style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', opacity:0.85 }}
+                    />
+                    {/* Loading spinner overlay while thumbnail loads */}
+                    <div
+                      onClick={() => setPlaying(true)}
+                      style={{
+                        position:'absolute', inset:0,
+                        display:'flex', flexDirection:'column',
+                        alignItems:'center', justifyContent:'center',
+                        cursor:'pointer', gap:10,
+                      }}
+                    >
+                      <div style={{
+                        width:64, height:64, borderRadius:'50%',
+                        background:'rgba(255,0,0,0.88)',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        boxShadow:'0 4px 20px rgba(0,0,0,0.5)',
+                        transition:'transform 0.15s',
+                      }}>
+                        <span style={{ fontSize:26, color:'#fff', marginLeft:4 }}>▶</span>
+                      </div>
+                      <span style={{ color:'#fff', fontSize:13, fontWeight:600, textShadow:'0 2px 8px rgba(0,0,0,0.7)' }}>
+                        Click to Play
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  /* ── iframe loads ONLY after click ── */
+                  <iframe
+                    src={`${ytEmbed(watching.youtubeLink)}?autoplay=1&rel=0&modestbranding=1`}
+                    title={watching.title}
+                    style={{ width:'100%', height:'100%', border:'none', position:'absolute', inset:0 }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                  />
+                )}
+              </div>
             ) : (
-              watching.thumbnail && <img src={watching.thumbnail} alt={watching.title} style={{ width:'100%', borderRadius:12, marginBottom:10 }}/>
+              watching.thumbnail && (
+                <img src={watching.thumbnail} alt={watching.title}
+                  style={{ width:'100%', borderRadius:12, marginBottom:10 }}/>
+              )
             )}
-            {watching.description && <p style={{ margin:'12px 0 0', fontSize:13, color:'#636e72' }}>{watching.description}</p>}
-            {watching.adContact && <p style={{ margin:'8px 0 0', fontSize:13, fontWeight:600 }}>📞 Contact: {watching.adContact}</p>}
+
+            {watching.description && (
+              <p style={{ margin:'12px 0 0', fontSize:13, color:'#636e72' }}>{watching.description}</p>
+            )}
+            {watching.adContact && (
+              <p style={{ margin:'8px 0 0', fontSize:13, fontWeight:600 }}>📞 Contact: {watching.adContact}</p>
+            )}
           </div>
         </div>
       )}
@@ -130,7 +181,7 @@ const ReleasePage = () => {
 
             {/* Type toggle */}
             <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-              {[{t:'drama',label:'🎬 Drama Release',price:`${DRAMA_PRICE}`},{t:'ad',label:'📢 Creative Ad',price:`${AD_PRICE}`}].map(o=>(
+              {[{t:'drama',label:'🎬 Drama Release',price:`৳${DRAMA_PRICE}`},{t:'ad',label:'📢 Creative Ad',price:`৳${AD_PRICE}`}].map(o=>(
                 <div key={o.t} onClick={()=>{setFormType(o.t);setStep(1);}} style={{ flex:1, padding:12, borderRadius:12, border:`2px solid ${formType===o.t?'#6c5ce7':'#eee'}`, cursor:'pointer', textAlign:'center', background:formType===o.t?'#f0f0ff':'#fff' }}>
                   <div style={{ fontWeight:700, fontSize:13 }}>{o.label}</div>
                   <div style={{ fontSize:12, color:'#6c5ce7', marginTop:4 }}>{o.price} / post</div>
@@ -179,7 +230,7 @@ const ReleasePage = () => {
                 <div style={{ background:'linear-gradient(135deg,#141e30,#243b55)', borderRadius:14, padding:16, marginBottom:14, color:'#fff' }}>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginBottom:8, textTransform:'uppercase', letterSpacing:1 }}>Payment Required</div>
                   <div style={{ fontSize:24, fontWeight:900, color:'#fdcb6e', marginBottom:4 }}>
-                    {formType==='drama'?DRAMA_PRICE:AD_PRICE}
+                    ৳{formType==='drama'?DRAMA_PRICE:AD_PRICE}
                   </div>
                   <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)' }}>for "{title}"</div>
                 </div>
@@ -222,8 +273,8 @@ const ReleasePage = () => {
           Watch short dramas • Discover music academies, dance studios & more
         </p>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-          <button onClick={()=>{setFormType('drama');setShowForm(true);}} style={heroBtnDark}>🎬 Submit Drama Release — {DRAMA_PRICE}</button>
-          <button onClick={()=>{setFormType('ad');setShowForm(true);}} style={heroBtnLight}>📢 Post Creative Ad — {AD_PRICE}</button>
+          <button onClick={()=>{setFormType('drama');setShowForm(true);}} style={heroBtnDark}>🎬 Submit Drama Release — ৳{DRAMA_PRICE}</button>
+          <button onClick={()=>{setFormType('ad');setShowForm(true);}} style={heroBtnLight}>📢 Post Creative Ad — ৳{AD_PRICE}</button>
         </div>
       </div>
 
@@ -247,7 +298,7 @@ const ReleasePage = () => {
                 {/* Thumbnail */}
                 <div style={{ position:'relative', borderRadius:'14px 14px 0 0', overflow:'hidden', background:'#1a1a2e' }}>
                   {r.thumbnail
-                    ? <img src={r.thumbnail} alt={r.title} style={{ width:'100%', height:175, objectFit:'cover', display:'block' }}/>
+                    ? <img src={r.thumbnail} alt={r.title} loading="lazy" style={{ width:'100%', height:175, objectFit:'cover', display:'block' }}/>
                     : <div style={{ height:175, display:'flex', alignItems:'center', justifyContent:'center', fontSize:48 }}>🎬</div>}
                   <div style={{ position:'absolute', inset:0, background:'linear-gradient(0deg,rgba(0,0,0,0.6) 0%,transparent 50%)', pointerEvents:'none' }}/>
                   <div style={{ position:'absolute', bottom:10, left:12, right:12 }}>
@@ -283,7 +334,7 @@ const ReleasePage = () => {
           <div style={grid}>
             {ads.map(r => (
               <div key={r.id} style={adCard}>
-                {r.thumbnail && <img src={r.thumbnail} alt={r.title} style={{ width:'100%', height:140, objectFit:'cover', borderRadius:'14px 14px 0 0', display:'block' }}/>}
+                {r.thumbnail && <img src={r.thumbnail} alt={r.title} loading="lazy" style={{ width:'100%', height:140, objectFit:'cover', borderRadius:'14px 14px 0 0', display:'block' }}/>}
                 <div style={{ padding:'14px' }}>
                   <span style={{ background:'#00b89422', color:'#00b894', fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, display:'inline-block', marginBottom:8, textTransform:'uppercase', letterSpacing:1 }}>
                     {r.adCategory}

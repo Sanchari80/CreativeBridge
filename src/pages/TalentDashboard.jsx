@@ -397,7 +397,7 @@ const TalentDashboard = () => {
                   {role === 'Painter' && work.fileUrl && (
                     <div style={{ marginTop:'10px', position:'relative', userSelect:'none' }} onContextMenu={e => e.preventDefault()}>
                       <img src={work.fileUrl} alt={work.title} draggable={false}
-                        style={{ width:'100%', maxHeight:'200px', objectFit:'cover', borderRadius:'10px', pointerEvents:'none' }}/>
+                        style={{ width:'100%', maxHeight:'320px', objectFit:'contain', borderRadius:'10px', pointerEvents:'none', background:'#f8f8f8' }}/>
                       <div style={{ position:'absolute', inset:0, zIndex:1 }} onContextMenu={e => e.preventDefault()}/>
                       <div style={{ position:'absolute', top:'8px', right:'8px', background:'rgba(0,0,0,0.6)', color:'#fff', padding:'3px 8px', borderRadius:'8px', fontSize:'11px', zIndex:2 }}>🔒 Protected</div>
                     </div>

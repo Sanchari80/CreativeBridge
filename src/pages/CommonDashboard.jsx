@@ -660,7 +660,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                       boxShadow: isHL ? '0 0 0 3px rgba(253,203,110,0.35)' : 'none',
                       transition:'all 0.2s',
                     }}>
-                      <ProtImg src={a.fileUrl} title={a.title}/>
+                     <ProtImg src={a.fileUrl} title={a.title} height={220}/>
                     </div>
                   );
                 })}
@@ -858,7 +858,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                       ? <video controls src={w.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:200,marginBottom:8}}/>
                       : <audio controls src={w.fileUrl} style={{width:'100%',height:32,marginBottom:8}}/>
                   )}
-                  {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={90}/>}
+                  {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={200}/>}
                   {(activeTab==='actor'||activeTab==='dancer')&&w.fileUrl&&(
                     <div style={{background:'#f8f9fa',borderRadius:10,padding:'8px 12px',fontSize:12,color:'#636e72',marginBottom:8,cursor:'pointer'}}
                       onClick={()=>w.talentProfile&&setSelectedProfile(w.talentProfile)}>
@@ -1030,7 +1030,7 @@ const ProtImg=({src,title,height=130})=>{
   },[src]);
   return(
     <div style={{position:'relative',borderRadius:10,overflow:'hidden',userSelect:'none'}} onContextMenu={e=>e.preventDefault()}>
-      {blob?<img src={blob} alt={title} draggable={false} style={{width:'100%',height,objectFit:'cover',pointerEvents:'none'}}/>
+      {blob?<img src={blob} alt={title} draggable={false} style={{width:'100%',height,objectFit:'contain',pointerEvents:'none',background:'#f8f9fa'}}/>
            :<div style={{height,background:'#f1f2f6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#aaa'}}>Loading...</div>}
       <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
       <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.55)',color:'#fff',padding:'4px 8px',fontSize:12,zIndex:2}}>🔒 {title}</div>

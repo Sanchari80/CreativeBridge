@@ -93,7 +93,7 @@ const AdminDashboard = () => {
                   {n.type === 'new_release' ? '🎬' : '💰'} {n.title || n.workTitle}
                 </div>
                 <div style={{ fontSize:12, color:'#636e72' }}>
-                  {n.userName} · ৳{n.paymentAmount || n.amount}
+                  {n.userName} · ${n.paymentAmount || n.amount}
                   {n.type === 'new_release' && ` · ${n.releaseType === 'drama' ? 'Drama' : 'Ad'}`}
                 </div>
                 {n.paymentScreenshot && (
@@ -111,9 +111,9 @@ const AdminDashboard = () => {
           { label:'Pending Bids',     value:pendingBids.length,     color:'#f39c12', icon:'⏳' },
           { label:'Approved Bids',    value:approvedBids.length,    color:'#2ecc71', icon:'✅' },
           { label:'Rejected Bids',    value:rejectedBids.length,    color:'#e74c3c', icon:'❌' },
-          { label:'Bid Revenue',      value:`৳${totalRevenue}`,     color:'#6c5ce7', icon:'💰' },
+          { label:'Bid Revenue',      value:`$${totalRevenue}`,     color:'#6c5ce7', icon:'💰' },
           { label:'Pending Releases', value:pendingReleases.length, color:'#f39c12', icon:'🎬' },
-          { label:'Release Revenue',  value:`৳${releaseRevenue}`,   color:'#00b894', icon:'📢' },
+          { label:'Release Revenue',  value:`$${releaseRevenue}`,   color:'#00b894', icon:'📢' },
         ].map((s, i) => (
           <div key={i} style={{ background:'rgba(255,255,255,0.95)', padding:'14px 16px', borderRadius:14, boxShadow:'0 3px 10px rgba(0,0,0,0.06)', borderLeft:`4px solid ${s.color}` }}>
             <div style={{ fontSize:20, marginBottom:4 }}>{s.icon}</div>
@@ -161,7 +161,7 @@ const AdminDashboard = () => {
                       <div style={{ fontSize:12, color:'#636e72' }}>{bid.userEmail}</div>
                     </div>
                     <div style={{ textAlign:'right' }}>
-                      <div style={{ fontWeight:800, fontSize:16, color:'#6c5ce7' }}>৳{bid.amount}</div>
+                      <div style={{ fontWeight:800, fontSize:16, color:'#6c5ce7' }}>${bid.amount}</div>
                       <div style={{ fontSize:11, color:'#f39c12' }}>{bid.tokens===5?'🥇 Top Priority':'🥈 2nd Priority'}</div>
                     </div>
                   </div>
@@ -204,7 +204,7 @@ const AdminDashboard = () => {
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div>
                         <div style={{ fontWeight:600, fontSize:13 }}>{bid.workTitle}</div>
-                        <div style={{ fontSize:12, color:'#636e72' }}>{bid.userName} · {bid.category} · ৳{bid.amount}</div>
+                        <div style={{ fontSize:12, color:'#636e72' }}>{bid.userName} · {bid.category} · ${bid.amount}</div>
                       </div>
                       <span style={{ fontSize:12, fontWeight:700, color:statusColor(bid.status), textTransform:'capitalize', background:bid.status==='approved'?'#d4edda':'#fdecea', padding:'3px 10px', borderRadius:20 }}>
                         {bid.status}
@@ -266,7 +266,7 @@ const AdminDashboard = () => {
                       <div style={{ fontSize:12, color:'#636e72' }}>{r.submitterName} · {r.submitterEmail}</div>
                     </div>
                     <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <div style={{ fontWeight:800, fontSize:16, color:'#6c5ce7' }}>৳{r.paymentAmount}</div>
+                      <div style={{ fontWeight:800, fontSize:16, color:'#6c5ce7' }}>{r.paymentAmount}</div>
                       <div style={{ fontSize:11, fontWeight:700, color:statusColor(r.status), textTransform:'capitalize', marginTop:4 }}>
                         {r.status}
                       </div>

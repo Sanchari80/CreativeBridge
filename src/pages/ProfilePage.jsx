@@ -317,7 +317,7 @@ const handleCopyLink = async () => {
               {' '}({works.length})
             </h3>
             {works.length === 0 ? (
-              <p style={emptyText}>No work uploaded yet</p>
+              <p style={emptyText}>Ohh shit! No works uploaded yet.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {works.map(w => (
