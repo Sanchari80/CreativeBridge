@@ -1032,9 +1032,9 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
     <>
       {expanded&&(
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.93)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',backdropFilter:'blur(10px)',padding:20,cursor:'zoom-out'}}>
+          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.93)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',backdropFilter:'blur(10px)',padding:20,cursor:'zoom-out',overflowY:'auto'}}>
           <div style={{position:'relative',maxWidth:'92vw',maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
-            {blob&&<img src={blob} alt={title} draggable={false} style={{maxWidth:'92vw',maxHeight:'80vh',objectFit:'contain',borderRadius:14,pointerEvents:'none',display:'block',boxShadow:'0 24px 64px rgba(0,0,0,0.6)'}}/>}
+            {blob&&<img src={blob} alt={title} draggable={false} style={{maxWidth:'92vw',maxHeight:'90vh',objectFit:'contain',borderRadius:14,pointerEvents:'none',display:'block',boxShadow:'0 24px 64px rgba(0,0,0,0.6)'}}/>}
             <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
             {/* Dynamic viewer watermark */}
             <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.18}}>
