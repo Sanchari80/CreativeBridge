@@ -1034,7 +1034,7 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
           style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.93)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',overflowY:'auto',backdropFilter:'blur(10px)',paddingTop:40,paddingBottom:40,paddingLeft:20,paddingRight:20,cursor:'zoom-out'}}>
           <div style={{position:'relative',maxWidth:'92vw',maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
-            {blob&&<img src={blob} alt={title} draggable={false} style={{maxWidth:'92vw',maxHeight:'none',width:'auto',objectFit:'contain',borderRadius:14,pointerEvents:'none',display:'block',boxShadow:'0 24px 64px rgba(0,0,0,0.6)'}}/>}
+            {blob&&<img src={blob} alt={title} draggable={false} style={{maxWidth:'65vw',maxHeight:'70vh',objectFit:'contain',borderRadius:14,pointerEvents:'none',display:'block',boxShadow:'0 24px 64px rgba(0,0,0,0.6)'}}/>}
             <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
             {/* Dynamic viewer watermark */}
             <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.18}}>
@@ -1045,8 +1045,8 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
               ))}
             </div>
             <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.75)',color:'#fff',padding:'8px 14px',fontSize:12,zIndex:3,borderRadius:'0 0 14px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span>🔒 {title} — Copyright Protected</span>
-              <span style={{opacity:0.65,fontSize:11}}>⚠️ Watermarked for {viewerName||'this viewer'}</span>
+              
+              <span style={{fontSize:10,opacity:0.85}}>🔒 {title}</span>
             </div>
           </div>
           <button onClick={()=>setExpanded(false)} style={{marginTop:18,padding:'9px 28px',background:'rgba(255,255,255,0.1)',color:'#fff',border:'1.5px solid rgba(255,255,255,0.25)',borderRadius:12,cursor:'pointer',fontSize:13,fontWeight:600}}>✕ Close</button>
