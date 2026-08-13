@@ -191,8 +191,8 @@ const TalentForm = ({ closeForm, user }) => {
 
     if (cfg.linkOnly) {
       // Actor / Dancer: always Drive link
-      if (!driveLink.trim())                    return alert("Google Drive link দিন!");
-      if (!driveLink.trim().startsWith('http')) return alert("সঠিক link দিন (https:// দিয়ে শুরু)!");
+      if (!driveLink.trim())                    return alert("Please paste a Drive link!");
+      if (!driveLink.trim().startsWith('http')) return alert("Please enter a valid URL starting with https://");
     } else if (uploadMode === 'file') {
       if (!file) return alert("Please select a file!");
     } else {
@@ -283,8 +283,8 @@ const TalentForm = ({ closeForm, user }) => {
           <input type="url" placeholder="https://drive.google.com/file/d/..."
             value={driveLink} onChange={e => setDriveLink(e.target.value)} style={inp}/>
           <div style={{ background:'#f0f4ff', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#4834d4' }}>
-            <strong>কীভাবে link নেবে:</strong><br/>
-            Google Drive তে video upload → Right click → Share → "Anyone with the link" → Copy link → এখানে paste করো
+            <strong>How to provide the link:</strong><br/>
+            Upload your video to Google Drive → Right-click → Share → "Anyone with the link" → Copy link → Paste here.
           </div>
         </div>
       )}
@@ -396,7 +396,7 @@ const TalentForm = ({ closeForm, user }) => {
       {/* Painter copyright notice */}
       {user.role === 'Painter' && (
         <div style={noticeBox}>
-          🔒 Your artwork will be copyright-protected on Creative Bridge.
+          No one can download your artwork.
         </div>
       )}
 

@@ -660,7 +660,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                       boxShadow: isHL ? '0 0 0 3px rgba(253,203,110,0.35)' : 'none',
                       transition:'all 0.2s',
                     }}>
-                     <ProtImg src={a.fileUrl} title={a.title} height={220}/>
+                     <ProtImg src={a.fileUrl} title={a.title} height={220} viewerName={user?.name} viewerEmail={user?.email}/>
                     </div>
                   );
                 })}
@@ -858,7 +858,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
                       ? <video controls src={w.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:200,marginBottom:8}}/>
                       : <audio controls src={w.fileUrl} style={{width:'100%',height:32,marginBottom:8}}/>
                   )}
-                  {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={200}/>}
+                  {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={200} viewerName={user?.name} viewerEmail={user?.email}/>}
                   {(activeTab==='actor'||activeTab==='dancer')&&w.fileUrl&&(
                     <div style={{background:'#f8f9fa',borderRadius:10,padding:'8px 12px',fontSize:12,color:'#636e72',marginBottom:8,cursor:'pointer'}}
                       onClick={()=>w.talentProfile&&setSelectedProfile(w.talentProfile)}>
@@ -1021,20 +1021,46 @@ const ContactModal=({talent,msg,setMsg,onSend,onClose})=>(
     </div>
   </div></div>
 );
-
-const ProtImg=({src,title,height=130})=>{
+const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
   const [blob,setBlob]=React.useState(null);
+  const [expanded,setExpanded]=React.useState(false);
   React.useEffect(()=>{
     if(!src)return;
     fetch(src).then(r=>r.blob()).then(b=>setBlob(URL.createObjectURL(b))).catch(()=>setBlob(src));
   },[src]);
   return(
-    <div style={{position:'relative',borderRadius:10,overflow:'hidden',userSelect:'none'}} onContextMenu={e=>e.preventDefault()}>
-      {blob?<img src={blob} alt={title} draggable={false} style={{width:'100%',height,objectFit:'contain',pointerEvents:'none',background:'#f8f9fa'}}/>
-           :<div style={{height,background:'#f1f2f6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#aaa'}}>Loading...</div>}
-      <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
-      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.55)',color:'#fff',padding:'4px 8px',fontSize:12,zIndex:2}}>🔒 {title}</div>
-    </div>
+    <>
+      {expanded&&(
+        <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
+          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.93)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',backdropFilter:'blur(10px)',padding:20,cursor:'zoom-out'}}>
+          <div style={{position:'relative',maxWidth:'92vw',maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
+            {blob&&<img src={blob} alt={title} draggable={false} style={{maxWidth:'92vw',maxHeight:'80vh',objectFit:'contain',borderRadius:14,pointerEvents:'none',display:'block',boxShadow:'0 24px 64px rgba(0,0,0,0.6)'}}/>}
+            <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
+            {/* Dynamic viewer watermark */}
+            <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.18}}>
+              {Array.from({length:20}).map((_,i)=>(
+                <div key={i} style={{color:'#ffffff',fontSize:11,fontWeight:700,fontFamily:'monospace',whiteSpace:'nowrap',transform:'rotate(-25deg)',padding:'18px 24px',userSelect:'none'}}>
+                  {viewerName||'Viewer'} · {viewerEmail||'creative-bridge.vercel.app'}
+                </div>
+              ))}
+            </div>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.75)',color:'#fff',padding:'8px 14px',fontSize:12,zIndex:3,borderRadius:'0 0 14px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span>🔒 {title} — Copyright Protected</span>
+              <span style={{opacity:0.65,fontSize:11}}>⚠️ Watermarked for {viewerName||'this viewer'}</span>
+            </div>
+          </div>
+          <button onClick={()=>setExpanded(false)} style={{marginTop:18,padding:'9px 28px',background:'rgba(255,255,255,0.1)',color:'#fff',border:'1.5px solid rgba(255,255,255,0.25)',borderRadius:12,cursor:'pointer',fontSize:13,fontWeight:600}}>✕ Close</button>
+        </div>
+      )}
+      <div style={{position:'relative',borderRadius:10,overflow:'hidden',userSelect:'none',cursor:'zoom-in'}} onContextMenu={e=>e.preventDefault()} onClick={()=>setExpanded(true)} title="Click to view full artwork">
+        {blob?<img src={blob} alt={title} draggable={false} style={{width:'100%',height,objectFit:'contain',pointerEvents:'none',background:'#f8f9fa',display:'block'}}/>:<div style={{height,background:'#f1f2f6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'#aaa'}}>Loading...</div>}
+        <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.62)',color:'#fff',padding:'5px 10px',fontSize:11,zIndex:2,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span>🔒 {title}</span>
+          <span style={{opacity:0.85,fontSize:10}}>🔍 Tap to expand</span>
+        </div>
+      </div>
+    </>
   );
 };
 
