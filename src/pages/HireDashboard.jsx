@@ -4,345 +4,408 @@ import { ref, onValue } from "firebase/database";
 import { db } from '../App.jsx';
 
 const CATS = [
-  { id: 'all',     label: 'All Talent',           emoji: '⭐', color: '#2d3436' },
-  { id: 'saved',   label: 'Saved',                emoji: '❤️', color: '#e84393' },
-  { id: 'writer',  label: 'Script Writers',        emoji: '✍️', color: '#4834d4' },
-  { id: 'singer',  label: 'Singers',               emoji: '🎤', color: '#00b894' },
-  { id: 'painter', label: 'Painters / Designers',  emoji: '🎨', color: '#e17055' },
-  { id: 'actor',   label: 'Actors & Anchors',      emoji: '🎬', color: '#f9ca24' },
-  { id: 'dancer',  label: 'Dancers',               emoji: '💃', color: '#fd79a8' },
+  { id:'all',     label:'All Talent',          emoji:'⭐', color:'#8b5cf6' },
+  { id:'saved',   label:'Saved',               emoji:'❤️', color:'#ec4899' },
+  { id:'writer',  label:'Script Writers',       emoji:'✍️', color:'#a78bfa' },
+  { id:'singer',  label:'Singers',              emoji:'🎤', color:'#06b6d4' },
+  { id:'painter', label:'Painters',             emoji:'🎨', color:'#f59e0b' },
+  { id:'actor',   label:'Actors & Anchors',     emoji:'🎬', color:'#ef4444' },
+  { id:'dancer',  label:'Dancers',              emoji:'💃', color:'#ec4899' },
 ];
 
-// ── Detect Google Drive links and build an embeddable preview URL ──
-// (Cloudinary URLs play fine in normal <video>/<audio> tags, but a raw
-// Drive "share" link is just an HTML viewer page — it has to be embedded
-// via Drive's own /preview endpoint inside an <iframe> instead.)
-const isDriveLink = (url) => /drive\.google\.com/.test(url || '');
+const isDriveLink   = (url) => /drive\.google\.com/.test(url || '');
 const driveEmbedUrl = (url) => {
   if (!url) return null;
   const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
   return m ? `https://drive.google.com/file/d/${m[1]}/preview` : url;
 };
 
+// ── Sound + Ripple (matches CommonDashboard) ──────────────────
+const playClick = () => {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.type='sine'; osc.frequency.value=880;
+    gain.gain.setValueAtTime(0.1,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.08);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime+0.08);
+  } catch(e) {}
+};
+const playChime = () => {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [[523,0],[659,0.08],[784,0.16]].forEach(([f,t])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.frequency.value=f; o.type='sine';
+      g.gain.setValueAtTime(0,ctx.currentTime+t);
+      g.gain.linearRampToValueAtTime(0.1,ctx.currentTime+t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.3);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.35);
+    });
+  } catch(e) {}
+};
+const withRipple = (e, fn) => {
+  const btn = e.currentTarget;
+  const ripple = document.createElement('span');
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,0.2);transform:scale(0);animation:ripple 0.5s linear;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px;pointer-events:none`;
+  btn.style.overflow='hidden'; btn.style.position=btn.style.position||'relative';
+  btn.appendChild(ripple);
+  setTimeout(()=>ripple.remove(),600);
+  fn&&fn();
+};
+
+// ── Design tokens ─────────────────────────────────────────────
+const G = {
+  card:   'rgba(15,12,40,0.75)',
+  border: 'rgba(139,92,246,0.18)',
+  text:   'rgba(255,255,255,0.92)',
+  muted:  'rgba(255,255,255,0.5)',
+  purple: '#8b5cf6',
+  blue:   '#3b82f6',
+  gold:   '#f59e0b',
+};
+const glass = {
+  background: G.card,
+  backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+  border:`1px solid ${G.border}`, borderRadius:20,
+  boxShadow:'0 8px 32px rgba(0,0,0,0.4)',
+};
+
 const HireDashboard = () => {
   const { user, stories, sendTalentRequest, talentRequests } = useContext(AppContext);
 
-  const [activeCat, setActiveCat]         = useState('all');
-  const [talents, setTalents]             = useState({ singer: [], painter: [], actor: [], dancer: [] });
-  const [contactModal, setContactModal]   = useState(null);
-  const [message, setMessage]             = useState('');
+  const [activeCat,      setActiveCat]      = useState('all');
+  const [talents,        setTalents]        = useState({singer:[],painter:[],actor:[],dancer:[]});
+  const [contactModal,   setContactModal]   = useState(null);
+  const [message,        setMessage]        = useState('');
   const [selectedTalent, setSelectedTalent] = useState(null);
-  const [searchQuery, setSearchQuery]     = useState('');
-
-  // ── Personally saved talents (Hirer-only bookmarking, kept on this device) ──
-  const [savedTalents, setSavedTalents] = useState(() => {
+  const [searchQuery,    setSearchQuery]    = useState('');
+  const [savedTalents,   setSavedTalents]   = useState(() => {
     const s = localStorage.getItem('savedTalents');
     return s ? JSON.parse(s) : [];
   });
 
-  const isSaved = (email) => !!email && savedTalents.includes(email.toLowerCase());
-
-  const toggleSaveTalent = (email) => {
+  const isSaved      = (email) => !!email && savedTalents.includes(email.toLowerCase());
+  const toggleSave   = (email) => {
     if (!email) return;
     const e = email.toLowerCase();
-    const next = savedTalents.includes(e) ? savedTalents.filter(x => x !== e) : [...savedTalents, e];
+    const next = savedTalents.includes(e) ? savedTalents.filter(x=>x!==e) : [...savedTalents, e];
     setSavedTalents(next);
     localStorage.setItem('savedTalents', JSON.stringify(next));
+    playChime();
   };
 
-  // Firebase থেকে singer/painter/actor/dancer fetch
   useEffect(() => {
-    const cats = ['singer', 'painter', 'actor', 'dancer'];
+    const cats = ['singer','painter','actor','dancer'];
     const subs = [];
     cats.forEach(cat => {
-      const r = ref(db, `talents/${cat}`);
-      const u = onValue(r, snap => {
+      const unsub = onValue(ref(db,`talents/${cat}`), snap => {
         const data = snap.val();
-        if (data) {
-          const list = Object.entries(data).map(([emailKey, profile]) => ({
-            ...profile,
-            emailKey,
-            email: emailKey.replace(/,/g, '.'),
-            category: cat,
-          }));
-          setTalents(prev => ({ ...prev, [cat]: list }));
-        } else {
-          setTalents(prev => ({ ...prev, [cat]: [] }));
-        }
+        setTalents(prev => ({
+          ...prev,
+          [cat]: data ? Object.entries(data).map(([ek,p])=>({...p,emailKey:ek,email:ek.replace(/,/g,'.'),category:cat})) : []
+        }));
       });
-      subs.push(u);
+      subs.push(unsub);
     });
-    return () => subs.forEach(u => u());
+    return () => subs.forEach(u=>u());
   }, []);
 
-  // Stories থেকে unique writer profiles
   const writerProfiles = React.useMemo(() => {
     const map = {};
     stories.forEach(s => {
-      const key = (s.writerEmail || s.email || '').toLowerCase();
-      if (!map[key]) {
-        map[key] = {
-          email: key,
-          emailKey: key.replace(/\./g, ','),
-          name: s.writerName || 'Unknown',
-          profilePic: s.writerPic || '/icon.png',
-          profession: s.writerProfession || 'Writer',
-          category: 'writer',
-          storyCount: 0,
-          genres: [],
-        };
-      }
+      const key = (s.writerEmail||s.email||'').toLowerCase();
+      if (!map[key]) map[key] = { email:key, emailKey:key.replace(/\./g,','), name:s.writerName||'Unknown', profilePic:s.writerPic||'/icon.png', profession:s.writerProfession||'Writer', category:'writer', storyCount:0, genres:[] };
       map[key].storyCount++;
       if (s.genre && !map[key].genres.includes(s.genre)) map[key].genres.push(s.genre);
     });
     return Object.values(map);
   }, [stories]);
 
-  const allTalents = [
-    ...writerProfiles,
-    ...talents.singer,
-    ...talents.painter,
-    ...talents.actor,
-    ...talents.dancer,
-  ];
+  const allTalents = [...writerProfiles, ...talents.singer, ...talents.painter, ...talents.actor, ...talents.dancer];
 
   const filtered = (
-    activeCat === 'all'    ? allTalents :
-    activeCat === 'saved'  ? allTalents.filter(t => isSaved(t.email)) :
-    activeCat === 'writer' ? writerProfiles :
+    activeCat==='all'    ? allTalents :
+    activeCat==='saved'  ? allTalents.filter(t=>isSaved(t.email)) :
+    activeCat==='writer' ? writerProfiles :
     talents[activeCat] || []
   ).filter(t => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return (
-      t.name?.toLowerCase().includes(q) ||
-      t.address?.toLowerCase().includes(q) ||
-      t.profession?.toLowerCase().includes(q)
-    );
+    return t.name?.toLowerCase().includes(q) || t.address?.toLowerCase().includes(q) || t.profession?.toLowerCase().includes(q);
   });
 
-  const getReqStatus    = (email) => talentRequests.find(r => r.fromEmail?.toLowerCase() === user?.email?.toLowerCase() && r.talentEmail?.toLowerCase() === email?.toLowerCase())?.status || null;
-  const getRevealedContact = (email) => talentRequests.find(r => r.fromEmail?.toLowerCase() === user?.email?.toLowerCase() && r.talentEmail?.toLowerCase() === email?.toLowerCase() && r.status === 'approved')?.revealedContact || null;
+  const getReqStatus     = (email) => talentRequests.find(r=>r.fromEmail?.toLowerCase()===user?.email?.toLowerCase()&&r.talentEmail?.toLowerCase()===email?.toLowerCase())?.status||null;
+  const getRevealedContact = (email) => talentRequests.find(r=>r.fromEmail?.toLowerCase()===user?.email?.toLowerCase()&&r.talentEmail?.toLowerCase()===email?.toLowerCase()&&r.status==='approved')?.revealedContact||null;
 
   const handleSend = async () => {
-    if (!message.trim()) return alert("পরিচয় ও উদ্দেশ্য লিখুন!");
+    if (!message.trim()) return alert("Please write your identity and purpose!");
     if (!contactModal) return;
     await sendTalentRequest(contactModal.email, contactModal.name, message);
-    setMessage('');
-    setContactModal(null);
+    setMessage(''); setContactModal(null);
   };
 
-  // ── DETAIL VIEW ──────────────────────────────────────────────────────────────
+  const catColor = (cat) => CATS.find(c=>c.id===cat)?.color || G.purple;
+
+  // ── DETAIL VIEW ──────────────────────────────────────────────
   if (selectedTalent) {
     const t       = selectedTalent;
-    const catObj  = CATS.find(c => c.id === t.category);
+    const catObj  = CATS.find(c=>c.id===t.category);
     const status  = getReqStatus(t.email);
     const contact = getRevealedContact(t.email);
-    const wStories = t.category === 'writer' ? stories.filter(s => (s.writerEmail || s.email)?.toLowerCase() === t.email?.toLowerCase()) : [];
+    const wStories = t.category==='writer' ? stories.filter(s=>(s.writerEmail||s.email)?.toLowerCase()===t.email?.toLowerCase()) : [];
+    const cc = catObj?.color || G.purple;
 
     return (
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-        <button onClick={() => setSelectedTalent(null)} style={backBtn}>← Back to Browse</button>
+      <div style={{maxWidth:700,margin:'0 auto'}}>
+        <button onClick={e=>withRipple(e,()=>{playClick();setSelectedTalent(null);})}
+          style={{background:'none',border:'none',color:G.muted,cursor:'pointer',fontWeight:700,fontSize:14,marginBottom:14,display:'block',padding:0,transition:'color 0.2s',position:'relative'}}>
+          ← Back
+        </button>
 
-        <div style={profileCard}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <img src={t.profilePic || '/icon.png'} alt="" style={bigAvatar} />
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: '0 0 4px' }}>{t.name}</h2>
-              <span style={{ ...catTagStyle, background: catObj?.color + '22', color: catObj?.color }}>{catObj?.emoji} {catObj?.label}</span>
-              <p style={metaText}>📍 {t.address || t.city || 'Bangladesh'}</p>
-              {t.profession && <p style={metaText}>💼 {t.profession}</p>}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-              <button onClick={() => toggleSaveTalent(t.email)} style={{ ...saveDetailBtn, background: isSaved(t.email) ? '#e84393' : '#fff', color: isSaved(t.email) ? '#fff' : '#e84393', border: `1.5px solid #e84393` }}>
-                {isSaved(t.email) ? '❤️ Saved' : '🤍 Save'}
-              </button>
-              {status === null     && <button onClick={() => setContactModal(t)} style={reqBtn}>📩 Send Contact Request</button>}
-              {status === 'pending'   && <div style={pendingBadge}>⏳ Request Pending</div>}
-              {status === 'approved'  && <div style={approvedBadge}>✅ Approved</div>}
-              {status === 'declined'  && <div style={declinedBadge}>❌ Declined</div>}
+        <div style={{...glass,padding:0,overflow:'hidden'}}>
+          {/* Category banner */}
+          <div style={{
+            padding:'20px 24px 16px',
+            background:`linear-gradient(135deg,${cc}22,${cc}0a)`,
+            borderBottom:`1px solid ${cc}22`,
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+              <img src={t.profilePic||'/icon.png'} alt="" style={{width:80,height:80,borderRadius:'50%',objectFit:'cover',border:`3px solid ${cc}55`,boxShadow:`0 0 20px ${cc}33`,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <h2 style={{margin:'0 0 6px',color:G.text,fontSize:20}}>{t.name}</h2>
+                <span style={{display:'inline-block',padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:700,background:`${cc}22`,color:cc,border:`1px solid ${cc}44`}}>{catObj?.emoji} {catObj?.label}</span>
+                {(t.address||t.city) && <p style={{margin:'6px 0 0',fontSize:13,color:G.muted}}>📍 {t.address||t.city}</p>}
+                {t.profession && <p style={{margin:'3px 0 0',fontSize:13,color:G.muted}}>💼 {t.profession}</p>}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-end'}}>
+                <button onClick={e=>withRipple(e,()=>toggleSave(t.email))}
+                  style={{padding:'8px 16px',background:isSaved(t.email)?'rgba(236,72,153,0.2)':'rgba(255,255,255,0.05)',color:isSaved(t.email)?'#ec4899':G.muted,border:`1px solid ${isSaved(t.email)?'rgba(236,72,153,0.4)':'rgba(255,255,255,0.1)'}`,borderRadius:12,cursor:'pointer',fontWeight:700,fontSize:12,transition:'all 0.2s',position:'relative'}}>
+                  {isSaved(t.email)?'❤️ Saved':'🤍 Save'}
+                </button>
+                {status===null     && <button onClick={e=>withRipple(e,()=>{playClick();setContactModal(t);})} style={{padding:'9px 18px',background:`linear-gradient(135deg,${G.purple}55,${G.blue}44)`,color:G.text,border:`1px solid ${G.purple}44`,borderRadius:12,cursor:'pointer',fontWeight:700,fontSize:13,position:'relative'}}>📩 Contact</button>}
+                {status==='pending'   && <div style={{background:'rgba(245,158,11,0.15)',color:'#f59e0b',padding:'6px 14px',borderRadius:20,fontSize:12,fontWeight:700,border:'1px solid rgba(245,158,11,0.3)'}}>⏳ Pending</div>}
+                {status==='approved'  && <div style={{background:'rgba(16,185,129,0.15)',color:'#10b981',padding:'6px 14px',borderRadius:20,fontSize:12,fontWeight:700,border:'1px solid rgba(16,185,129,0.3)'}}>✅ Approved</div>}
+                {status==='declined'  && <div style={{background:'rgba(239,68,68,0.15)',color:'#ef4444',padding:'6px 14px',borderRadius:20,fontSize:12,fontWeight:700,border:'1px solid rgba(239,68,68,0.3)'}}>❌ Declined</div>}
+              </div>
             </div>
           </div>
 
-          {t.bio && <p style={bioBox}>{t.bio}</p>}
+          <div style={{padding:'20px 24px'}}>
+            {t.bio && <p style={{fontSize:14,background:'rgba(255,255,255,0.04)',padding:'12px 14px',borderRadius:12,margin:'0 0 16px',color:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.06)'}}>{t.bio}</p>}
 
-          {/* Contact Info */}
-          <div style={section}>
-            <p style={sectionLabel}>Contact Information</p>
-            {contact ? (
-              <div style={{ fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {contact.email    && <p style={{ margin: 0 }}>📧 {contact.email}</p>}
-                {contact.phone    && <p style={{ margin: 0 }}>📞 {contact.phone}</p>}
-                {contact.whatsapp && <p style={{ margin: 0 }}>💬 WhatsApp: {contact.whatsapp}</p>}
-                {contact.facebook && <p style={{ margin: 0 }}>👤 <a href={contact.facebook} target="_blank" rel="noreferrer" style={{ color: '#4834d4' }}>{contact.facebook}</a></p>}
-                {contact.instagram && <p style={{ margin: 0 }}>📸 {contact.instagram}</p>}
+            {/* Contact */}
+            <div style={{marginBottom:16}}>
+              <p style={{margin:'0 0 10px',fontSize:10,color:G.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Contact Information</p>
+              {contact ? (
+                <div style={{fontSize:13,display:'flex',flexDirection:'column',gap:5,color:G.text}}>
+                  {contact.email    && <p style={{margin:0}}>📧 {contact.email}</p>}
+                  {contact.phone    && <p style={{margin:0}}>📞 {contact.phone}</p>}
+                  {contact.whatsapp && <p style={{margin:0}}>💬 {contact.whatsapp}</p>}
+                  {contact.facebook && <p style={{margin:0}}>👤 <a href={contact.facebook} target="_blank" rel="noreferrer" style={{color:G.purple}}>{contact.facebook}</a></p>}
+                </div>
+              ) : (
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:'rgba(245,158,11,0.06)',padding:'12px 14px',borderRadius:12,border:'1px solid rgba(245,158,11,0.15)',flexWrap:'wrap',gap:8}}>
+                  <span style={{fontSize:13,color:G.muted}}>🔒 Contact info locked</span>
+                  {status===null && <button onClick={e=>withRipple(e,()=>{playClick();setContactModal(t);})} style={{background:`linear-gradient(135deg,${G.purple}55,${G.blue}44)`,color:G.text,border:`1px solid ${G.purple}44`,padding:'6px 14px',borderRadius:10,cursor:'pointer',fontWeight:600,fontSize:12,position:'relative'}}>Request Access</button>}
+                  {status==='pending' && <span style={{fontSize:12,color:'#f59e0b'}}>⏳ Waiting...</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Writer stories */}
+            {t.category==='writer' && wStories.length>0 && (
+              <div style={{marginBottom:16}}>
+                <p style={{margin:'0 0 10px',fontSize:10,color:G.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Stories ({wStories.length})</p>
+                {wStories.map(s=>(
+                  <div key={s.id} style={{padding:'10px 12px',background:'rgba(139,92,246,0.06)',borderRadius:10,marginBottom:8,border:'1px solid rgba(139,92,246,0.15)'}}>
+                    <div style={{fontWeight:700,color:'#a78bfa',fontSize:14,fontFamily:'Georgia,serif'}}>{s.Name}</div>
+                    <div style={{fontSize:12,color:G.muted}}>{s.genre} · {s.logline}</div>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <div style={lockedRow}>
-                🔒 Contact info locked.
-                {status === null    && <button onClick={() => setContactModal(t)} style={smallReqBtn}>Request Access</button>}
-                {status === 'pending' && <span style={{ fontSize: '12px', color: '#636e72' }}>Waiting for approval...</span>}
+            )}
+
+            {/* Singer songs */}
+            {t.category==='singer' && t.songs && (
+              <div style={{marginBottom:16}}>
+                <p style={{margin:'0 0 10px',fontSize:10,color:G.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Songs</p>
+                {Object.values(t.songs).map((song,i)=>{
+                  const fromDrive=isDriveLink(song.fileUrl);
+                  return(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:10,background:'rgba(6,182,212,0.06)',padding:10,borderRadius:10,marginBottom:8,border:'1px solid rgba(6,182,212,0.15)'}}>
+                      <div style={{flex:'0 0 auto'}}>
+                        <div style={{fontWeight:600,fontSize:13,color:G.text}}>{song.title}</div>
+                        <div style={{fontSize:11,color:G.muted}}>{song.genre}</div>
+                      </div>
+                      {fromDrive ? <iframe src={driveEmbedUrl(song.fileUrl)} style={{flex:1,height:song.mediaType==='video'?160:80,border:'none',borderRadius:8,minWidth:0,background:'#000'}} allow="autoplay" title={song.title}/>
+                        :song.mediaType==='video'?<video controls src={song.fileUrl} style={{flex:1,borderRadius:8,maxHeight:160,minWidth:0}}/>
+                        :<audio controls src={song.fileUrl} style={{flex:1,height:32,minWidth:0}}/>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Painter artworks — canvas frame */}
+            {t.category==='painter' && t.artworks && (
+              <div style={{marginBottom:16}}>
+                <p style={{margin:'0 0 10px',fontSize:10,color:G.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Artworks 🔒 Protected</p>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10}}>
+                  {Object.values(t.artworks).map((art,i)=>(
+                    <div key={i} style={{padding:6,background:'linear-gradient(135deg,#3a1e05,#1f0f00,#3a1e05)',boxShadow:'2px 2px 0 #0a0500,-1px -1px 0 #6b4210',borderRadius:3}}>
+                      <div style={{border:'1px solid #6b4210'}}>
+                        <ProtectedImage src={art.fileUrl} title={art.title}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actor videos — film screen */}
+            {t.category==='actor' && t.videos && (
+              <div style={{marginBottom:16}}>
+                <p style={{margin:'0 0 10px',fontSize:10,color:G.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>🎬 Videos on Screen</p>
+                {Object.values(t.videos).map((vid,i)=>{
+                  const fromDrive=isDriveLink(vid.fileUrl);
+                  return(
+                    <div key={i} style={{marginBottom:14}}>
+                      <div style={{background:'#050505',borderRadius:6,border:'6px solid #111',boxShadow:'0 0 0 3px #1a1a1a,0 8px 30px rgba(0,0,0,0.8)',overflow:'hidden'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',padding:'4px 6px',background:'#0a0a0a'}}>
+                          {[...Array(10)].map((_,j)=><div key={j} style={{width:7,height:7,borderRadius:1,background:'#222'}}/>)}
+                        </div>
+                        <div style={{background:'#000',padding:'4px 0',textAlign:'center'}}>
+                          <div style={{fontSize:9,color:'rgba(239,68,68,0.6)',letterSpacing:2,fontWeight:700,marginBottom:2}}>🎬 {vid.title}</div>
+                          {fromDrive?<iframe src={driveEmbedUrl(vid.fileUrl)} style={{width:'100%',height:220,border:'none',display:'block'}} allow="autoplay" title={vid.title}/>:<video controls src={vid.fileUrl} style={{width:'100%',maxHeight:220,display:'block'}}/>}
+                        </div>
+                        <div style={{display:'flex',justifyContent:'space-between',padding:'4px 6px',background:'#0a0a0a'}}>
+                          {[...Array(10)].map((_,j)=><div key={j} style={{width:7,height:7,borderRadius:1,background:'#222'}}/>)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Dancer videos — mobile frame */}
+            {t.category==='dancer' && t.videos && (
+              <div style={{marginBottom:16}}>
+                <p style={{margin:'0 0 10px',fontSize:10,color:G.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>💃 Dance on Mobile</p>
+                {Object.values(t.videos).map((vid,i)=>{
+                  const fromDrive=isDriveLink(vid.fileUrl);
+                  return(
+                    <div key={i} style={{maxWidth:260,margin:'0 auto 14px',background:'#1a1a1a',borderRadius:28,border:'3px solid #2a2a2a',padding:'12px 6px',boxShadow:'0 12px 40px rgba(0,0,0,0.8)'}}>
+                      <div style={{width:60,height:14,background:'#0a0a0a',borderRadius:8,margin:'0 auto 8px',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                        <div style={{width:7,height:7,borderRadius:'50%',background:'#2a2a2a'}}/>
+                        <div style={{width:22,height:4,borderRadius:2,background:'#2a2a2a'}}/>
+                      </div>
+                      <div style={{background:'#000',borderRadius:4,overflow:'hidden'}}>
+                        <div style={{fontSize:9,color:'rgba(236,72,153,0.7)',textAlign:'center',letterSpacing:2,fontWeight:700,padding:'4px 0'}}>💃 {vid.title}</div>
+                        {fromDrive?<iframe src={driveEmbedUrl(vid.fileUrl)} style={{width:'100%',height:220,border:'none',display:'block'}} allow="autoplay" title={vid.title}/>:<video controls src={vid.fileUrl} style={{width:'100%',maxHeight:220,display:'block'}}/>}
+                      </div>
+                      <div style={{width:35,height:4,background:'#333',borderRadius:2,margin:'8px auto 0'}}/>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-
-          {/* Writer stories */}
-          {t.category === 'writer' && wStories.length > 0 && (
-            <div style={section}>
-              <p style={sectionLabel}>Stories ({wStories.length})</p>
-              {wStories.map(s => (
-                <div key={s.id} style={miniCard}>
-                  <div style={{ fontWeight: '700', color: '#4834d4' }}>{s.Name}</div>
-                  <div style={{ fontSize: '12px', color: '#636e72' }}>{s.genre} · {s.logline}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Singer songs (audio, video, or Drive link) */}
-          {t.category === 'singer' && t.songs && (
-            <div style={section}>
-              <p style={sectionLabel}>Songs</p>
-              {Object.values(t.songs).map((song, i) => {
-                const fromDrive = isDriveLink(song.fileUrl);
-                return (
-                  <div key={i} style={{ ...miniCard, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ flex: '0 0 auto' }}>
-                      <div style={{ fontWeight: '600', fontSize: '13px' }}>{song.title}</div>
-                      <div style={{ fontSize: '11px', color: '#636e72' }}>{song.genre}</div>
-                    </div>
-                    {fromDrive ? (
-                      <iframe src={driveEmbedUrl(song.fileUrl)} style={{ flex: 1, height: song.mediaType === 'video' ? 160 : 80, border: 'none', borderRadius: 8, minWidth: 0 }} allow="autoplay" title={song.title} />
-                    ) : song.mediaType === 'video' ? (
-                      <video controls src={song.fileUrl} style={{ flex: 1, borderRadius: 8, maxHeight: 160, minWidth: 0 }} />
-                    ) : (
-                      <audio controls src={song.fileUrl} style={{ flex: 1, height: '32px', minWidth: 0 }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Painter artworks */}
-          {t.category === 'painter' && t.artworks && (
-            <div style={section}>
-              <p style={sectionLabel}>Artworks 🔒 Protected</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {Object.values(t.artworks).map((art, i) => (
-                  <ProtectedImage key={i} src={art.fileUrl} title={art.title} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Actor/Dancer videos (Cloudinary or Drive link) */}
-          {(t.category === 'actor' || t.category === 'dancer') && t.videos && (
-            <div style={section}>
-              <p style={sectionLabel}>{t.category === 'actor' ? 'Videos' : 'Dance Videos'}</p>
-              {Object.values(t.videos).map((vid, i) => {
-                const fromDrive = isDriveLink(vid.fileUrl);
-                return (
-                  <div key={i} style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: '600', marginBottom: '5px', fontSize: '13px' }}>{vid.title}</div>
-                    {fromDrive ? (
-                      <iframe src={driveEmbedUrl(vid.fileUrl)} style={{ width: '100%', height: '220px', border: 'none', borderRadius: '10px' }} allow="autoplay" title={vid.title} />
-                    ) : (
-                      <video controls src={vid.fileUrl} style={{ width: '100%', borderRadius: '10px', maxHeight: '220px' }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
     );
   }
 
-  // ── BROWSE VIEW ──────────────────────────────────────────────────────────────
+  // ── BROWSE VIEW ───────────────────────────────────────────────
   return (
     <div>
       {/* Category tabs */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '14px' }}>
+      <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:8,marginBottom:14,scrollbarWidth:'none'}}>
         {CATS.map(cat => (
-          <button key={cat.id} onClick={() => setActiveCat(cat.id)} style={{
-            padding: '8px 16px', borderRadius: '20px', border: '1px solid',
-            cursor: 'pointer', fontWeight: '600', fontSize: '13px', whiteSpace: 'nowrap',
-            background:   activeCat === cat.id ? '#2d3436' : '#fff',
-            color:        activeCat === cat.id ? '#fff'    : '#2d3436',
-            borderColor:  activeCat === cat.id ? '#2d3436' : '#eee',
-          }}>
-            {cat.emoji} {cat.label}{cat.id === 'saved' && savedTalents.length > 0 ? ` (${savedTalents.length})` : ''}
+          <button key={cat.id} onClick={e=>withRipple(e,()=>{playClick();setActiveCat(cat.id);})}
+            style={{
+              padding:'9px 16px', borderRadius:24, cursor:'pointer',
+              fontWeight:700, fontSize:12, whiteSpace:'nowrap', position:'relative',
+              background: activeCat===cat.id ? `linear-gradient(135deg,${cat.color}55,${cat.color}33)` : 'rgba(255,255,255,0.04)',
+              color: activeCat===cat.id ? G.text : cat.color,
+              border: activeCat===cat.id ? `1.5px solid ${cat.color}66` : `1.5px solid ${cat.color}33`,
+              boxShadow: activeCat===cat.id ? `0 0 18px ${cat.color}44` : 'none',
+              backdropFilter:'blur(8px)', transition:'all 0.2s',
+            }}>
+            {cat.emoji} {cat.label}{cat.id==='saved'&&savedTalents.length>0?` (${savedTalents.length})`:''}
           </button>
         ))}
       </div>
 
       {/* Search */}
-      <div style={searchBox}>
-        <span>🔍</span>
-        <input
-          type="text"
-          placeholder="Name, city বা profession দিয়ে খুঁজুন..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          style={{ border: 'none', outline: 'none', flex: 1, fontSize: '14px', background: 'transparent' }}
-        />
+      <div style={{display:'flex',alignItems:'center',gap:10,background:'rgba(15,12,40,0.6)',border:'1px solid rgba(139,92,246,0.2)',padding:'10px 16px',borderRadius:14,marginBottom:12,backdropFilter:'blur(12px)'}}>
+        <span style={{fontSize:16}}>🔍</span>
+        <input type="text" placeholder="Search by name, city or profession..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+          style={{border:'none',outline:'none',flex:1,fontSize:14,background:'transparent',color:G.text}}/>
       </div>
 
-      <p style={{ fontSize: '13px', color: '#636e72', marginBottom: '14px' }}>{filtered.length} talent found</p>
+      <p style={{fontSize:13,color:G.muted,marginBottom:14}}>{filtered.length} talent found</p>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#b2bec3' }}>
-          <p style={{ fontSize: '40px' }}>{activeCat === 'saved' ? '❤️' : '🎭'}</p>
-          <p>{activeCat === 'saved' ? "You haven't saved anyone yet." : 'No talent found in this category yet.'}</p>
+      {filtered.length===0 ? (
+        <div style={{textAlign:'center',padding:'60px 20px',background:'rgba(15,10,40,0.4)',backdropFilter:'blur(12px)',borderRadius:20,border:'1px solid rgba(139,92,246,0.15)'}}>
+          <p style={{fontSize:52,margin:0}}>{activeCat==='saved'?'❤️':'🎭'}</p>
+          <p style={{color:G.muted,marginTop:12}}>{activeCat==='saved'?"You haven't saved anyone yet.":'No talent found.'}</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: '14px' }}>
-          {filtered.map((t, i) => {
-            const catObj = CATS.find(c => c.id === t.category);
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(270px,1fr))',gap:14}}>
+          {filtered.map((t,i) => {
+            const catObj = CATS.find(c=>c.id===t.category);
             const status = getReqStatus(t.email);
+            const cc = catObj?.color || G.purple;
             return (
-              <div key={i} style={talentCard} onClick={() => setSelectedTalent(t)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-                  <img src={t.profilePic || '/icon.png'} alt="" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: '700', fontSize: '14px' }}>{t.name}</div>
-                    <div style={{ fontSize: '11px', color: '#636e72' }}>📍 {(t.address || '').split(',')[0] || 'Bangladesh'}</div>
+              <div key={i} className="cb-card"
+                style={{...glass,cursor:'pointer',overflow:'hidden',transition:'all 0.2s',border:`1px solid ${cc}22`}}
+                onClick={()=>{playClick();setSelectedTalent(t);}}>
+                {/* Top color strip */}
+                <div style={{height:3,background:`linear-gradient(90deg,${cc},${cc}44,transparent)`,margin:'-16px -16px 12px',...{margin:0,borderRadius:'20px 20px 0 0'}}}/>
+
+                <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10,padding:'12px 14px 0'}}>
+                  <img src={t.profilePic||'/icon.png'} alt="" style={{width:48,height:48,borderRadius:'50%',objectFit:'cover',border:`2px solid ${cc}44`,boxShadow:`0 0 12px ${cc}22`,flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:14,color:G.text,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.name}</div>
+                    <div style={{fontSize:11,color:G.muted}}>📍 {(t.address||'').split(',')[0]||'Worldwide'}</div>
                   </div>
-                  <button onClick={e => { e.stopPropagation(); toggleSaveTalent(t.email); }} style={saveIconBtn} title={isSaved(t.email) ? 'Unsave' : 'Save'}>
-                    {isSaved(t.email) ? '❤️' : '🤍'}
+                  <button onClick={e=>{e.stopPropagation();toggleSave(t.email);}}
+                    style={{background:'none',border:'none',cursor:'pointer',fontSize:20,padding:2,flexShrink:0}}>
+                    {isSaved(t.email)?'❤️':'🤍'}
                   </button>
-                  <span style={{ ...catTagStyle, background: catObj?.color + '22', color: catObj?.color, fontSize: '10px' }}>
+                  <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:12,background:`${cc}22`,color:cc,border:`1px solid ${cc}33`,flexShrink:0}}>
                     {catObj?.emoji}
                   </span>
                 </div>
 
-                {/* Preview */}
-                <div style={{ fontSize: '12px', color: '#636e72', marginBottom: '10px' }}>
-                  {t.category === 'writer'  && `📝 ${t.storyCount} stories · ${t.genres?.slice(0,3).join(', ')}`}
-                  {t.category === 'singer'  && t.songs   && `🎵 ${Object.keys(t.songs).length} songs uploaded`}
-                  {t.category === 'painter' && t.artworks && `🖼 ${Object.keys(t.artworks).length} artworks · 🔒 Protected`}
-                  {(t.category === 'actor' || t.category === 'dancer') && t.videos && `🎬 ${Object.keys(t.videos).length} videos`}
+                <div style={{padding:'0 14px',fontSize:12,color:G.muted,marginBottom:12}}>
+                  {t.category==='writer' && `📝 ${t.storyCount} stories · ${t.genres?.slice(0,2).join(', ')}`}
+                  {t.category==='singer' && t.songs && `🎵 ${Object.keys(t.songs).length} songs`}
+                  {t.category==='painter' && t.artworks && `🖼 ${Object.keys(t.artworks).length} artworks · 🔒`}
+                  {(t.category==='actor'||t.category==='dancer') && t.videos && `🎬 ${Object.keys(t.videos).length} videos`}
                   {t.profession && ` · ${t.profession}`}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 14px 14px'}}>
                   <div>
-                    {status === 'pending'  && <span style={pendingBadge}>⏳ Pending</span>}
-                    {status === 'approved' && <span style={approvedBadge}>✅ Approved</span>}
-                    {status === 'declined' && <span style={declinedBadge}>❌ Declined</span>}
+                    {status==='pending'  && <span style={{background:'rgba(245,158,11,0.15)',color:'#f59e0b',padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,border:'1px solid rgba(245,158,11,0.3)'}}>⏳ Pending</span>}
+                    {status==='approved' && <span style={{background:'rgba(16,185,129,0.15)',color:'#10b981',padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,border:'1px solid rgba(16,185,129,0.3)'}}>✅ Approved</span>}
+                    {status==='declined' && <span style={{background:'rgba(239,68,68,0.15)',color:'#ef4444',padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,border:'1px solid rgba(239,68,68,0.3)'}}>❌ Declined</span>}
                     {!status && (
-                      <button onClick={e => { e.stopPropagation(); setContactModal(t); }} style={smallReqBtn}>
+                      <button onClick={e=>{e.stopPropagation();withRipple(e,()=>{playClick();setContactModal(t);});}}
+                        style={{background:`linear-gradient(135deg,${G.purple}44,${G.blue}33)`,color:G.text,border:`1px solid ${G.purple}44`,padding:'6px 14px',borderRadius:10,cursor:'pointer',fontWeight:600,fontSize:11,position:'relative'}}>
                         📩 Contact
                       </button>
                     )}
                   </div>
-                  <button onClick={e => { e.stopPropagation(); setSelectedTalent(t); }} style={viewBtn}>
-                    View Profile →
-                  </button>
+                  <span style={{fontSize:11,color:cc,fontWeight:600}}>View Profile →</span>
                 </div>
               </div>
             );
@@ -352,26 +415,23 @@ const HireDashboard = () => {
 
       {/* Contact Modal */}
       {contactModal && (
-        <div style={modalOverlay} onClick={() => setContactModal(null)}>
-          <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>📩 Contact Request</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
-              <img src={contactModal.profilePic || '/icon.png'} alt="" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
+        <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(0,0,0,0.85)',display:'flex',justifyContent:'center',alignItems:'center',zIndex:9999,backdropFilter:'blur(18px)'}}
+          onClick={()=>setContactModal(null)}>
+          <div style={{...glass,padding:26,width:'90%',maxWidth:400}} onClick={e=>e.stopPropagation()}>
+            <h3 style={{marginTop:0,color:G.text}}>📩 Contact Request</h3>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+              <img src={contactModal.profilePic||'/icon.png'} alt="" style={{width:46,height:46,borderRadius:'50%',objectFit:'cover',border:`2px solid ${G.purple}44`}}/>
               <div>
-                <div style={{ fontWeight: '700' }}>{contactModal.name}</div>
-                <div style={{ fontSize: '12px', color: '#636e72' }}>{contactModal.profession}</div>
+                <div style={{fontWeight:700,color:G.text}}>{contactModal.name}</div>
+                <div style={{fontSize:12,color:G.muted}}>{contactModal.profession}</div>
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: '#636e72', margin: '0 0 8px' }}>আপনার পরিচয় ও উদ্দেশ্য লিখুন (Required):</p>
-            <textarea
-              style={textarea}
-              placeholder="আমি একজন Director/Producer। আপনার সাথে কাজ করতে চাই..."
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => { setContactModal(null); setMessage(''); }} style={cancelBtn}>Cancel</button>
-              <button onClick={handleSend} style={confirmBtn}>Send Request</button>
+            <p style={{fontSize:12,color:G.muted,margin:'0 0 8px'}}>Introduce yourself and state your purpose:</p>
+            <textarea style={{width:'100%',height:100,padding:10,borderRadius:12,border:'1px solid rgba(139,92,246,0.3)',marginBottom:14,boxSizing:'border-box',fontSize:13,resize:'none',background:'rgba(255,255,255,0.04)',color:G.text,fontFamily:'inherit'}}
+              placeholder="e.g. I'm a Film Director looking to collaborate..." value={message} onChange={e=>setMessage(e.target.value)}/>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>{setContactModal(null);setMessage('');}} style={{flex:1,padding:10,borderRadius:12,border:'1px solid rgba(255,255,255,0.1)',cursor:'pointer',background:'rgba(255,255,255,0.04)',color:G.muted,fontWeight:600}}>Cancel</button>
+              <button onClick={e=>withRipple(e,()=>handleSend())} style={{flex:1,padding:10,borderRadius:12,border:'none',background:`linear-gradient(135deg,${G.purple}88,${G.blue}66)`,color:G.text,cursor:'pointer',fontWeight:700,position:'relative'}}>Send Request</button>
             </div>
           </div>
         </div>
@@ -380,57 +440,23 @@ const HireDashboard = () => {
   );
 };
 
-// ── Protected Image (Painter artwork) ─────────────────────────────────────────
+// ── Protected artwork thumbnail ────────────────────────────────
 const ProtectedImage = ({ src, title }) => {
   const [blobUrl, setBlobUrl] = React.useState(null);
   React.useEffect(() => {
     if (!src) return;
-    fetch(src)
-      .then(r => r.blob())
-      .then(blob => setBlobUrl(URL.createObjectURL(blob)))
-      .catch(() => setBlobUrl(src));
+    fetch(src).then(r=>r.blob()).then(blob=>setBlobUrl(URL.createObjectURL(blob))).catch(()=>setBlobUrl(src));
   }, [src]);
-
   return (
-    <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', userSelect: 'none' }}
-      onContextMenu={e => e.preventDefault()}>
+    <div style={{position:'relative',userSelect:'none'}} onContextMenu={e=>e.preventDefault()}>
       {blobUrl
-        ? <img src={blobUrl} alt={title} draggable={false} style={{ width: '100%', height: '130px', objectFit: 'cover', pointerEvents: 'none', WebkitUserDrag: 'none' }} />
-        : <div style={{ height: '130px', background: '#f1f2f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#aaa' }}>Loading...</div>
+        ?<img src={blobUrl} alt={title} draggable={false} style={{width:'100%',height:130,objectFit:'contain',pointerEvents:'none',background:'rgba(0,0,0,0.3)',display:'block'}}/>
+        :<div style={{height:130,background:'rgba(0,0,0,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,color:'rgba(255,255,255,0.3)'}}>Loading...</div>
       }
-      <div style={{ position: 'absolute', inset: 0, zIndex: 1 }} onContextMenu={e => e.preventDefault()} />
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', color: '#fff', padding: '4px 8px', fontSize: '11px', zIndex: 2 }}>
-        🔒 {title}
-      </div>
+      <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.7)',color:'rgba(255,255,255,0.6)',padding:'3px 6px',fontSize:10,zIndex:2}}>🔒 {title}</div>
     </div>
   );
 };
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-const backBtn        = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', marginBottom: '14px', display: 'block', padding: 0 };
-const profileCard    = { background: 'rgba(255,255,255,0.95)', padding: '25px', borderRadius: '20px', boxShadow: '0 5px 20px rgba(0,0,0,0.07)' };
-const bigAvatar      = { width: '78px', height: '78px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #eee' };
-const catTagStyle    = { display: 'inline-block', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' };
-const metaText       = { margin: '3px 0 0', fontSize: '13px', color: '#636e72' };
-const reqBtn         = { padding: '10px 18px', background: '#6c5ce7', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '13px' };
-const bioBox         = { fontSize: '14px', color: '#2d3436', background: '#f8f9fa', padding: '12px', borderRadius: '10px', margin: '0 0 10px' };
-const section        = { marginTop: '18px', paddingTop: '14px', borderTop: '1px solid #eee' };
-const sectionLabel   = { margin: '0 0 10px', fontSize: '11px', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px' };
-const lockedRow      = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee', fontSize: '13px', color: '#636e72', gap: '10px', flexWrap: 'wrap' };
-const miniCard       = { padding: '10px', background: '#f8f9fa', borderRadius: '10px', marginBottom: '8px' };
-const searchBox      = { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.9)', padding: '10px 16px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '12px' };
-const talentCard     = { background: 'rgba(255,255,255,0.95)', padding: '16px', borderRadius: '16px', boxShadow: '0 3px 12px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #f0f0f0', transition: 'transform 0.15s' };
-const pendingBadge   = { background: '#fff9db', color: '#f39c12', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' };
-const approvedBadge  = { background: '#d4edda', color: '#2ecc71', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' };
-const declinedBadge  = { background: '#fdecea', color: '#e74c3c', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' };
-const smallReqBtn    = { background: '#6c5ce7', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '11px' };
-const viewBtn        = { background: 'none', border: 'none', color: '#4834d4', cursor: 'pointer', fontWeight: '700', fontSize: '12px' };
-const saveIconBtn    = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px', flexShrink: 0 };
-const saveDetailBtn  = { padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' };
-const modalOverlay   = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, backdropFilter: 'blur(5px)' };
-const modalBox       = { background: '#fff', padding: '28px', borderRadius: '20px', width: '90%', maxWidth: '400px' };
-const textarea       = { width: '100%', height: '100px', padding: '10px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '14px', boxSizing: 'border-box', fontSize: '13px', resize: 'none' };
-const cancelBtn      = { flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #eee', cursor: 'pointer', background: '#f8f9fa' };
-const confirmBtn     = { flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#2d3436', color: '#fff', cursor: 'pointer', fontWeight: 'bold' };
 
 export default HireDashboard;

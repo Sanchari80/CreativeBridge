@@ -1,402 +1,456 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { ref, update, onValue } from "firebase/database";
+import { ref, update } from "firebase/database";
 import { db } from '../App.jsx';
 
-const TALENT_ROLES = ['Singer', 'Painter', 'Actor', 'Dancer'];
+const CLOUD_NAME    = 'danbshghf';
+const UPLOAD_PRESET = 'CreativeBridge';
 
+// ── Neon Silver + Deep Blue palette ───────────────────────────
+const N = {
+  bg:     'rgba(4,6,28,0.92)',
+  glass:  'rgba(5,8,35,0.75)',
+  border: 'rgba(147,197,253,0.12)',
+  silver: 'rgba(147,197,253,0.55)',
+  text:   'rgba(255,255,255,0.92)',
+  muted:  'rgba(147,197,253,0.45)',
+  deep:   '#020818',
+};
+
+// ── Role config ────────────────────────────────────────────────
+const ROLE_CFG = {
+  Actor:   { color:'#ef4444', glow:'rgba(239,68,68,0.35)',   tag:'🎬 CINEMA ARTIST',   frame:'cinema'  },
+  Dancer:  { color:'#ec4899', glow:'rgba(236,72,153,0.35)',  tag:'💃 STAGE PERFORMER', frame:'stage'   },
+  Painter: { color:'#f59e0b', glow:'rgba(245,158,11,0.35)',  tag:'🎨 VISUAL ARTIST',   frame:'canvas'  },
+  Writer:  { color:'#8b5cf6', glow:'rgba(139,92,246,0.35)',  tag:'✍️ AUTHOR',           frame:'book'    },
+  Singer:  { color:'#06b6d4', glow:'rgba(6,182,212,0.35)',   tag:'🎤 MUSIC ARTIST',    frame:'music'   },
+  Hirer:   { color:'#94a3b8', glow:'rgba(148,163,184,0.2)',  tag:'🔍 PRODUCER',         frame:'pro'     },
+  'Looking for new stories': { color:'#94a3b8', glow:'rgba(148,163,184,0.2)', tag:'🔍 PRODUCER', frame:'pro' },
+  Admin:   { color:'#8b5cf6', glow:'rgba(139,92,246,0.35)',  tag:'🛡️ ADMIN',            frame:'pro'     },
+};
+
+// ── Sound + ripple ────────────────────────────────────────────
+const playClick = () => {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(0.1,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.08);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.08);
+  } catch(e){}
+};
+const withRipple=(e,fn)=>{
+  const btn=e.currentTarget, r=document.createElement('span');
+  const rect=btn.getBoundingClientRect(), sz=Math.max(rect.width,rect.height);
+  r.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;border-radius:50%;background:rgba(255,255,255,0.18);transform:scale(0);animation:ripple 0.5s linear;left:${e.clientX-rect.left-sz/2}px;top:${e.clientY-rect.top-sz/2}px;pointer-events:none`;
+  btn.style.overflow='hidden'; btn.style.position=btn.style.position||'relative';
+  btn.appendChild(r); setTimeout(()=>r.remove(),600); fn&&fn();
+};
+
+// ──────────────────────────────────────────────────────────────
+// ROLE-SPECIFIC PROFILE FRAMES
+// ──────────────────────────────────────────────────────────────
+
+// 🎬 Cinema frame — Actor / Anchor
+const CinemaFrame = ({ src, size, uploading, onPicClick }) => (
+  <div style={{position:'relative',cursor:'pointer'}} onClick={onPicClick}>
+    {/* Film strip top */}
+    <div style={{display:'flex',gap:3,padding:'4px 7px',background:'#090909',borderRadius:'8px 8px 0 0',border:'1px solid #1a1a1a',borderBottom:'none'}}>
+      {[...Array(8)].map((_,i)=><div key={i} style={{width:9,height:9,borderRadius:2,background:'#202020'}}/>)}
+    </div>
+    {/* Screen */}
+    <div style={{padding:5,background:'#0f0f0f',border:'5px solid #151515',boxShadow:`0 0 40px rgba(239,68,68,0.35),inset 0 0 20px rgba(0,0,0,0.8)`,position:'relative'}}>
+      <img src={src||'/icon.png'} alt="" draggable={false}
+        style={{width:size,height:size,objectFit:'cover',display:'block',filter:'contrast(1.05)'}}/>
+      {uploading&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'#ef4444',fontSize:12,fontWeight:700}}>Uploading...</div>}
+      {/* Spotlight top */}
+      <div style={{position:'absolute',top:-25,left:'50%',transform:'translateX(-50%)',width:size*0.9,height:25,background:'linear-gradient(180deg,rgba(239,68,68,0.5),transparent)',pointerEvents:'none'}}/>
+    </div>
+    {/* Film strip bottom */}
+    <div style={{display:'flex',gap:3,padding:'4px 7px',background:'#090909',borderRadius:'0 0 8px 8px',border:'1px solid #1a1a1a',borderTop:'none'}}>
+      {[...Array(8)].map((_,i)=><div key={i} style={{width:9,height:9,borderRadius:2,background:'#202020'}}/>)}
+    </div>
+    {/* Camera icon */}
+    <div style={{position:'absolute',bottom:-8,right:-8,background:'#ef4444',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,border:'2px solid #0a0a0a',zIndex:2}}>📷</div>
+  </div>
+);
+
+// 💃 Stage frame — Dancer
+const StageFrame = ({ src, size, uploading, onPicClick }) => (
+  <div style={{position:'relative',cursor:'pointer'}} onClick={onPicClick}>
+    {/* Stage curtains */}
+    <div style={{display:'flex',position:'absolute',top:-8,left:-10,right:-10,zIndex:1,pointerEvents:'none'}}>
+      <div style={{flex:1,height:20,background:'linear-gradient(90deg,#4a0030,#1a0012)',borderRadius:'0 0 8px 0'}}/>
+      <div style={{flex:1,height:20,background:'linear-gradient(270deg,#4a0030,#1a0012)',borderRadius:'0 0 0 8px'}}/>
+    </div>
+    {/* Stage box */}
+    <div style={{padding:6,background:'rgba(5,0,20,0.95)',border:`3px solid #ec4899`,borderRadius:8,boxShadow:`0 0 35px rgba(236,72,153,0.45),inset 0 0 25px rgba(236,72,153,0.05)`,position:'relative',marginTop:8}}>
+      {/* Spotlight cone */}
+      <div style={{position:'absolute',top:-40,left:'50%',transform:'translateX(-50%)',width:size*0.8,height:40,background:'linear-gradient(180deg,rgba(236,72,153,0.4),transparent)',clipPath:'polygon(20% 0,80% 0,100% 100%,0 100%)',pointerEvents:'none'}}/>
+      <img src={src||'/icon.png'} alt="" draggable={false}
+        style={{width:size,height:size,objectFit:'cover',display:'block',borderRadius:4}}/>
+      {uploading&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'#ec4899',fontSize:12,fontWeight:700,borderRadius:4}}>Uploading...</div>}
+    </div>
+    {/* Stage floor */}
+    <div style={{height:5,background:'linear-gradient(90deg,rgba(236,72,153,0),rgba(236,72,153,0.5),rgba(236,72,153,0))',marginTop:3,borderRadius:2}}/>
+    <div style={{position:'absolute',bottom:-8,right:-8,background:'#ec4899',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,border:'2px solid #0a0a0a',zIndex:2}}>📷</div>
+  </div>
+);
+
+// 🎨 Canvas frame — Painter
+const CanvasFrame = ({ src, size, uploading, onPicClick }) => (
+  <div style={{position:'relative',cursor:'pointer'}} onClick={onPicClick}>
+    {/* Outer wooden frame */}
+    <div style={{padding:12,background:'linear-gradient(135deg,#4a2c0a,#2a1606,#4a2c0a,#1e0f04,#3a2208)',boxShadow:`6px 6px 0 #0a0400,-3px -3px 0 #8b5e3c,0 0 35px rgba(245,158,11,0.25)`,borderRadius:4,position:'relative'}}>
+      {/* Corner accents */}
+      {[{t:-3,l:-3},{t:-3,r:-3},{b:-3,l:-3},{b:-3,r:-3}].map((pos,i)=>(
+        <div key={i} style={{position:'absolute',width:14,height:14,background:'#c4973e',borderRadius:2,...pos}}/>
+      ))}
+      {/* Inner frame */}
+      <div style={{border:'3px solid #8b5e3c',padding:3}}>
+        <div style={{border:'1.5px solid #c4973e',background:'rgba(0,0,0,0.5)'}}>
+          <img src={src||'/icon.png'} alt="" draggable={false}
+            style={{width:size,height:size,objectFit:'cover',display:'block'}}/>
+          {uploading&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'#f59e0b',fontSize:12,fontWeight:700}}>Uploading...</div>}
+        </div>
+      </div>
+    </div>
+    <div style={{position:'absolute',bottom:-4,right:-8,background:'#f59e0b',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,border:'2px solid #0a0a0a',zIndex:2}}>📷</div>
+  </div>
+);
+
+// 📖 Book cover frame — Writer
+const BookFrame = ({ src, size, uploading, onPicClick }) => (
+  <div style={{position:'relative',cursor:'pointer',display:'inline-flex'}} onClick={onPicClick}>
+    {/* Book spine */}
+    <div style={{width:16,background:'linear-gradient(180deg,#3b0764,#6d28d9,#3b0764)',borderRadius:'4px 0 0 4px',display:'flex',alignItems:'center',justifyContent:'center',writingMode:'vertical-rl',fontSize:8,color:'rgba(255,255,255,0.4)',fontWeight:700,letterSpacing:2,paddingTop:8,boxShadow:'inset -2px 0 4px rgba(0,0,0,0.5)'}}>
+      PROFILE
+    </div>
+    {/* Book cover */}
+    <div style={{padding:6,background:'linear-gradient(135deg,#0f0828,#1e0f50,#0a0520)',border:'1px solid rgba(139,92,246,0.5)',borderLeft:'none',borderRadius:'0 6px 6px 0',boxShadow:`0 0 30px rgba(139,92,246,0.3),4px 4px 12px rgba(0,0,0,0.6)`,position:'relative'}}>
+      {/* Top decorative rule */}
+      <div style={{height:2,background:'linear-gradient(90deg,transparent,#8b5cf6,transparent)',marginBottom:5,borderRadius:1}}/>
+      <img src={src||'/icon.png'} alt="" draggable={false}
+        style={{width:size-10,height:size-10,objectFit:'cover',display:'block',borderRadius:2}}/>
+      {/* Bottom decorative rule */}
+      <div style={{height:2,background:'linear-gradient(90deg,transparent,#8b5cf6,transparent)',marginTop:5,borderRadius:1}}/>
+      {uploading&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'#8b5cf6',fontSize:12,fontWeight:700}}>Uploading...</div>}
+    </div>
+    <div style={{position:'absolute',bottom:-6,right:-8,background:'#8b5cf6',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,border:'2px solid #0a0a0a',zIndex:2}}>📷</div>
+  </div>
+);
+
+// 🎤 Music frame — Singer
+const MusicFrame = ({ src, size, uploading, onPicClick }) => (
+  <div style={{position:'relative',cursor:'pointer'}} onClick={onPicClick}>
+    {/* Soundwave top */}
+    <div style={{display:'flex',alignItems:'flex-end',justifyContent:'center',gap:2,height:14,marginBottom:4}}>
+      {[4,8,12,6,14,10,5,12,8,4].map((h,i)=>(
+        <div key={i} style={{width:4,height:h,background:`rgba(6,182,212,${0.4+i*0.05})`,borderRadius:2,animation:'floatNote 1.5s ease-in-out infinite',animationDelay:`${i*0.1}s`}}/>
+      ))}
+    </div>
+    {/* Main frame */}
+    <div style={{padding:6,background:'rgba(0,15,25,0.95)',border:`3px solid #06b6d4`,borderRadius:10,boxShadow:`0 0 35px rgba(6,182,212,0.4),inset 0 0 20px rgba(6,182,212,0.05)`,position:'relative'}}>
+      <img src={src||'/icon.png'} alt="" draggable={false}
+        style={{width:size,height:size,objectFit:'cover',display:'block',borderRadius:6}}/>
+      {uploading&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'#06b6d4',fontSize:12,fontWeight:700,borderRadius:6}}>Uploading...</div>}
+      {/* Musical notes */}
+      <div style={{position:'absolute',top:4,right:4,fontSize:12,opacity:0.6}}>🎵</div>
+    </div>
+    {/* Soundwave bottom */}
+    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'center',gap:2,height:14,marginTop:4}}>
+      {[4,8,12,6,14,10,5,12,8,4].map((h,i)=>(
+        <div key={i} style={{width:4,height:h,background:`rgba(6,182,212,${0.4+i*0.05})`,borderRadius:2}}/>
+      ))}
+    </div>
+    <div style={{position:'absolute',bottom:6,right:-8,background:'#06b6d4',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,border:'2px solid #0a0a0a',zIndex:2}}>📷</div>
+  </div>
+);
+
+// 🔍 Pro frame — Hirer / Admin
+const ProFrame = ({ src, size, uploading, onPicClick }) => (
+  <div style={{position:'relative',cursor:'pointer'}} onClick={onPicClick}>
+    <div style={{padding:4,background:'linear-gradient(135deg,#0f172a,#1e293b)',border:'2px solid rgba(147,197,253,0.3)',borderRadius:'50%',boxShadow:'0 0 25px rgba(147,197,253,0.2)'}}>
+      <img src={src||'/icon.png'} alt="" draggable={false}
+        style={{width:size,height:size,objectFit:'cover',display:'block',borderRadius:'50%'}}/>
+      {uploading&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'#94a3b8',fontSize:12,fontWeight:700,borderRadius:'50%'}}>Uploading...</div>}
+    </div>
+    <div style={{position:'absolute',bottom:2,right:2,background:'#94a3b8',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,border:'2px solid #0a0a0a',zIndex:2}}>📷</div>
+  </div>
+);
+
+// ── Frame selector ─────────────────────────────────────────────
+const ProfileFrame = ({ role, src, size=90, uploading, onPicClick }) => {
+  const frame = ROLE_CFG[role]?.frame || 'pro';
+  const props = { src, size, uploading, onPicClick };
+  if (frame==='cinema') return <CinemaFrame {...props}/>;
+  if (frame==='stage')  return <StageFrame {...props}/>;
+  if (frame==='canvas') return <CanvasFrame {...props}/>;
+  if (frame==='book')   return <BookFrame {...props}/>;
+  if (frame==='music')  return <MusicFrame {...props}/>;
+  return <ProFrame {...props}/>;
+};
+
+// ── Main Component ─────────────────────────────────────────────
 const ProfilePage = ({ onBack }) => {
-  const { user, setUser, stories, setStories, requests, talentRequests } = useContext(AppContext);
+  const { user, setUser } = useContext(AppContext);
 
-  const [editing, setEditing]   = useState(false);
-  const [works, setWorks]       = useState([]);
-  const [saving, setSaving]     = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [form, setForm]         = useState({
+  const [editing,      setEditing]      = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [uploadingPic, setUploadingPic] = useState(false);
+  const [copied,       setCopied]       = useState(false);
+  const [isMobile,     setIsMobile]     = useState(window.innerWidth < 640);
+
+  const [form, setForm] = useState({
     name:       user?.name       || '',
     profession: user?.profession || '',
     address:    user?.address    || '',
-    portfolio:  user?.portfolio  || '',
-    bio:        user?.bio        || '',
     phone:      user?.phone      || '',
     whatsapp:   user?.whatsapp   || '',
     facebook:   user?.facebook   || '',
-    instagram:  user?.instagram  || '',
+    bio:        user?.bio        || '',
   });
 
-  const isWriter = user?.role === 'Writer';
-  const isTalent = TALENT_ROLES.includes(user?.role);
+  const picRef   = useRef(null);
   const emailKey = user?.email?.replace(/\./g, ',');
+  const roleCfg  = ROLE_CFG[user?.role] || ROLE_CFG['Hirer'];
 
-  const set_ = (key, val) => setForm(f => ({ ...f, [key]: val }));
-
-  // Fetch this talent's own uploaded works
   useEffect(() => {
-    if (!isTalent) return;
-    const folderMap = { Singer: 'songs', Painter: 'artworks', Actor: 'videos', Dancer: 'videos' };
-    const folder    = folderMap[user.role];
-    const r = ref(db, `talents/${user.role.toLowerCase()}/${emailKey}/${folder}`);
-    const u = onValue(r, snap => {
-      const data = snap.val();
-      setWorks(data ? Object.entries(data).map(([id, v]) => ({ ...v, id })).reverse() : []);
-    });
-    return () => u();
-  }, [user?.role, emailKey, isTalent]);
+    // Inject animations once
+    if (!document.getElementById('profile-anims')) {
+      const s = document.createElement('style');
+      s.id = 'profile-anims';
+      s.textContent = `
+        @keyframes ripple { to{transform:scale(2.5);opacity:0} }
+        @keyframes floatNote { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        @keyframes neonPulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        .p-input:focus { border-color:rgba(147,197,253,0.5)!important; box-shadow:0 0 0 3px rgba(147,197,253,0.1)!important; }
+        .p-btn:hover { filter:brightness(1.15); transform:scale(1.02); }
+      `;
+      document.head?.appendChild(s);
+    }
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
-const handleCopyLink = async () => {
-  const link = `${window.location.origin}${window.location.pathname}?profile=${user.email}`;
-  try { await navigator.clipboard.writeText(link); }
-  catch {
-    const t = document.createElement('textarea');
-    t.value = link;
-    document.body.appendChild(t); t.select();
-    document.execCommand('copy');
-    document.body.removeChild(t);
-  }
-  setCopied(true);
-  setTimeout(() => setCopied(false), 2500);
-};
-
-  // ── Profile picture update ──────────────────────────────────────────────────
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !user) return;
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const newPhoto = reader.result;
-      try {
-        // 1. User node update
-        await update(ref(db, `users/${emailKey}`), { profilePic: newPhoto });
-
-        // 2. Stories writerPic update
-        if (stories?.length > 0) {
-          await Promise.all(
-            stories
-              .filter(s => s.writerEmail === user.email)
-              .map(s => update(ref(db, `stories/${s.id}`), { writerPic: newPhoto }))
-          );
-          setStories(prev => prev.map(s =>
-            s.writerEmail === user.email ? { ...s, writerPic: newPhoto } : s
-          ));
-        }
-
-        // 3. Story requests pic update
-        if (requests?.length > 0) {
-          await Promise.all(requests.map(r => {
-            if (r.fromEmail === user.email)
-              return update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`), { fromPic: newPhoto });
-            if (r.ownerPath?.replace(/,/g, '.') === user.email.toLowerCase())
-              return update(ref(db, `requests/${r.ownerPath}/${r.firebaseKey}`), { writerPic: newPhoto });
-            return null;
-          }).filter(Boolean));
-        }
-
-        // 4. Talent requests pic update
-        if (talentRequests?.length > 0) {
-          await Promise.all(talentRequests.map(r => {
-            if (r.fromEmail === user.email)
-              return update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { fromPic: newPhoto });
-            if (r.ownerPath === emailKey)
-              return update(ref(db, `talentRequests/${r.ownerPath}/${r.firebaseKey}`), { talentPic: newPhoto });
-            return null;
-          }).filter(Boolean));
-        }
-
-        // 5. Talent profile node update
-        if (isTalent) {
-          await update(ref(db, `talents/${user.role.toLowerCase()}/${emailKey}/profile`), { profilePic: newPhoto });
-        }
-
-        const updated = { ...user, profilePic: newPhoto };
-        setUser(updated);
-        localStorage.setItem('activeUser', JSON.stringify(updated));
-        alert("Profile Picture Updated!");
-      } catch (err) {
-        alert("Failed: " + err.message);
-      }
-    };
-    reader.readAsDataURL(file);
+  const buildProfileLink = () => {
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?profile=${user.email}`;
   };
 
-  // ── Save profile info ───────────────────────────────────────────────────────
+  const handleCopyLink = async () => {
+    const link = buildProfileLink();
+    try { await navigator.clipboard.writeText(link); }
+    catch { const t=document.createElement('textarea');t.value=link;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t); }
+    setCopied(true); setTimeout(()=>setCopied(false), 2500);
+  };
+
+  const handlePicUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5*1024*1024) { alert('Image must be under 5MB'); return; }
+    setUploadingPic(true);
+    const fd = new FormData();
+    fd.append('file', file); fd.append('upload_preset', UPLOAD_PRESET); fd.append('folder','CreativeBridge/profiles');
+    try {
+      const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{method:'POST',body:fd});
+      const data = await res.json();
+      if (data.secure_url) {
+        await update(ref(db,`users/${emailKey}`),{profilePic:data.secure_url});
+        const u = {...user,profilePic:data.secure_url};
+        setUser(u); localStorage.setItem('activeUser',JSON.stringify(u));
+      }
+    } catch(err){ alert('Upload failed: '+err.message); }
+    finally { setUploadingPic(false); }
+  };
+
   const handleSave = async () => {
+    if (!form.name.trim()) { alert('Name required'); return; }
     setSaving(true);
     try {
-      await update(ref(db, `users/${emailKey}`), form);
-
-      // Talent profile node ও update
-      if (isTalent) {
-        await update(ref(db, `talents/${user.role.toLowerCase()}/${emailKey}/profile`), {
-          name:       form.name,
-          profession: form.profession,
-          address:    form.address,
-          bio:        form.bio,
-          profilePic: user.profilePic || '/icon.png',
-          email:      user.email,
-        });
-      }
-
-      const updated = { ...user, ...form };
-      setUser(updated);
-      localStorage.setItem('activeUser', JSON.stringify(updated));
+      const updates = { name:form.name.trim(), profession:form.profession.trim(), address:form.address.trim(), phone:form.phone.trim(), whatsapp:form.whatsapp.trim(), facebook:form.facebook.trim(), bio:form.bio.trim() };
+      await update(ref(db,`users/${emailKey}`),updates);
+      const u = {...user,...updates};
+      setUser(u); localStorage.setItem('activeUser',JSON.stringify(u));
       setEditing(false);
-      alert("Profile Updated Successfully!");
-    } catch (err) {
-      alert("Save failed: " + err.message);
-    }
-    setSaving(false);
+    } catch(err){ alert('Save failed: '+err.message); }
+    finally { setSaving(false); }
   };
 
-  const myStories = stories.filter(s =>
-    s.writerEmail === user?.email || s.email === user?.email
-  );
-
-  const roleEmoji = {
-    Writer: '✍️', Singer: '🎤', Painter: '🎨',
-    Actor: '🎬', Dancer: '💃', Hirer: '🔍', 'Looking for new stories': '🔍'
+  const cancelEdit = () => {
+    setForm({ name:user?.name||'', profession:user?.profession||'', address:user?.address||'', phone:user?.phone||'', whatsapp:user?.whatsapp||'', facebook:user?.facebook||'', bio:user?.bio||'' });
+    setEditing(false);
   };
 
-  // ════════════════════════════════════════════════════════════════════════════
+  const inpStyle = {
+    width:'100%', padding:'11px 14px',
+    border:'1px solid rgba(147,197,253,0.18)',
+    borderRadius:12, boxSizing:'border-box', fontSize:14,
+    background:'rgba(5,8,35,0.6)', color:N.text,
+    marginBottom:10, outline:'none', fontFamily:'inherit',
+    transition:'border-color 0.2s,box-shadow 0.2s',
+  };
+  const lblStyle = { display:'block', fontSize:10, fontWeight:700, color:N.muted, marginBottom:5, textTransform:'uppercase', letterSpacing:'1.5px' };
+  const glass = { background:N.glass, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:`1px solid ${N.border}`, borderRadius:20, boxShadow:'0 8px 40px rgba(0,0,0,0.5)' };
+
   return (
-    <div style={containerStyle}>
-      <div style={{ width: '100%', maxWidth: '600px', marginBottom: '10px' }}>
-        <button onClick={onBack} style={backBtn}>← Back to Dashboard</button>
-        
-      </div>
+    <div style={{maxWidth:640, margin:'0 auto', animation:'slideUp 0.35s ease'}}>
 
-      <div style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Back */}
+      <button onClick={e=>withRipple(e,()=>{playClick();onBack();})} className="p-btn"
+        style={{background:'none',border:'none',color:N.muted,cursor:'pointer',fontWeight:700,fontSize:14,marginBottom:16,display:'block',padding:0,transition:'color 0.2s',position:'relative'}}>
+        ← Back
+      </button>
 
-        {/* ── Basic Info Card ── */}
-        <div style={card}>
-          <CardHeader title="Basic Info" onEdit={() => setEditing(!editing)} editing={editing} />
+      {/* ── Main card ── */}
+      <div style={{...glass,padding: isMobile ? '20px 14px' : '28px 24px'}}>
 
-          {/* Profile Picture */}
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <div style={imgWrapper}>
-              <img src={user?.profilePic || '/icon.png'} alt="Profile" style={imgStyle} />
-              <label htmlFor="photo-upload" style={camBtn} title="Update Photo">📷</label>
-              <input id="photo-upload" type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-            </div>
-            <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#b2bec3' }}>📷 click the icon and upload the profile picture</p>
-            {/* ── Copy Profile Link ── */}
-<button
-  onClick={handleCopyLink}
-  style={{
-    padding: '9px 16px',
-    background: copied ? '#2ecc71' : '#2d3436',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    fontWeight: 700,
-    fontSize: '13px',
-    transition: 'background 0.2s',
-  }}
->
-  {copied ? '✅ Link Copied!' : '🔗 Copy Profile Link'}
-</button>
+        {/* Header section */}
+        <div style={{display:'flex',alignItems:'flex-start',gap: isMobile ? 14 : 24,marginBottom:20,flexWrap:'wrap'}}>
 
-{/* Hint */}
-<div style={{ background:'#f0f4ff', border:'1px solid #d4d0ff', borderRadius:10, padding:'10px 14px', fontSize:12, color:'#4834d4', marginTop:8 }}>
-  🔗 Share this link anywhere — anyone who clicks it will land directly on your profile.
-</div>
+          {/* Role-specific profile frame */}
+          <div style={{flexShrink:0,paddingTop:4}}>
+            <ProfileFrame
+              role={user?.role}
+              src={user?.profilePic}
+              size={isMobile ? 72 : 90}
+              uploading={uploadingPic}
+              onPicClick={() => picRef.current?.click()}
+            />
+            <input ref={picRef} type="file" accept="image/*" onChange={handlePicUpload} style={{display:'none'}}/>
           </div>
 
-          {editing ? (
-            <div>
-              <F label="Full Name *">
-                <input style={inp} value={form.name} onChange={e => set_('name', e.target.value)} placeholder="Your full name" />
-              </F>
-              <F label="Profession / Expertise">
-                <input style={inp} value={form.profession} onChange={e => set_('profession', e.target.value)} placeholder="e.g. Film Director, Singer, Graphic Designer" />
-              </F>
-              <F label="Full Address">
-                <input style={inp} value={form.address} onChange={e => set_('address', e.target.value)} placeholder="Road, Area, District, Division" />
-              </F>
-              <F label="Portfolio / Website Link">
-                <input style={inp} value={form.portfolio} onChange={e => set_('portfolio', e.target.value)} placeholder="https://your-portfolio.com" />
-              </F>
-              <F label="Bio / About">
-                <textarea style={{ ...inp, height: '80px', resize: 'none' }} value={form.bio} onChange={e => set_('bio', e.target.value)} placeholder="নিজের সম্পর্কে কিছু লিখুন..." />
-              </F>
-              <SaveBtn onClick={handleSave} saving={saving} />
+          {/* Name + role + actions */}
+          <div style={{flex:1,minWidth:0}}>
+            <h2 style={{margin:'0 0 8px',color:N.text,fontSize: isMobile ? 18 : 22,fontFamily:'Georgia,serif'}}>{user?.name}</h2>
+
+            {/* Role badge */}
+            <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'5px 14px',borderRadius:20,background:`${roleCfg.color}18`,border:`1px solid ${roleCfg.color}44`,marginBottom:8}}>
+              <span style={{fontSize:11,fontWeight:800,color:roleCfg.color,letterSpacing:1.5,textTransform:'uppercase'}}>{roleCfg.tag}</span>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <IR icon={roleEmoji[user?.role] || '👤'} label="Role"       value={user?.role}       color="#6c5ce7" />
-              <IR icon="👤"                             label="Name"       value={user?.name} />
-              <IR icon="🛠"                             label="Profession" value={user?.profession} />
-              <IR icon="📍"                             label="Address"    value={user?.address} />
-              <IR icon="📧"                             label="Email"      value={user?.email} />
-              {user?.portfolio && (
-                <div style={iRow}>
-                  <span>🌐</span>
-                  <div>
-                    <div style={iLabel}>Portfolio</div>
-                    
-                      href={user.portfolio.startsWith('http') ? user.portfolio : `https://${user.portfolio}`}
-                      target="_blank" rel="noreferrer"
-                      style={{ fontSize: '14px', color: '#6c5ce7' }}
-                    <a>{user.portfolio}</a>
-                  </div>
-                </div>
+
+            <p style={{margin:'4px 0 0',fontSize:12,color:N.muted}}>{user?.email}</p>
+            {user?.profession && <p style={{margin:'3px 0 0',fontSize:13,color:N.silver}}>💼 {user.profession}</p>}
+
+            {/* Action buttons */}
+            <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}>
+              <button onClick={e=>withRipple(e,()=>handleCopyLink())} className="p-btn"
+                style={{padding:'8px 16px',background:copied?'rgba(16,185,129,0.2)':'rgba(147,197,253,0.08)',color:copied?'#10b981':N.silver,border:`1px solid ${copied?'rgba(16,185,129,0.3)':'rgba(147,197,253,0.2)'}`,borderRadius:12,cursor:'pointer',fontWeight:700,fontSize:12,transition:'all 0.2s',position:'relative'}}>
+                {copied?'✅ Link Copied!':'🔗 Copy Profile Link'}
+              </button>
+              {!editing && (
+                <button onClick={e=>withRipple(e,()=>{playClick();setEditing(true);})} className="p-btn"
+                  style={{padding:'8px 16px',background:'rgba(139,92,246,0.12)',color:'#a78bfa',border:'1px solid rgba(139,92,246,0.25)',borderRadius:12,cursor:'pointer',fontWeight:700,fontSize:12,position:'relative'}}>
+                  ✏️ Edit Profile
+                </button>
               )}
-              {user?.bio && <IR icon="📝" label="Bio" value={user.bio} />}
             </div>
-          )}
-        </div>
-
-        {/* ── Contact Info Card ── */}
-        <div style={card}>
-          <CardHeader title="🔒 Contact Info" onEdit={() => setEditing(!editing)} editing={editing} />
-
-          <div style={noticeBox}>
-            ℹ️ Only approved hirer will see your details
           </div>
-
-          {editing ? (
-            <div>
-              <F label="Phone Number">
-                <input style={inp} value={form.phone}     onChange={e => set_('phone', e.target.value)}     placeholder="+880 1X XX XXX XXX" />
-              </F>
-              <F label="WhatsApp">
-                <input style={inp} value={form.whatsapp}  onChange={e => set_('whatsapp', e.target.value)}  placeholder="+880 1X XX XXX XXX" />
-              </F>
-              <F label="Facebook Profile Link">
-                <input style={inp} value={form.facebook}  onChange={e => set_('facebook', e.target.value)}  placeholder="facebook.com/yourprofile" />
-              </F>
-              <F label="Instagram">
-                <input style={inp} value={form.instagram} onChange={e => set_('instagram', e.target.value)} placeholder="@yourusername" />
-              </F>
-              <SaveBtn onClick={handleSave} saving={saving} />
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <IR icon="📞" label="Phone"     value={user?.phone     || '—'} />
-              <IR icon="💬" label="WhatsApp"  value={user?.whatsapp  || '—'} />
-              <IR icon="👤" label="Facebook"  value={user?.facebook  || '—'} />
-              <IR icon="📸" label="Instagram" value={user?.instagram || '—'} />
-            </div>
-          )}
         </div>
 
-        {/* ── Writer: My Stories ── */}
-        {isWriter && (
-          <div style={card}>
-            <h3 style={cardTitle}>✍️ My Stories ({myStories.length})</h3>
-            {myStories.length === 0 ? (
-              <p style={emptyText}>No story posted yet</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {myStories.map(s => (
-                  <div key={s.id} style={workRow}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: '700', color: '#4834d4', fontSize: '14px' }}>{s.Name}</div>
-                      <div style={{ fontSize: '12px', color: '#636e72' }}>
-                        {s.genre} · {s.logline?.slice(0, 55)}{s.logline?.length > 55 ? '...' : ''}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                      {s.isSynopsisLocked  && <span style={lockTag}>🔒 Synopsis</span>}
-                      {s.isFullStoryLocked && <span style={lockTag}>🔒 Script</span>}
-                      {s.isContactLocked   && <span style={lockTag}>🔒 Contact</span>}
-                    </div>
-                  </div>
-                ))}
+        {/* Share hint */}
+        <div style={{background:'rgba(147,197,253,0.04)',border:'1px solid rgba(147,197,253,0.1)',borderRadius:10,padding:'10px 14px',fontSize:12,color:N.muted,marginBottom:18}}>
+          🔗 Share your profile link anywhere — anyone who clicks it will land directly on your profile.
+        </div>
+
+        {/* Divider */}
+        <div style={{height:1,background:`linear-gradient(90deg,transparent,${roleCfg.color}44,transparent)`,marginBottom:18}}/>
+
+        {editing ? (
+          /* ── EDIT MODE ── */
+          <div>
+            <p style={{margin:'0 0 16px',fontSize:10,color:N.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Edit Profile</p>
+
+            <label style={lblStyle}>Full Name *</label>
+            <input className="p-input" style={inpStyle} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Your full name"/>
+
+            <div style={{display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',gap:10}}>
+              <div>
+                <label style={lblStyle}>Profession</label>
+                <input className="p-input" style={{...inpStyle,marginBottom:0}} value={form.profession} onChange={e=>setForm(f=>({...f,profession:e.target.value}))} placeholder="Your expertise"/>
               </div>
+              <div>
+                <label style={lblStyle}>Address</label>
+                <input className="p-input" style={{...inpStyle,marginBottom:0}} value={form.address} onChange={e=>setForm(f=>({...f,address:e.target.value}))} placeholder="City, District"/>
+              </div>
+            </div>
+            <div style={{height:10}}/>
+
+            <div style={{display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',gap:10}}>
+              <div>
+                <label style={lblStyle}>Phone</label>
+                <input className="p-input" style={{...inpStyle,marginBottom:0}} value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="01XXXXXXXXX"/>
+              </div>
+              <div>
+                <label style={lblStyle}>WhatsApp</label>
+                <input className="p-input" style={{...inpStyle,marginBottom:0}} value={form.whatsapp} onChange={e=>setForm(f=>({...f,whatsapp:e.target.value}))} placeholder="01XXXXXXXXX"/>
+              </div>
+            </div>
+            <div style={{height:10}}/>
+
+            <label style={lblStyle}>Facebook Profile Link</label>
+            <input className="p-input" style={inpStyle} value={form.facebook} onChange={e=>setForm(f=>({...f,facebook:e.target.value}))} placeholder="https://facebook.com/yourname"/>
+
+            <label style={lblStyle}>Bio / About</label>
+            <textarea className="p-input" style={{...inpStyle,height:80,resize:'none'}} value={form.bio} onChange={e=>setForm(f=>({...f,bio:e.target.value}))} placeholder="Tell others about yourself and your work..."/>
+
+            <div style={{display:'flex',gap:10,marginTop:6}}>
+              <button onClick={e=>withRipple(e,cancelEdit)} className="p-btn"
+                style={{flex:1,padding:10,borderRadius:12,border:'1px solid rgba(255,255,255,0.08)',cursor:'pointer',background:'rgba(255,255,255,0.03)',color:N.muted,fontWeight:600,position:'relative'}}>
+                Cancel
+              </button>
+              <button onClick={e=>withRipple(e,()=>handleSave())} disabled={saving} className="p-btn"
+                style={{flex:2,padding:10,borderRadius:12,border:'none',background:`linear-gradient(135deg,${roleCfg.color}88,${roleCfg.color}44)`,color:'#fff',cursor:saving?'not-allowed':'pointer',fontWeight:700,fontSize:13,boxShadow:`0 4px 20px ${roleCfg.glow}`,position:'relative',opacity:saving?0.7:1}}>
+                {saving?'Saving...':'✅ Save Changes'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ── VIEW MODE ── */
+          <div>
+            <p style={{margin:'0 0 14px',fontSize:10,color:N.muted,textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Profile Information</p>
+
+            {[
+              {icon:'📍',label:'Address',   val:user?.address},
+              {icon:'📞',label:'Phone',     val:user?.phone},
+              {icon:'💬',label:'WhatsApp',  val:user?.whatsapp},
+            ].filter(r=>r.val).map((r,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 0',borderBottom:'1px solid rgba(147,197,253,0.06)'}}>
+                <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{r.icon}</span>
+                <div>
+                  <div style={{fontSize:10,color:N.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:2}}>{r.label}</div>
+                  <div style={{fontSize:14,color:N.text}}>{r.val}</div>
+                </div>
+              </div>
+            ))}
+
+            {user?.facebook && (
+              <div style={{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 0',borderBottom:'1px solid rgba(147,197,253,0.06)'}}>
+                <span style={{fontSize:18,flexShrink:0,marginTop:1}}>👤</span>
+                <div>
+                  <div style={{fontSize:10,color:N.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:2}}>Facebook</div>
+                  <a href={user.facebook} target="_blank" rel="noreferrer" style={{fontSize:13,color:roleCfg.color,wordBreak:'break-all'}}>{user.facebook}</a>
+                </div>
+              </div>
+            )}
+
+            {user?.bio && (
+              <div style={{marginTop:14,padding:'12px 16px',background:'rgba(147,197,253,0.04)',borderRadius:12,fontSize:14,color:'rgba(255,255,255,0.7)',lineHeight:1.7,border:'1px solid rgba(147,197,253,0.06)'}}>
+                {user.bio}
+              </div>
+            )}
+
+            {!user?.address && !user?.phone && !user?.whatsapp && !user?.facebook && !user?.bio && (
+              <p style={{color:N.muted,fontSize:13}}>No profile info yet. Click "Edit Profile" to add details.</p>
             )}
           </div>
         )}
-
-        {/* ── Talent: My Works ── */}
-        {isTalent && (
-          <div style={card}>
-            <h3 style={cardTitle}>
-              {user.role === 'Singer' ? '🎤 My Songs' : user.role === 'Painter' ? '🎨 My Artworks' : '🎬 My Videos'}
-              {' '}({works.length})
-            </h3>
-            {works.length === 0 ? (
-              <p style={emptyText}>Ohh shit! No works uploaded yet.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {works.map(w => (
-                  <div key={w.id} style={workRow}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: '700', fontSize: '14px' }}>{w.title}</div>
-                      <div style={{ fontSize: '12px', color: '#636e72' }}>{w.genre || w.style || w.type || ''}</div>
-                    </div>
-                    {/* Singer: mini audio player */}
-                    {user.role === 'Singer' && w.fileUrl && (
-                      <audio controls src={w.fileUrl} style={{ height: '28px', maxWidth: '180px', flex: 1 }} />
-                    )}
-                    {/* Painter: protected badge */}
-                    {user.role === 'Painter' && (
-                      <span style={{ fontSize: '11px', color: '#e17055', background: '#FAECE7', padding: '3px 8px', borderRadius: '8px' }}>🔒 Protected</span>
-                    )}
-                    {/* Actor/Dancer: video badge */}
-                    {(user.role === 'Actor' || user.role === 'Dancer') && (
-                      <span style={{ fontSize: '11px', color: '#636e72', background: '#f1f2f6', padding: '3px 8px', borderRadius: '8px' }}>🎬 Video</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
       </div>
     </div>
   );
 };
-
-// ── Tiny sub-components ───────────────────────────────────────────────────────
-const CardHeader = ({ title, onEdit, editing }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-    <h3 style={{ margin: 0, fontSize: '16px', color: '#2d3436' }}>{title}</h3>
-    <button onClick={onEdit} style={{ padding: '5px 14px', background: '#f1f2f6', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}>
-      {editing ? '✕ Cancel' : '✏️ Edit'}
-    </button>
-  </div>
-);
-
-const F = ({ label, children }) => (
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontSize: '11px', color: '#636e72', fontWeight: '600', display: 'block', marginBottom: '4px' }}>{label}</label>
-    {children}
-  </div>
-);
-
-const IR = ({ icon, label, value, color }) => (
-  <div style={iRow}>
-    <span style={{ fontSize: '16px', flexShrink: 0 }}>{icon}</span>
-    <div>
-      <div style={iLabel}>{label}</div>
-      <div style={{ fontSize: '14px', color: color || '#2d3436', fontWeight: color ? '700' : '400' }}>{value || '—'}</div>
-    </div>
-  </div>
-);
-
-const SaveBtn = ({ onClick, saving }) => (
-  <button onClick={onClick} disabled={saving} style={{ width: '100%', padding: '12px', background: '#2d3436', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', marginTop: '8px', opacity: saving ? 0.7 : 1 }}>
-    {saving ? 'Saving...' : '💾 Save Changes'}
-  </button>
-);
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-const containerStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' };
-const backBtn        = { background: 'none', border: 'none', color: '#2d3436', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', padding: 0 };
-const card           = { background: 'rgba(255,255,255,0.95)', padding: '22px', borderRadius: '20px', boxShadow: '0 5px 20px rgba(0,0,0,0.07)', width: '100%', maxWidth: '600px', boxSizing: 'border-box' };
-const cardTitle      = { margin: '0 0 14px', fontSize: '16px', color: '#2d3436' };
-const imgWrapper     = { position: 'relative', width: '120px', height: '120px', margin: '0 auto' };
-const imgStyle       = { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' };
-const camBtn         = { position: 'absolute', bottom: 0, right: 0, background: '#2d3436', color: '#fff', padding: '7px 9px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer', border: '2px solid #fff' };
-const inp            = { width: '100%', padding: '10px 12px', border: '1px solid #eee', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px', background: '#f9f9f9' };
-const iRow           = { display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 0', borderBottom: '1px solid #f5f5f5' };
-const iLabel         = { fontSize: '10px', color: '#adb5bd', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' };
-const noticeBox      = { background: '#fff9db', border: '1px solid #f9ca24', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#636e72', marginBottom: '14px' };
-const workRow        = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8f9fa', borderRadius: '10px', gap: '10px', flexWrap: 'wrap' };
-const lockTag        = { fontSize: '10px', background: '#fff9db', color: '#f39c12', padding: '2px 7px', borderRadius: '8px', border: '1px solid #f9ca24' };
-const emptyText      = { fontSize: '13px', color: '#b2bec3', textAlign: 'center', padding: '10px 0' };
 
 export default ProfilePage;
