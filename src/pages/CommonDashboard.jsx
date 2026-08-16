@@ -1350,5 +1350,5 @@ const moBox = {
 const ta=        {width:'100%',height:90,padding:10,borderRadius:12,border:'1px solid rgba(139,92,246,0.3)',marginBottom:14,boxSizing:'border-box',fontSize:13,resize:'none',background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.9)'};
 const cancelB=   {flex:1,padding:10,borderRadius:12,border:'1px solid rgba(255,255,255,0.15)',cursor:'pointer',background:'rgba(255,255,255,0.05)',color:'rgba(255,255,255,0.7)'};
 const confirmB=  {flex:1,padding:10,borderRadius:12,border:'none',background:'linear-gradient(135deg,#7c3aed,#2563eb)',color:'#fff',cursor:'pointer',fontWeight:'bold'};
-const submitBtn= {width:'100%',padding:13,background:'linear-gradient(135deg,#7c3aed,#2563eb)',color:'#fff',border:'none',borderRadius:14,cursor:'pointer',fontWeight:'bold',fontSize:15};
-const submitBtn= {width:'100%',padding:13,background:'#2d3436',color:'#fff',border:'none',borderRadius:12,cursor:'pointer',fontWeight:'bold',fontSize:15};
+const primarySubmitBtn = {width:'100%',padding:13,background:'linear-gradient(135deg,#7c3aed,#2563eb)',color:'#fff',border:'none',borderRadius:14,cursor:'pointer',fontWeight:'bold',fontSize:15};
+const secondarySubmitBtn = {width:'100%',padding:13,background:'#2d3436',color:'#fff',border:'none',borderRadius:12,cursor:'pointer',fontWeight:'bold',fontSize:15};
