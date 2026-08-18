@@ -1294,8 +1294,8 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
       {/* ── Fullscreen canvas modal ── */}
       {expanded&&(
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',backdropFilter:'blur(16px)',padding:20,cursor:'zoom-out',overflowY:'auto'}}>
-          <div style={{position:'relative',maxWidth:'80vw'}} onClick={e=>e.stopPropagation()}>
+          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',padding:'24px 10px 50px',cursor:'zoom-out',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+          <div style={{position:'relative',width:'100%',maxWidth:'94vw',margin:'0 auto'}} onClick={e=>e.stopPropagation()}>
             {/* Canvas/gallery frame */}
             <div style={{
               padding:14,
@@ -1306,7 +1306,7 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
               <div style={{border:'3px solid #8b5e3c',padding:4,borderRadius:2}}>
                 <div style={{border:'1px solid #c4973e',position:'relative'}}>
                   {blob&&<img src={blob} alt={title} draggable={false}
-                    style={{maxWidth:'76vw',maxHeight:'72vh',objectFit:'contain',display:'block',pointerEvents:'none'}}/>}
+                    style={{width:'100%',maxWidth:'92vw',height:'auto',maxHeight:'none',objectFit:'contain',display:'block',pointerEvents:'none',borderRadius:10}}/>}
                   <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
                   {/* Watermark grid */}
                   <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.15}}>

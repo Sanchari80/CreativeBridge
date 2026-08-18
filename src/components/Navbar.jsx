@@ -54,36 +54,39 @@ const NAV_ITEMS = {
 };
 
 // ── Logo with floating music notes ────────────────────────────
-const AnimatedLogo = ({ onClick }) => (
-  <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', position:'relative' }}>
-    {/* Floating notes around logo */}
-    <div style={{ position:'absolute', left:-8, top:-8, fontSize:9, color:'rgba(147,197,253,0.5)', animation:'nb-note 2s ease-in-out infinite' }}>♪</div>
-    <div style={{ position:'absolute', right:-4, bottom:-6, fontSize:10, color:'rgba(139,92,246,0.5)', animation:'nb-note 2.5s ease-in-out 0.5s infinite' }}>♫</div>
+const AnimatedLogo = ({ onClick, mobile }) => (
+  <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', position:'relative', minWidth:0 }}>
+    {/* Floating notes — desktop only */}
+    {!mobile && <div style={{ position:'absolute', left:-8, top:-8, fontSize:9, color:'rgba(147,197,253,0.5)', animation:'nb-note 2s ease-in-out infinite', pointerEvents:'none' }}>♪</div>}
+    {!mobile && <div style={{ position:'absolute', right:-4, bottom:-6, fontSize:10, color:'rgba(139,92,246,0.5)', animation:'nb-note 2.5s ease-in-out 0.5s infinite', pointerEvents:'none' }}>♫</div>}
 
     {/* Logo icon */}
     <div style={{
-      width:38, height:38, borderRadius:10,
+      width:36, height:36, borderRadius:10, flexShrink:0,
       background:'linear-gradient(135deg,rgba(139,92,246,0.4),rgba(59,130,246,0.4))',
       border:'1px solid rgba(147,197,253,0.25)',
-      display:'flex',alignItems:'center',justifyContent:'center',
-      fontSize:18, flexShrink:0,
-      boxShadow:'0 0 16px rgba(139,92,246,0.3)',
+      display:'flex', alignItems:'center', justifyContent:'center',
+      fontSize:17, boxShadow:'0 0 14px rgba(139,92,246,0.3)',
     }}>🎬</div>
 
-    {/* Brand name with creative styling */}
-    <div style={{ flexShrink:0 }}>
+    {/* Brand name */}
+    <div style={{ minWidth:0, overflow:'hidden' }}>
       <div style={{
         fontFamily:"'Playfair Display',Georgia,serif",
-        fontWeight:800, fontSize:'1.1rem',
+        fontWeight:800, fontSize: mobile ? '0.95rem' : '1.05rem',
         background:'linear-gradient(135deg,#e2e8f0,#93c5fd,#c4b5fd)',
-        WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
-        backgroundClip:'text', letterSpacing:0.5, lineHeight:1,
+        WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+        backgroundClip:'text', letterSpacing:0.3, lineHeight:1.1,
+        whiteSpace:'nowrap',
       }}>
         Creative Bridge
       </div>
-      <div style={{ fontSize:8, color:'rgba(147,197,253,0.4)', letterSpacing:3, textTransform:'uppercase', marginTop:1 }}>
-        ♪ Entertainment Platform ♪
-      </div>
+      {/* Subtitle — hidden on mobile to prevent overlap */}
+      {!mobile && (
+        <div style={{ fontSize:7.5, color:'rgba(147,197,253,0.38)', letterSpacing:2.5, textTransform:'uppercase', marginTop:2, whiteSpace:'nowrap' }}>
+          ♪ Entertainment Platform ♪
+        </div>
+      )}
     </div>
   </div>
 );
@@ -300,7 +303,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
   if (isMobile) return (
     <>
       <nav style={{...navBg,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',height:58}}>
-        <AnimatedLogo onClick={()=>go('dashboard')}/>
+        <AnimatedLogo onClick={()=>go('dashboard')} mobile={true}/>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {/* Live */}
           <div style={{display:'flex',alignItems:'center',gap:4,background:'rgba(16,185,129,0.1)',border:'1px solid rgba(16,185,129,0.2)',padding:'3px 8px',borderRadius:20}}>
@@ -333,7 +336,7 @@ const Navbar = ({ view, setView, setShowNotifications, showNotifications, setSho
 
       {/* Left: Logo + Live */}
       <div style={{display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
-        <AnimatedLogo onClick={()=>setView('dashboard')}/>
+        <AnimatedLogo onClick={()=>setView('dashboard')} mobile={false}/>
         <div style={{display:'flex',alignItems:'center',gap:5,background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.2)',padding:'4px 10px',borderRadius:20}}>
           <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981'}}/>
           <span style={{fontSize:10,color:'#10b981',fontWeight:700,whiteSpace:'nowrap'}}>{liveVisitors} Live</span>
