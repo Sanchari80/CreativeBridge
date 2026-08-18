@@ -72,7 +72,7 @@ const AdminDashboard = () => {
       {/* ── Header ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:10 }}>
         <div>
-          <h2 style={{ margin:0, color:'#2d3436' }}>🛡️ Admin Dashboard</h2>
+          <h2 style={{ margin:0, color:'rgba(255,255,255,0.92)', fontFamily:"Georgia,serif" }}>🛡️ Admin Dashboard</h2>
           <p style={{ margin:'3px 0 0', fontSize:13, color:'#636e72' }}>Welcome, {user?.name}</p>
         </div>
         <button onClick={handleOpenNotifs} style={{ ...notifBtn, background: unreadNotifs>0 ? '#fff9db' : '#f8f9fa', borderColor: unreadNotifs>0 ? '#f9ca24' : '#eee' }}>
@@ -132,8 +132,8 @@ const AdminDashboard = () => {
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
             flex:1, padding:'10px', borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13,
             border:`2px solid ${activeTab===t.id?'#2d3436':'#eee'}`,
-            background: activeTab===t.id ? '#2d3436' : '#fff',
-            color:      activeTab===t.id ? '#fff'    : '#2d3436',
+            background: activeTab===t.id ? 'linear-gradient(135deg,rgba(139,92,246,0.4),rgba(59,130,246,0.3))' : 'rgba(255,255,255,0.04)',
+            color: activeTab===t.id ? '#fff' : 'rgba(255,255,255,0.5)',
           }}>
             {t.label}
           </button>
@@ -322,21 +322,22 @@ const AdminDashboard = () => {
   );
 };
 
-/* ── Styles ── */
-const notifBtn  = { padding:'9px 16px', border:'1.5px solid', borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13, position:'relative' };
-const badge     = { position:'absolute', top:-6, right:-6, background:'#ff4757', color:'#fff', borderRadius:'50%', padding:'1px 5px', fontSize:10, fontWeight:800, border:'2px solid #fff' };
-const notifPanel= { background:'rgba(255,255,255,0.97)', borderRadius:16, padding:16, marginBottom:20, boxShadow:'0 4px 20px rgba(0,0,0,0.08)', border:'1px solid #f0f0f0' };
-const panelTitle= { margin:'0 0 12px', fontSize:12, fontWeight:700, color:'#636e72', textTransform:'uppercase', letterSpacing:1 };
-const notifItem = { padding:'10px 12px', borderRadius:10, marginBottom:8 };
-const ssLink    = { display:'inline-block', marginTop:5, fontSize:11, color:'#6c5ce7', fontWeight:600, textDecoration:'none' };
-const emptyBox  = { textAlign:'center', padding:'50px 20px', background:'rgba(255,255,255,0.9)', borderRadius:16, display:'flex', flexDirection:'column', alignItems:'center', gap:10 };
-const reviewCard= { background:'rgba(255,255,255,0.97)', padding:16, borderRadius:14, boxShadow:'0 3px 12px rgba(0,0,0,0.06)', border:'1px solid #f0f0f0' };
-const av        = { width:42, height:42, borderRadius:'50%', objectFit:'cover', border:'2px solid #eee', flexShrink:0 };
+/* ── Cinematic Styles ── */
+const glass     = { background:'rgba(5,8,35,0.75)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(147,197,253,0.12)', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.4)' };
+const notifBtn  = { padding:'9px 16px', borderRadius:14, cursor:'pointer', fontWeight:700, fontSize:13, position:'relative', backdropFilter:'blur(8px)' };
+const badge     = { position:'absolute', top:-6, right:-6, background:'#ef4444', color:'#fff', borderRadius:'50%', padding:'1px 5px', fontSize:10, fontWeight:800, border:'2px solid rgba(4,6,28,0.9)' };
+const notifPanel= { ...glass, padding:16, marginBottom:20 };
+const panelTitle= { margin:'0 0 12px', fontSize:10, fontWeight:700, color:'rgba(147,197,253,0.5)', textTransform:'uppercase', letterSpacing:2 };
+const notifItem = { padding:'10px 12px', borderRadius:12, marginBottom:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)' };
+const ssLink    = { display:'inline-block', marginTop:5, fontSize:11, color:'#8b5cf6', fontWeight:600, textDecoration:'none' };
+const emptyBox  = { textAlign:'center', padding:'50px 20px', ...glass, display:'flex', flexDirection:'column', alignItems:'center', gap:10 };
+const reviewCard= { ...glass, padding:16, borderRadius:16 };
+const av        = { width:42, height:42, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(139,92,246,0.3)', flexShrink:0 };
 const infoRow   = { display:'flex', gap:10, alignItems:'flex-start', marginBottom:5 };
-const infoLabel = { fontSize:11, color:'#adb5bd', fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, flexShrink:0, width:70 };
-const infoValue = { fontSize:12, color:'#2d3436', flex:1, wordBreak:'break-all' };
-const linkBtn   = { padding:'6px 12px', background:'#f0f0ff', color:'#6c5ce7', border:'1px solid #d4d0ff', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center' };
-const approveBtn= { flex:1, padding:'9px', background:'#2ecc71', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12 };
-const rejectBtn = { flex:1, padding:'9px', background:'#e74c3c', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12 };
+const infoLabel = { fontSize:10, color:'rgba(147,197,253,0.4)', fontWeight:700, textTransform:'uppercase', letterSpacing:1, flexShrink:0, width:70 };
+const infoValue = { fontSize:12, color:'rgba(255,255,255,0.8)', flex:1, wordBreak:'break-all' };
+const linkBtn   = { padding:'6px 12px', background:'rgba(139,92,246,0.15)', color:'#a78bfa', border:'1px solid rgba(139,92,246,0.3)', borderRadius:10, cursor:'pointer', fontSize:11, fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center' };
+const approveBtn= { flex:1, padding:'9px', background:'rgba(16,185,129,0.3)', color:'#10b981', border:'1px solid rgba(16,185,129,0.3)', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12 };
+const rejectBtn = { flex:1, padding:'9px', background:'rgba(239,68,68,0.3)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12 };
 
 export default AdminDashboard;

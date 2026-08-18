@@ -475,11 +475,11 @@ const PostForm = ({ closeForm }) => {
 
         {/* Submit button */}
         <button onClick={e=>withRipple(e,()=>handleSubmit())} disabled={busy} className="pf-btn"
-          style={{ width:'100%', padding:13, border:'none', borderRadius:14, cursor:busy?'not-allowed':'pointer', fontWeight:700, fontSize:14, marginTop:14, position:'relative', transition:'all 0.2s',
+          style={{ width:'100%', padding:13, borderRadius:14, cursor:busy?'not-allowed':'pointer', fontWeight:700, fontSize:14, marginTop:14, position:'relative', transition:'all 0.2s',
             background: busy ? 'rgba(255,255,255,0.05)' : `linear-gradient(135deg,${roleColor}88,#1d4ed866)`,
             color: busy ? N.muted : N.text, opacity:busy?0.7:1,
             boxShadow: busy ? 'none' : `0 4px 24px ${roleColor}44`,
-            border: `1px solid ${busy?'rgba(255,255,255,0.05)':roleColor+'44'}`,
+            border: `1px solid ${busy?'rgba(255,255,255,0.08)':roleColor+'44'}`,
           }}>
           {busy ? 'Publishing...' : isWriter ? '📜 Publish Story' : `🚀 Publish ${cfg?.label}`}
         </button>

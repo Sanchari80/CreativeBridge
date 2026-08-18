@@ -202,7 +202,7 @@ const TalentDashboard = () => {
           <button key={t.key}
             onClick={e=>withRipple(e,()=>{playClick();setTab(t.key);})}
             style={{
-              flex:1, padding:'10px', border:'none', borderRadius:12, cursor:'pointer',
+              flex:1, padding:'10px', borderRadius:12, cursor:'pointer',
               fontWeight:700, fontSize:13, transition:'all 0.2s', position:'relative',
               background: tab===t.key
                 ? `linear-gradient(135deg,${roleColor}44,${G.blue}33)`
@@ -322,7 +322,7 @@ const TalentDashboard = () => {
 
           <button onClick={e=>withRipple(e,()=>handleUpload())} disabled={uploading}
             style={{
-              width:'100%', padding:13, border:'none', borderRadius:14, cursor:uploading?'not-allowed':'pointer',
+              width:'100%', padding:13, borderRadius:14, cursor:uploading?'not-allowed':'pointer',
               fontWeight:700, fontSize:14, position:'relative', transition:'all 0.2s',
               background: uploading ? 'rgba(255,255,255,0.05)' : `linear-gradient(135deg,${roleColor}88,${G.blue}66)`,
               color: uploading ? G.muted : G.text,

@@ -95,7 +95,7 @@ const NavBtn = ({ id, active, onClick, color, icon, label, badge }) => (
       display:'flex', alignItems:'center', gap:6,
       padding:'7px 13px', borderRadius:24, cursor:'pointer',
       fontWeight:700, fontSize:12, whiteSpace:'nowrap', flexShrink:0,
-      position:'relative', border:'none',
+      position:'relative',
       background: active
         ? `linear-gradient(135deg,${color}55,${color}30)`
         : 'rgba(255,255,255,0.04)',

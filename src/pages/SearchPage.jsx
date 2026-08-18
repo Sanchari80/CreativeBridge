@@ -3,96 +3,164 @@ import { AppContext } from '../context/AppContext';
 import { ref, onValue } from "firebase/database";
 import { db } from '../App.jsx';
 
-// Role → emoji/color map (matches the styling used across the rest of the app)
 const ROLE_CFG = {
-  Writer:  { emoji:'✍️', color:'#4834d4' },
-  Singer:  { emoji:'🎤', color:'#00b894' },
-  Painter: { emoji:'🎨', color:'#e17055' },
-  Actor:   { emoji:'🎬', color:'#f39c12' },
-  Dancer:  { emoji:'💃', color:'#fd79a8' },
-  Hirer:   { emoji:'🔍', color:'#636e72' },
-  'Looking for new stories': { emoji:'🔍', color:'#636e72' },
+  Writer:  { emoji:'✍️', color:'#8b5cf6' },
+  Singer:  { emoji:'🎤', color:'#06b6d4' },
+  Painter: { emoji:'🎨', color:'#f59e0b' },
+  Actor:   { emoji:'🎬', color:'#ef4444' },
+  Dancer:  { emoji:'💃', color:'#ec4899' },
+  Hirer:   { emoji:'🔍', color:'#94a3b8' },
+  'Looking for new stories': { emoji:'🔍', color:'#94a3b8' },
+};
+
+const playTick = () => {
+  try {
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.value=660;
+    g.gain.setValueAtTime(0.06,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.06);
+    o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.06);
+  }catch(e){}
 };
 
 const SearchPage = ({ onViewProfile }) => {
   const { user } = useContext(AppContext);
   const [allUsers, setAllUsers] = useState({});
   const [query,    setQuery]    = useState('');
+  const [filter,   setFilter]   = useState('all');
 
-  // ── Load every registered user (any role) ──────────────────────
   useEffect(() => {
-    const unsub = onValue(ref(db, 'users'), snap => {
-      setAllUsers(snap.val() || {});
-    });
+    const unsub = onValue(ref(db,'users'), snap => { setAllUsers(snap.val()||{}); });
     return () => unsub();
   }, []);
 
   const userList = Object.entries(allUsers)
-    .map(([emailKey, u]) => ({ ...u, emailKey, email: u.email || emailKey.replace(/,/g, '.') }))
-    .filter(u => u.email?.toLowerCase() !== user?.email?.toLowerCase()); // hide my own profile from results
+    .map(([emailKey,u])=>({...u,emailKey,email:u.email||emailKey.replace(/,/g,'.')}))
+    .filter(u=>u.email?.toLowerCase()!==user?.email?.toLowerCase());
 
   const q = query.trim().toLowerCase();
-  const filtered = (q
-    ? userList.filter(u =>
-        u.name?.toLowerCase().includes(q) ||
-        u.role?.toLowerCase().includes(q) ||
-        u.profession?.toLowerCase().includes(q)
-      )
-    : userList
-  ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const filtered = userList
+    .filter(u => filter==='all' ? true : u.role?.toLowerCase()===filter)
+    .filter(u => !q ? true :
+      u.name?.toLowerCase().includes(q) ||
+      u.role?.toLowerCase().includes(q)  ||
+      u.profession?.toLowerCase().includes(q)
+    )
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+
+  const glass = {
+    background:'rgba(5,8,35,0.75)',
+    backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',
+    border:'1px solid rgba(147,197,253,0.12)',
+    borderRadius:16,
+  };
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
-      <h2 style={{ color:'#fff', marginBottom:14, fontFamily:"'Playfair Display',serif", textShadow:'0 2px 10px rgba(0,0,0,0.25)' }}>
-        🔍 Search Everyone
-      </h2>
+    <div style={{ maxWidth:640, margin:'0 auto' }}>
 
-      {/* Search box */}
-      <div style={searchBox}>
-        <span>🔍</span>
-        <input
-          type="text"
-          placeholder="Search by name or role (Writer, Singer, Painter...)"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          style={{ border:'none', outline:'none', flex:1, fontSize:14, background:'transparent' }}
-          autoFocus
-        />
-        {query && <button onClick={() => setQuery('')} style={clearBtn}>✕</button>}
+      {/* Header */}
+      <div style={{ marginBottom:20 }}>
+        <h2 style={{ margin:'0 0 4px', color:'rgba(255,255,255,0.92)', fontFamily:'Georgia,serif', fontSize:22 }}>
+          🔭 Discover Talent
+        </h2>
+        <p style={{ margin:0, fontSize:11, color:'rgba(147,197,253,0.4)', letterSpacing:2, textTransform:'uppercase' }}>
+          ♪ Search the Creative Bridge ♪
+        </p>
       </div>
 
-      <p style={{ fontSize:13, color:'rgba(255,255,255,0.7)', margin:'0 0 14px' }}>
-        {filtered.length} {filtered.length === 1 ? 'person' : 'people'} found
+      {/* Search box — film strip style */}
+      <div style={{ position:'relative', marginBottom:14 }}>
+        {/* Left perforations */}
+        <div style={{ position:'absolute', left:0, top:0, bottom:0, width:20, background:'rgba(4,6,20,0.9)', display:'flex', flexDirection:'column', justifyContent:'space-around', padding:'6px 0', borderRadius:'14px 0 0 14px', zIndex:1 }}>
+          {[...Array(4)].map((_,i)=><div key={i} style={{ width:8,height:8,borderRadius:2,background:'rgba(147,197,253,0.12)',margin:'0 auto' }}/>)}
+        </div>
+        <div style={{ ...glass, display:'flex', alignItems:'center', gap:10, padding:'12px 20px 12px 28px', borderRadius:14 }}>
+          <span style={{ fontSize:18, flexShrink:0 }}>🔍</span>
+          <input type="text" placeholder="Search by name, role or profession..."
+            value={query} onChange={e=>setQuery(e.target.value)}
+            autoFocus
+            style={{ border:'none', outline:'none', flex:1, fontSize:14, background:'transparent', color:'rgba(255,255,255,0.9)', fontFamily:'inherit' }}/>
+          {query && (
+            <button onClick={()=>setQuery('')}
+              style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'50%', width:24, height:24, cursor:'pointer', fontSize:11, color:'rgba(147,197,253,0.6)', flexShrink:0 }}>
+              ✕
+            </button>
+          )}
+        </div>
+        {/* Right perforations */}
+        <div style={{ position:'absolute', right:0, top:0, bottom:0, width:20, background:'rgba(4,6,20,0.9)', display:'flex', flexDirection:'column', justifyContent:'space-around', padding:'6px 0', borderRadius:'0 14px 14px 0', zIndex:1 }}>
+          {[...Array(4)].map((_,i)=><div key={i} style={{ width:8,height:8,borderRadius:2,background:'rgba(147,197,253,0.12)',margin:'0 auto' }}/>)}
+        </div>
+      </div>
+
+      {/* Role filter pills */}
+      <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:14, paddingBottom:4, scrollbarWidth:'none' }}>
+        {[{id:'all',emoji:'⭐',label:'All'},...Object.entries(ROLE_CFG).slice(0,6).map(([role,cfg])=>({id:role.toLowerCase(),emoji:cfg.emoji,label:role,color:cfg.color}))].map(f=>(
+          <button key={f.id}
+            onClick={()=>{ playTick(); setFilter(f.id); }}
+            style={{
+              padding:'6px 14px', borderRadius:20, cursor:'pointer', whiteSpace:'nowrap',
+              fontWeight:700, fontSize:11, transition:'all 0.18s',
+              background: filter===f.id ? (f.color?`${f.color}33`:'rgba(147,197,253,0.15)') : 'rgba(255,255,255,0.04)',
+              color: filter===f.id ? (f.color||'rgba(147,197,253,0.8)') : 'rgba(255,255,255,0.4)',
+              border: filter===f.id ? `1.5px solid ${f.color||'rgba(147,197,253,0.4)'}66` : '1.5px solid rgba(255,255,255,0.08)',
+              boxShadow: filter===f.id ? `0 0 14px ${f.color||'rgba(147,197,253,0.3)'}44` : 'none',
+            }}>
+            {f.emoji} {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Count */}
+      <p style={{ fontSize:12, color:'rgba(147,197,253,0.4)', margin:'0 0 12px', letterSpacing:0.5 }}>
+        {filtered.length} {filtered.length===1?'person':'people'} found
       </p>
 
       {/* Results */}
-      {filtered.length === 0 ? (
-        <div style={emptyBox}>
-          <p style={{ fontSize:40, margin:'0 0 8px' }}>🔍</p>
-          <p>No one found{q ? ` matching "${query}"` : ''}.</p>
+      {filtered.length===0 ? (
+        <div style={{ textAlign:'center', padding:'55px 20px', ...glass }}>
+          <p style={{ fontSize:44, margin:'0 0 12px' }}>🔭</p>
+          <p style={{ fontSize:14, color:'rgba(147,197,253,0.5)' }}>
+            No one found{q?` matching "${query}"`:''}.
+          </p>
+          <p style={{ fontSize:11, color:'rgba(147,197,253,0.25)', marginTop:6 }}>♪ The stage is waiting ♪</p>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          {filtered.map((u, i) => {
-            const cfg = ROLE_CFG[u.role] || { emoji:'👤', color:'#636e72' };
+          {filtered.map((u,i)=>{
+            const cfg = ROLE_CFG[u.role]||{emoji:'👤',color:'#94a3b8'};
             return (
-              <div key={i} style={resultCard}
-                onClick={() => onViewProfile?.({ email: u.email, name: u.name, pic: u.profilePic, role: u.role })}
-              >
-                <img src={u.profilePic || '/icon.png'} alt="" style={avatar} />
+              <div key={i}
+                onClick={()=>{ playTick(); onViewProfile?.({email:u.email,name:u.name,pic:u.profilePic,role:u.role}); }}
+                style={{
+                  ...glass, display:'flex', alignItems:'center', gap:12,
+                  padding:'12px 14px', cursor:'pointer',
+                  borderLeft:`3px solid ${cfg.color}55`,
+                  transition:'all 0.18s',
+                  animation:`filmSlide 0.25s ease ${i*0.03}s both`,
+                }}
+                onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='translateX(4px)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.background='rgba(5,8,35,0.75)'; e.currentTarget.style.transform='translateX(0)'; }}>
+
+                {/* Avatar */}
+                <img src={u.profilePic||'/icon.png'} alt=""
+                  style={{ width:48, height:48, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:`2px solid ${cfg.color}44`, boxShadow:`0 0 10px ${cfg.color}22` }}/>
+
+                {/* Info */}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontWeight:700, fontSize:15, color:'#2d3436', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {u.name || 'Unknown'}
-                  </div>
-                  {u.profession && (
-                    <div style={{ fontSize:12, color:'#636e72', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {u.profession}
-                    </div>
-                  )}
+                  <div style={{ fontWeight:700, fontSize:15, color:'rgba(255,255,255,0.9)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{u.name||'Unknown'}</div>
+                  {u.profession && <div style={{ fontSize:11, color:'rgba(147,197,253,0.45)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:2 }}>{u.profession}</div>}
+                  {u.address && <div style={{ fontSize:10, color:'rgba(147,197,253,0.3)', marginTop:2 }}>📍 {u.address.split(',')[0]}</div>}
                 </div>
-                <span style={{ ...roleChip, background: cfg.color + '22', color: cfg.color }}>
-                  {cfg.emoji} {u.role || 'User'}
-                </span>
+
+                {/* Role chip */}
+                <div style={{ flexShrink:0, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+                  <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, background:`${cfg.color}18`, color:cfg.color, border:`1px solid ${cfg.color}33`, whiteSpace:'nowrap' }}>
+                    {cfg.emoji} {u.role||'User'}
+                  </span>
+                  <span style={{ fontSize:9, color:'rgba(147,197,253,0.25)' }}>View →</span>
+                </div>
               </div>
             );
           })}
@@ -101,12 +169,5 @@ const SearchPage = ({ onViewProfile }) => {
     </div>
   );
 };
-
-const searchBox  = { display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.95)', padding:'12px 16px', borderRadius:14, border:'1px solid #eee', marginBottom:6, boxShadow:'0 3px 10px rgba(0,0,0,0.05)' };
-const clearBtn   = { background:'#f1f2f6', border:'none', borderRadius:'50%', width:22, height:22, cursor:'pointer', fontSize:11, color:'#636e72', flexShrink:0 };
-const emptyBox   = { textAlign:'center', padding:'50px 20px', color:'#fff', background:'rgba(255,255,255,0.12)', borderRadius:16 };
-const resultCard = { display:'flex', alignItems:'center', gap:12, background:'rgba(255,255,255,0.95)', padding:'12px 14px', borderRadius:14, boxShadow:'0 3px 10px rgba(0,0,0,0.06)', cursor:'pointer', border:'1px solid #f0f0f0', transition:'transform 0.15s' };
-const avatar     = { width:46, height:46, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'1.5px solid #eee' };
-const roleChip   = { fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, whiteSpace:'nowrap', flexShrink:0 };
 
 export default SearchPage;

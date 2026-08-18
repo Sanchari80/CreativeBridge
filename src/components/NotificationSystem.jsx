@@ -245,7 +245,7 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
           <button key={t.id} onClick={e=>withRipple(e,()=>{playPop();setActiveTab(t.id);})}
             style={{
               flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:1,
-              padding:'8px 4px',border:'none',borderRadius:12,cursor:'pointer',
+              padding:'8px 4px',borderRadius:12,cursor:'pointer',
               fontWeight:700,fontSize:10,whiteSpace:'nowrap',position:'relative',transition:'all 0.18s',
               background:activeTab===t.id?'linear-gradient(135deg,rgba(139,92,246,0.4),rgba(59,130,246,0.3))':'transparent',
               color:activeTab===t.id?N.text:N.muted,

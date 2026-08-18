@@ -101,7 +101,7 @@ const ReleasePage = () => {
         <div style={overlay} onClick={() => { setWatching(null); setPlaying(false); }}>
           <div style={watchBox} onClick={e => e.stopPropagation()}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <h3 style={{ margin:0, color:'#2d3436', fontSize:16, flex:1, paddingRight:10 }}>{watching.title}</h3>
+              <h3 style={{ margin:0, color:'rgba(255,255,255,0.85)', fontSize:16, flex:1, paddingRight:10 }}>{watching.title}</h3>
               <button onClick={() => { setWatching(null); setPlaying(false); }} style={closeBtn}>✕</button>
             </div>
 
@@ -159,7 +159,7 @@ const ReleasePage = () => {
             )}
 
             {watching.description && (
-              <p style={{ margin:'12px 0 0', fontSize:13, color:'#636e72' }}>{watching.description}</p>
+              <p style={{ margin:'12px 0 0', fontSize:13, color:'rgba(147,197,253,0.5)' }}>{watching.description}</p>
             )}
             {watching.adContact && (
               <p style={{ margin:'8px 0 0', fontSize:13, fontWeight:600 }}>📞 Contact: {watching.adContact}</p>
@@ -173,7 +173,7 @@ const ReleasePage = () => {
         <div style={overlay} onClick={() => { setShowForm(false); resetForm(); }}>
           <div style={{ ...formBox }} onClick={e => e.stopPropagation()}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <h3 style={{ margin:0, color:'#2d3436' }}>
+              <h3 style={{ margin:0, color:'rgba(255,255,255,0.85)' }}>
                 {formType === 'drama' ? '🎬 Submit Drama Release' : '📢 Post Creative Ad'}
               </h3>
               <button onClick={() => { setShowForm(false); resetForm(); }} style={closeBtn}>✕</button>
@@ -246,9 +246,9 @@ const ReleasePage = () => {
                     <div style={{ fontSize:10, opacity:0.85 }}>Send Money → Personal</div>
                   </div>
                 </div>
-                <label style={{ fontSize:12, fontWeight:700, color:'#636e72', display:'block', marginBottom:6 }}>📸 Payment Screenshot Link *</label>
+                <label style={{ fontSize:12, fontWeight:700, color:'rgba(147,197,253,0.5)', display:'block', marginBottom:6 }}>📸 Payment Screenshot Link *</label>
                 <input style={inp} type="url" placeholder="Upload to Google Drive → Share → Paste link here..." value={screenshot} onChange={e=>setScreenshot(e.target.value)}/>
-                <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#636e72', marginBottom:14 }}>
+                <div style={{ background:'#fff9db', borderRadius:10, padding:'10px 12px', fontSize:12, color:'rgba(147,197,253,0.5)', marginBottom:14 }}>
                   <strong style={{ color:'#f39c12' }}>⚠️</strong> Admin will verify your payment and approve within 24 hours.
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
@@ -312,7 +312,7 @@ const ReleasePage = () => {
                   </button>
                 </div>
                 <div style={{ padding:'12px 14px' }}>
-                  {r.description && <p style={{ margin:'0 0 10px', fontSize:12, color:'#636e72', lineHeight:1.5 }}>{r.description.slice(0,90)}{r.description.length>90?'...':''}</p>}
+                  {r.description && <p style={{ margin:'0 0 10px', fontSize:12, color:'rgba(147,197,253,0.5)', lineHeight:1.5 }}>{r.description.slice(0,90)}{r.description.length>90?'...':''}</p>}
                   <div style={{ display:'flex', gap:8 }}>
                     <button onClick={()=>setWatching(r)} style={{ ...watchBtn, flex:1 }}>▶ Watch Now</button>
                     {r.youtubeLink && (
@@ -339,8 +339,8 @@ const ReleasePage = () => {
                   <span style={{ background:'#00b89422', color:'#00b894', fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, display:'inline-block', marginBottom:8, textTransform:'uppercase', letterSpacing:1 }}>
                     {r.adCategory}
                   </span>
-                  <div style={{ fontWeight:700, fontSize:15, color:'#2d3436', marginBottom:6 }}>{r.title}</div>
-                  {r.description && <p style={{ margin:'0 0 10px', fontSize:12, color:'#636e72', lineHeight:1.5 }}>{r.description.slice(0,100)}{r.description.length>100?'...':''}</p>}
+                  <div style={{ fontWeight:700, fontSize:15, color:'rgba(255,255,255,0.85)', marginBottom:6 }}>{r.title}</div>
+                  {r.description && <p style={{ margin:'0 0 10px', fontSize:12, color:'rgba(147,197,253,0.5)', lineHeight:1.5 }}>{r.description.slice(0,100)}{r.description.length>100?'...':''}</p>}
                   <button onClick={()=>setWatching(r)} style={{ ...watchBtn, width:'100%', background:'linear-gradient(135deg,#00b894,#00cec9)', boxShadow:'0 4px 14px rgba(0,184,148,0.3)' }}>
                     Learn More →
                   </button>
@@ -362,20 +362,21 @@ const Empty = ({ icon, text }) => (
   </div>
 );
 
-/* ── Styles ── */
-const overlay    = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.8)', display:'flex', justifyContent:'center', alignItems:'flex-start', zIndex:9999, backdropFilter:'blur(8px)', overflowY:'auto', paddingTop:24, paddingBottom:24 };
-const watchBox   = { background:'#fff', padding:20, borderRadius:20, width:'90%', maxWidth:640, flexShrink:0 };
-const formBox    = { background:'#fff', padding:24, borderRadius:20, width:'90%', maxWidth:460, flexShrink:0, marginBottom:20 };
-const closeBtn   = { background:'#f1f2f6', border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer', fontSize:14, fontWeight:700, color:'#636e72', display:'flex', alignItems:'center', justifyContent:'center' };
-const inp        = { width:'100%', padding:'11px 12px', border:'1px solid #eee', borderRadius:10, boxSizing:'border-box', fontSize:14, background:'#f9f9f9', marginBottom:10, fontFamily:'inherit' };
-const cancelB    = { flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa', fontWeight:600 };
-const confirmB   = { flex:2, padding:10, borderRadius:10, border:'none', background:'linear-gradient(135deg,#2d3436,#1a2025)', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13 };
-const heroBtnDark = { padding:'10px 18px', background:'rgba(255,255,255,0.12)', color:'#fff', border:'1.5px solid rgba(255,255,255,0.3)', borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13, backdropFilter:'blur(8px)' };
-const heroBtnLight = { padding:'10px 18px', background:'#00b894', color:'#fff', border:'none', borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13, boxShadow:'0 4px 14px rgba(0,184,148,0.4)' };
-const grid       = { display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:16 };
-const releaseCard = { background:'rgba(255,255,255,0.96)', borderRadius:16, overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.15)', border:'1px solid rgba(255,255,255,0.1)' };
-const adCard     = { background:'rgba(255,255,255,0.96)', borderRadius:16, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', border:'1px solid rgba(0,184,148,0.2)' };
-const watchBtn   = { padding:'9px 16px', background:'linear-gradient(135deg,#f9ca24,#f0932b)', color:'#2d3436', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:13, boxShadow:'0 4px 14px rgba(249,202,36,0.4)' };
-const ytBtn      = { padding:'9px 14px', background:'#ff0000', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, textDecoration:'none', display:'flex', alignItems:'center' };
+/* ── Cinematic Styles ── */
+const glass      = { background:'rgba(5,8,35,0.82)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(147,197,253,0.12)', boxShadow:'0 8px 32px rgba(0,0,0,0.5)' };
+const overlay    = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.88)', display:'flex', justifyContent:'center', alignItems:'flex-start', zIndex:9999, backdropFilter:'blur(18px)', overflowY:'auto', paddingTop:24, paddingBottom:24 };
+const watchBox   = { ...glass, padding:20, borderRadius:20, width:'90%', maxWidth:640, flexShrink:0 };
+const formBox    = { ...glass, padding:24, borderRadius:20, width:'90%', maxWidth:460, flexShrink:0, marginBottom:20 };
+const closeBtn   = { background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'50%', width:30, height:30, cursor:'pointer', fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', justifyContent:'center' };
+const inp        = { width:'100%', padding:'11px 12px', border:'1px solid rgba(147,197,253,0.15)', borderRadius:10, boxSizing:'border-box', fontSize:14, background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.9)', marginBottom:10, fontFamily:'inherit', outline:'none' };
+const cancelB    = { flex:1, padding:10, borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', cursor:'pointer', background:'rgba(255,255,255,0.04)', fontWeight:600, color:'rgba(255,255,255,0.6)' };
+const confirmB   = { flex:2, padding:10, borderRadius:12, border:'none', background:'linear-gradient(135deg,rgba(139,92,246,0.6),rgba(59,130,246,0.5))', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13 };
+const heroBtnDark = { padding:'10px 18px', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.85)', border:'1.5px solid rgba(147,197,253,0.2)', borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13, backdropFilter:'blur(8px)' };
+const heroBtnLight = { padding:'10px 18px', background:'linear-gradient(135deg,rgba(16,185,129,0.5),rgba(5,150,105,0.4))', color:'#fff', border:'1px solid rgba(16,185,129,0.4)', borderRadius:12, cursor:'pointer', fontWeight:700, fontSize:13, boxShadow:'0 4px 14px rgba(16,185,129,0.3)' };
+const grid       = { display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(265px,1fr))', gap:16 };
+const releaseCard = { ...glass, borderRadius:16, overflow:'hidden', border:'1px solid rgba(245,158,11,0.15)' };
+const adCard     = { ...glass, borderRadius:16, overflow:'hidden', border:'1px solid rgba(16,185,129,0.2)' };
+const watchBtn   = { padding:'9px 16px', background:'linear-gradient(135deg,rgba(245,158,11,0.5),rgba(217,119,6,0.4))', color:'#fde68a', border:'1px solid rgba(245,158,11,0.3)', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:13, boxShadow:'0 4px 14px rgba(245,158,11,0.2)' };
+const ytBtn      = { padding:'9px 14px', background:'rgba(239,68,68,0.3)', color:'#fca5a5', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, textDecoration:'none', display:'flex', alignItems:'center' };
 
 export default ReleasePage;
