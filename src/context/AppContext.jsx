@@ -333,7 +333,7 @@ export const AppProvider = ({ children, db }) => {
   // ── Bid submit ─────────────────────────────────────────────────
   const submitBid = async (category, workId, workTitle, tokens, paymentScreenshot, workLink) => {
     if (!user) return alert("Please Login!");
-    const amount = tokens === 5 ? 500 : 200;
+    const amount = tokens === 5 ? 5 : 2;
     try {
       const bidRef = push(ref(db, 'bids'));
       await set(bidRef, {
@@ -381,7 +381,7 @@ export const AppProvider = ({ children, db }) => {
         workTitle: bid.workTitle,
         category:  bid.category,
         tokens:    bid.tokens,
-        amount:    bid.amount,
+        amount: bid.amount,
         message:   `🎉 Your bid for "${bid.workTitle}" has been approved! It is now promoted to the top.`,
         read:      false,
         timestamp: now
@@ -402,7 +402,7 @@ export const AppProvider = ({ children, db }) => {
           workTitle: bid.workTitle || '',
           category:  bid.category  || '',
           tokens:    bid.tokens    || 0,
-          amount:    bid.amount    || 0,
+          amount: bid.amount    || 0,
           message:   `❌ Your bid for "${bid.workTitle}" was not approved.`,
           read:      false,
           timestamp: Date.now()

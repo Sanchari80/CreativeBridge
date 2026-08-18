@@ -25,8 +25,8 @@ const AD_CATS = [
   'Event Management', 'Photography / Videography', 'Other',
 ];
 
-const DRAMA_PRICE = 500;
-const AD_PRICE    = 300;
+const DRAMA_PRICE = 200;
+const AD_PRICE    = 100;
 
 const ReleasePage = () => {
   const { user, submitRelease } = useContext(AppContext);
@@ -273,8 +273,8 @@ const ReleasePage = () => {
           Watch short dramas • Discover music academies, dance studios & more
         </p>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-          <button onClick={()=>{setFormType('drama');setShowForm(true);}} style={heroBtnDark}>🎬 Submit Drama Release — ৳{DRAMA_PRICE}</button>
-          <button onClick={()=>{setFormType('ad');setShowForm(true);}} style={heroBtnLight}>📢 Post Creative Ad — ৳{AD_PRICE}</button>
+          <button onClick={()=>{setFormType('drama');setShowForm(true);}} style={heroBtnDark}>🎬 Submit Drama Release — ${DRAMA_PRICE}</button>
+          <button onClick={()=>{setFormType('ad');setShowForm(true);}} style={heroBtnLight}>📢 Post Creative Ad — ${AD_PRICE}</button>
         </div>
       </div>
 

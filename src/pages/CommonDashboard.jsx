@@ -83,6 +83,11 @@ if (!document.getElementById('cb-anims')) {
   style.id = 'cb-anims';
   style.textContent = `
     @keyframes ripple { to { transform:scale(2.5); opacity:0; } }
+    @keyframes paperFloat {
+      0%,100% { transform:translateY(0) rotate(-0.3deg); }
+      33%      { transform:translateY(-3px) rotate(0.2deg); }
+      66%      { transform:translateY(-1px) rotate(-0.5deg); }
+    }
     @keyframes floatUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
     @keyframes glowPulse { 0%,100%{box-shadow:0 0 15px rgba(139,92,246,0.3)} 50%{box-shadow:0 0 30px rgba(139,92,246,0.7)} }
     @keyframes slideIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
@@ -128,7 +133,7 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
     </div>
   );
 
-  const amount   = tokens === 5 ? 500 : 200;
+  const amount   = tokens === 5 ? 5 : 2;
   const workLink = work.fileUrl || work.fullStoryFile || '';
   const workId   = work.id || work.Name || '';
 
@@ -139,13 +144,13 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
         <p style={{ fontSize:13, color:'#636e72', marginBottom:14 }}>"{work.title||work.Name}" — Will appear at the top of the dashboard.</p>
         <div style={{ display:'flex', gap:10, marginBottom:16 }}>
           {[
-            { t:5, price:'৳500', label:'Top Priority', emoji:'🥇', color:'#fdcb6e' },
-            { t:2, price:'৳200', label:'2nd Priority',  emoji:'🥈', color:'#b2bec3' },
+            { t:5, price:'$5', label:'Featured · 30 days', color:'#d4a017' },
+            { t:2, price:'$2', label:'Promoted · 7 days', color:'#94a3b8' },
           ].map(opt => (
             <div key={opt.t} onClick={() => setTokens(opt.t)}
               style={{ flex:1, padding:14, borderRadius:12, border:`2px solid ${tokens===opt.t?opt.color:'#eee'}`,
                 cursor:'pointer', textAlign:'center', background: tokens===opt.t?'#fffbee':'#fff', transition:'all 0.15s' }}>
-              <div style={{ fontSize:24 }}>{opt.emoji}</div>
+              <div style={{ fontSize:24 }}></div>
               <div style={{ fontWeight:700, fontSize:14 }}>{opt.t} Tokens</div>
               <div style={{ fontSize:13, color:'#2d3436', fontWeight:600 }}>{opt.price}</div>
               <div style={{ fontSize:11, color:'#00b894', marginTop:4 }}>{opt.label}</div>
@@ -164,7 +169,7 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, border:'1px solid #eee', cursor:'pointer', background:'#f8f9fa' }}>Cancel</button>
           <button onClick={() => setStep(2)} style={{ flex:1, padding:10, borderRadius:10, border:'none', background:'#2d3436', color:'#fff', cursor:'pointer', fontWeight:'bold' }}>
-            Next → Pay {amount}৳
+            Next → Pay ${amount}
           </button>
         </div>
       </div>
@@ -176,7 +181,7 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
       <div style={{ ...moBox, maxWidth:460 }} onClick={e => e.stopPropagation()}>
         <h3 style={{ marginTop:0,color:'rgba(255,255,255,0.9)',textAlign:'center' }}>💳 Payment Details</h3>
         <p style={{ fontSize:13, color:'#636e72', textAlign:'center', marginBottom:16 }}>
-          Send <strong style={{ color:'#2d3436', fontSize:16 }}>{amount}৳</strong> to one of the numbers below, then paste your payment screenshot link.
+          Send <strong style={{ color:'#2d3436', fontSize:16 }}>${amount}</strong> to one of the numbers below, then paste your payment screenshot link.
         </p>
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>
           <div style={{ flex:1, background:'linear-gradient(135deg,#e91e8c,#c2185b)', borderRadius:14, padding:'14px 12px', color:'#fff', textAlign:'center' }}>
@@ -193,8 +198,8 @@ const BidModal = ({ work, category, onClose, bids, user, submitBid }) => {
           </div>
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f0f4ff', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
-          <span style={{ fontSize:13, color:'#4834d4', fontWeight:600 }}>Plan: {tokens===5?'🥇 Top Priority':'🥈 2nd Priority'}</span>
-          <span style={{ fontSize:16, fontWeight:800, color:'#2d3436' }}>{amount}৳</span>
+          <span style={{ fontSize:13, color:'#4834d4', fontWeight:600 }}>Plan: {tokens===5?'◆ Featured · 30 days':'▪ Promoted · 7 daysity'}</span>
+          <span style={{ fontSize:16, fontWeight:800, color:'#2d3436' }}>${amount}</span>
         </div>
         <div style={{ marginBottom:14 }}>
           <label style={{ fontSize:12, fontWeight:700, color:'#636e72', display:'block', marginBottom:6 }}>📸 Payment Screenshot Link *</label>
@@ -443,7 +448,15 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
     return promotedWorks?.[category]?.[key]?.approvedAt||0;
   };
 
-  const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
+  // ── Promo tier durations ─────────────────────────────────────
+const PROMO_DAYS = {5:30, 2:7};
+const isPromoValid = (tokens, approvedAt) => {
+  if(!approvedAt||!tokens) return false;
+  const days = PROMO_DAYS[tokens]||7;
+  return Date.now() < approvedAt + days*24*60*60*1000;
+};
+
+const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
     const aEK=a.emailKey||a.uploaderEmail?.replace(/\./g,',')||a.writerEmail?.replace(/\./g,',')||a.email?.replace(/\./g,',')||'';
     const bEK=b.emailKey||b.uploaderEmail?.replace(/\./g,',')||b.writerEmail?.replace(/\./g,',')||b.email?.replace(/\./g,',')||'';
     const aP=getPromoTokens(category,a.id,aEK);
@@ -509,7 +522,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
           <button onClick={e=>withRipple(e,()=>{playClick();setExpandedStory(null);})} className='cb-btn' style={backBtn}>← Back</button>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            {promoT>0&&<span style={promoT===5?goldBadge:silverBadge}>{promoT===5?'🥇 Top':'🥈'}</span>}
+            {promoT>0&&<span style={promoT===5?goldBadge:silverBadge}>{promoT===5?'◆ FEATURED':'▪ PROMOTED'}</span>}
             {!isOwner&&wProfile&&(
               <button onClick={()=>{setExpandedStory(null);setSelectedProfile(wProfile);}} style={{...followBtn,background:'#4834d4',color:'#fff'}}>👤 View Profile</button>
             )}
@@ -940,7 +953,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
               const fromDrive = isDriveLink(w.fileUrl);
               return(
                 <div key={i} className="cb-card" style={{...card,position:'relative',overflow:'hidden'}}>
-                  {promoT>0&&<span style={{position:'absolute',top:10,right:10,zIndex:2,...(promoT===5?goldBadge:silverBadge)}}>{promoT===5?'🥇':'🥈'}</span>}
+                  {promoT>0&&<span style={{position:'absolute',top:10,right:10,zIndex:2,...(promoT===5?goldBadge:silverBadge)}}>{promoT===5?'◆ FEATURED':'▪ PROMOTED'}</span>}
                   <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,cursor:'pointer'}}
                     onClick={()=>{playClick();w.talentProfile&&setSelectedProfile(w.talentProfile);}}>
                     <img src={w.uploaderPic||'/icon.png'} alt="" style={av45}/>
@@ -1033,56 +1046,160 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
 }
 /* ── Sub Components (unchanged) ── */
 const SCard=({s,user,saved,toggleSave,onView,onDelete,isFollowing,onFollow,onViewProfile,promoTokens,followerCount,onBid})=>{
-  const isOwner=s.writerEmail===user?.email||s.email===user?.email;
-  const wEmail=(s.writerEmail||s.email||'').toLowerCase();
-  const iF=isFollowing?isFollowing(wEmail):false;
+  const [open, setOpen] = React.useState(false);
+  const isOwner = s.writerEmail===user?.email||s.email===user?.email;
+  const wEmail  = (s.writerEmail||s.email||'').toLowerCase();
+  const iF      = isFollowing?isFollowing(wEmail):false;
+
+  // ── Paper ruled lines via CSS background ─────────────────────
+  const paperStyle = {
+    background:'linear-gradient(to bottom,#fdf8ee,#f9f0d8)',
+    backgroundImage:[
+      'linear-gradient(to bottom,#fdf8ee,#f9f0d8)',
+      'repeating-linear-gradient(transparent,transparent 21px,rgba(100,120,200,0.10) 21px,rgba(100,120,200,0.10) 22px)',
+    ].join(','),
+    borderLeft:'3px solid rgba(210,60,60,0.18)',
+    borderRadius:4,
+    boxShadow:'2px 3px 14px rgba(0,0,0,0.22),-1px -1px 0 rgba(0,0,0,0.04),1px 1px 0 rgba(255,255,255,0.7)',
+    position:'relative',
+    overflow:'hidden',
+    transition:'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+    animation: 'paperFloat 4s ease-in-out infinite',
+    animationDelay: `${Math.random()*2}s`,
+  };
+
+  // Folded corner
+  const corner = {
+    position:'absolute',bottom:0,right:0,
+    width:20,height:20,
+    background:'linear-gradient(225deg,rgba(210,180,120,0.6) 50%,transparent 50%)',
+    borderTop:'1px solid rgba(180,140,80,0.3)',
+    borderLeft:'1px solid rgba(180,140,80,0.3)',
+    borderRadius:'4px 0 0 0',
+  };
+
+  // Paper clip decoration
+  const clip = {
+    position:'absolute',top:-8,left:'50%',transform:'translateX(-50%)',
+    width:18,height:22,
+    background:'linear-gradient(135deg,#c0c0c0,#e8e8e8,#a8a8a8)',
+    borderRadius:'0 0 4px 4px',
+    boxShadow:'0 2px 4px rgba(0,0,0,0.2)',
+    zIndex:3,
+  };
+
   return(
-    <div className="cb-card" style={{...card,position:'relative',overflow:'hidden'}}>
-      {/* Parchment paper top strip */}
-      <div style={{
-        margin:'-16px -16px 12px',padding:'10px 14px',
-        background:'linear-gradient(135deg,rgba(139,92,246,0.15),rgba(59,130,246,0.1))',
-        borderBottom:'1px solid rgba(139,92,246,0.2)',
-        display:'flex',alignItems:'center',justifyContent:'space-between',
-      }}>
-        <span style={{fontSize:9,fontWeight:800,letterSpacing:2,color:'rgba(139,92,246,0.8)',textTransform:'uppercase'}}>✍️ SCREENPLAY</span>
-        {promoTokens>0&&<span style={promoTokens===5?goldBadge:silverBadge}>{promoTokens===5?'🥇':'🥈'}</span>}
-      </div>
+    <div style={{...paperStyle, padding:0, cursor:'pointer', userSelect:'none'}}
+      onClick={()=>{playClick();setOpen(o=>!o);}}>
 
-      <div style={{display:'flex',alignItems:'center',marginBottom:10}}>
+      {/* Paper clip */}
+      <div style={clip}/>
+
+      {/* Promo badge */}
+      {promoTokens>0&&(
+        <div style={{position:'absolute',top:6,right:8,zIndex:2}}>
+          <span style={promoTokens===5?goldBadge:silverBadge}>{promoTokens===5?'◆ FEATURED':'▪ PROMOTED'}</span>
+        </div>
+      )}
+
+      {/* Header — writer info row */}
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'14px 12px 6px 14px',borderBottom:'1px solid rgba(100,120,200,0.1)'}}>
         <img src={isOwner?(user?.profilePic||'/icon.png'):(s.writerPic||'/icon.png')} alt=""
-          style={{...av45,cursor:onViewProfile?'pointer':'default'}}
-          onClick={onViewProfile||undefined}/>
-        <div style={{marginLeft:10,flex:1}}>
-          <strong style={{fontSize:13,cursor:onViewProfile?'pointer':'default',color:onViewProfile?'#a78bfa':'rgba(255,255,255,0.9)'}}
-            onClick={onViewProfile||undefined}>{s.writerName}</strong>
-          <div style={chip}>{s.genre}</div>
-          {followerCount>0&&<div style={{fontSize:10,color:'#f59e0b',fontWeight:700,marginTop:2}}>⭐ {followerCount} followers</div>}
+          style={{width:30,height:30,borderRadius:'50%',objectFit:'cover',flexShrink:0,border:'1.5px solid rgba(150,130,90,0.3)'}}
+          onClick={e=>{e.stopPropagation();onViewProfile&&onViewProfile();}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <span style={{fontSize:11,fontWeight:700,color:'#5a3a1a',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',display:'block'}}>
+            {s.writerName||'Unknown'}
+          </span>
+          <span style={{fontSize:9,color:'rgba(100,80,50,0.6)',fontWeight:600,letterSpacing:1,textTransform:'uppercase'}}>{s.genre}</span>
         </div>
-        <div style={{display:'flex',gap:4}}>
-          {!isOwner&&onFollow&&<button onClick={e=>{withRipple(e,()=>playChime());onFollow();}} className="cb-btn" style={{...followBtn,padding:'4px 10px',fontSize:10,background:iF?'rgba(255,255,255,0.1)':undefined}}>{iF?'✓':'+ Follow'}</button>}
-          <button onClick={()=>toggleSave(s.id)} style={iconBtn}>{saved.includes(s.id)?'❤️':'🤍'}</button>
+        <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+          {followerCount>0&&<span style={{fontSize:9,color:'#c4860a',fontWeight:700}}>⭐{followerCount}</span>}
+          <button onClick={e=>{e.stopPropagation();toggleSave(s.id);}}
+            style={{background:'none',border:'none',cursor:'pointer',fontSize:14,padding:0,lineHeight:1}}>
+            {saved.includes(s.id)?'❤️':'🤍'}
+          </button>
         </div>
       </div>
 
-      {/* Story title — parchment feel */}
-      <h4 style={{color:'#a78bfa',margin:'0 0 6px',fontSize:15,fontFamily:'Georgia,serif',letterSpacing:0.3}}>{s.Name}</h4>
-      <p style={{color:'rgba(255,255,255,0.55)',fontSize:12,height:36,overflow:'hidden',margin:'0 0 10px',lineHeight:1.5,fontStyle:'italic'}}>{s.logline}</p>
+      {/* Story title + logline (always visible) */}
+      <div style={{padding:'10px 14px 8px 16px'}}>
+        <h4 style={{
+          color:'#2a1a0a',margin:'0 0 5px',
+          fontSize:13,fontFamily:'Georgia,serif',
+          letterSpacing:0.2,lineHeight:1.3,fontWeight:800,
+        }}>{s.Name}</h4>
+        <p style={{
+          color:'#4a3a2a',fontSize:11,margin:0,
+          lineHeight:1.55,fontStyle:'italic',fontFamily:'Georgia,serif',
+          display:'-webkit-box',WebkitLineClamp:open?100:2,
+          WebkitBoxOrient:'vertical',overflow:'hidden',
+        }}>
+          {s.logline}
+        </p>
+        {/* Expand hint */}
+        {!open&&(
+          <div style={{fontSize:9,color:'rgba(100,80,50,0.5)',marginTop:4,textAlign:'right',letterSpacing:0.5}}>
+            tap to open ▼
+          </div>
+        )}
+      </div>
 
-      <div style={{display:'flex',gap:5,marginBottom:10,flexWrap:'wrap'}}>
-        {s.isSynopsisLocked&&<span style={lockChip}>🔒 Synopsis</span>}
-        {s.isFullStoryLocked&&<span style={lockChip}>🔒 Script</span>}
-        {s.isContactLocked&&<span style={lockChip}>🔒 Contact</span>}
-      </div>
-      <div style={{display:'flex',gap:8}}>
-        <button onClick={e=>withRipple(e,()=>{playClick();onView();})} className="cb-btn" style={{...actionBtn,flex:2}}>📖 Read</button>
-        {!isOwner&&onViewProfile&&<button onClick={e=>withRipple(e,()=>{playClick();onViewProfile();})} className="cb-btn" style={{...actionBtn,flex:1,background:'linear-gradient(135deg,rgba(99,102,241,0.6),rgba(139,92,246,0.6))'}}>Profile</button>}
-        {isOwner&&onBid&&<button onClick={e=>withRipple(e,()=>onBid())} className="cb-btn" style={{...actionBtn,flex:1,background:'linear-gradient(135deg,rgba(245,158,11,0.4),rgba(217,119,6,0.4))'}}>💰</button>}
-        {isOwner&&<button onClick={()=>{if(window.confirm("Delete this story?"))onDelete(s.id);}} className="cb-btn" style={{...actionBtn,flex:1,background:'linear-gradient(135deg,rgba(239,68,68,0.4),rgba(220,38,38,0.4))'}}>🗑</button>}
-      </div>
+      {/* ── Expanded paper content ── */}
+      {open&&(
+        <div style={{padding:'0 14px 10px 16px',borderTop:'1px dashed rgba(100,120,200,0.15)'}}>
+
+          {/* Lock chips */}
+          <div style={{display:'flex',gap:4,margin:'8px 0',flexWrap:'wrap'}}>
+            {s.isSynopsisLocked&&<span style={{fontSize:9,background:'rgba(200,160,60,0.15)',color:'#8a6010',padding:'2px 8px',borderRadius:20,border:'1px solid rgba(200,160,60,0.25)',fontWeight:700}}>🔒 Synopsis</span>}
+            {s.isFullStoryLocked&&<span style={{fontSize:9,background:'rgba(200,160,60,0.15)',color:'#8a6010',padding:'2px 8px',borderRadius:20,border:'1px solid rgba(200,160,60,0.25)',fontWeight:700}}>🔒 Script</span>}
+            {s.isContactLocked&&<span style={{fontSize:9,background:'rgba(200,160,60,0.15)',color:'#8a6010',padding:'2px 8px',borderRadius:20,border:'1px solid rgba(200,160,60,0.25)',fontWeight:700}}>🔒 Contact</span>}
+          </div>
+
+          {/* Action buttons */}
+          <div style={{display:'flex',gap:6,marginTop:8}}>
+            <button onClick={e=>{e.stopPropagation();withRipple(e,()=>{playClick();onView();});}}
+              style={{flex:2,padding:'7px 10px',background:'linear-gradient(135deg,#2a1a0a,#4a2e0a)',color:'#f5e6c8',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:11,position:'relative',boxShadow:'0 2px 8px rgba(0,0,0,0.2)',fontFamily:'Georgia,serif'}}>
+              📜 Read Full Story
+            </button>
+            {!isOwner&&onViewProfile&&(
+              <button onClick={e=>{e.stopPropagation();withRipple(e,()=>{playClick();onViewProfile();});}}
+                style={{flex:1,padding:'7px 8px',background:'rgba(100,80,50,0.12)',color:'#5a3a1a',border:'1px solid rgba(100,80,50,0.2)',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:10,position:'relative'}}>
+                Profile
+              </button>
+            )}
+            {!isOwner&&onFollow&&(
+              <button onClick={e=>{e.stopPropagation();withRipple(e,()=>{playChime();onFollow();});}}
+                style={{padding:'7px 8px',background:iF?'rgba(100,80,50,0.08)':'rgba(196,134,10,0.15)',color:iF?'#8a6010':'#c4860a',border:`1px solid ${iF?'rgba(100,80,50,0.15)':'rgba(196,134,10,0.3)'}`,borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:10,position:'relative'}}>
+                {iF?'✓':'+ Follow'}
+              </button>
+            )}
+            {isOwner&&onBid&&(
+              <button onClick={e=>{e.stopPropagation();withRipple(e,()=>onBid());}}
+                style={{padding:'7px 8px',background:'rgba(196,134,10,0.15)',color:'#c4860a',border:'1px solid rgba(196,134,10,0.25)',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:10,position:'relative'}}>
+                💰
+              </button>
+            )}
+            {isOwner&&(
+              <button onClick={e=>{e.stopPropagation();if(window.confirm('Delete this story?'))onDelete(s.id);}}
+                style={{padding:'7px 8px',background:'rgba(180,40,40,0.1)',color:'#b02020',border:'1px solid rgba(180,40,40,0.2)',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:10,position:'relative'}}>
+                🗑
+              </button>
+            )}
+          </div>
+
+          <div style={{fontSize:9,color:'rgba(100,80,50,0.4)',marginTop:6,textAlign:'right'}}>
+            tap to fold ▲
+          </div>
+        </div>
+      )}
+
+      {/* Folded corner */}
+      <div style={corner}/>
     </div>
   );
 };
+
 
 const TCard=({p,user,TABS,getReqStatus,isFollowing,onView,onContact,onFollow,onUnfollow,followerCount})=>{
   const isMe=p.email?.toLowerCase()===user?.email?.toLowerCase();
@@ -1270,7 +1387,7 @@ const G = {
   red:     '#ef4444',
 };
 
-const grid      = {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(275px,1fr))',gap:16,padding:16};
+const grid      = {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:20,padding:16};
 const card      = {
   background: G.card,
   backdropFilter: 'blur(20px)',
