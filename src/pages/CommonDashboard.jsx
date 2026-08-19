@@ -1291,41 +1291,61 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
 
   return(
     <>
-      {/* ── Fullscreen canvas modal ── */}
+      {/* ── Fullscreen modal ── */}
       {expanded&&(
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',padding:'24px 10px 50px',cursor:'zoom-out',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-          <div style={{position:'relative',width:'100%',maxWidth:'94vw',margin:'0 auto'}} onClick={e=>e.stopPropagation()}>
-            {/* Canvas/gallery frame */}
+          style={{
+            position:'fixed',inset:0,zIndex:99999,
+            background:'rgba(0,0,0,0.95)',
+            display:'flex',flexDirection:'column',
+            alignItems:'center',justifyContent:'flex-start',
+            backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',
+            padding:'20px 12px 40px',
+            cursor:'zoom-out',
+            overflowY:'auto',WebkitOverflowScrolling:'touch',
+          }}>
+          <div style={{
+            position:'relative',
+            width:'min(92vw, 800px)',
+            margin:'0 auto',
+          }} onClick={e=>e.stopPropagation()}>
+            {/* Simple elegant frame */}
             <div style={{
-              padding:14,
-              background:'linear-gradient(135deg,#4a2c0a,#2d1a06,#4a2c0a)',
-              boxShadow:'6px 6px 0 #1a0a00,-3px -3px 0 #8b5e3c,0 0 60px rgba(245,158,11,0.15)',
-              borderRadius:6,
+              border:'2px solid rgba(245,158,11,0.5)',
+              borderRadius:12,
+              overflow:'hidden',
+              boxShadow:'0 0 40px rgba(245,158,11,0.15), 0 20px 60px rgba(0,0,0,0.6)',
+              position:'relative',
+              background:'#0a0a0a',
             }}>
-              <div style={{border:'3px solid #8b5e3c',padding:4,borderRadius:2}}>
-                <div style={{border:'1px solid #c4973e',position:'relative'}}>
-                  {blob&&<img src={blob} alt={title} draggable={false}
-                    style={{width:'100%',maxWidth:'92vw',height:'auto',maxHeight:'none',objectFit:'contain',display:'block',pointerEvents:'none',borderRadius:10}}/>}
-                  <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
-                  {/* Watermark grid */}
-                  <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.15}}>
-                    {Array.from({length:20}).map((_,i)=>(
-                      <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,fontFamily:'monospace',whiteSpace:'nowrap',transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
-                        {viewerName||'Viewer'} · {viewerEmail||'creative-bridge.vercel.app'}
-                      </div>
-                    ))}
+              {blob&&<img src={blob} alt={title} draggable={false}
+                style={{
+                  width:'100%',
+                  height:'auto',
+                  maxHeight:'80vh',
+                  objectFit:'contain',
+                  display:'block',
+                  pointerEvents:'none',
+                }}/>}
+              {/* Block right-click */}
+              <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
+              {/* Watermark */}
+              <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.14}}>
+                {Array.from({length:20}).map((_,i)=>(
+                  <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,fontFamily:'monospace',whiteSpace:'nowrap',transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
+                    {viewerName||'Viewer'} · {viewerEmail||'creative-bridge.vercel.app'}
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
-            {/* Gallery label */}
-            <div style={{textAlign:'center',marginTop:12,color:'rgba(255,255,255,0.5)',fontSize:12,fontStyle:'italic',letterSpacing:1}}>
-              🎨 {title} — Copyright Protected
+              {/* Bottom label */}
+              <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:3,background:'rgba(0,0,0,0.7)',padding:'8px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:11,color:'rgba(245,158,11,0.8)',fontWeight:700}}>🔒 {title} — Copyright Protected</span>
+                <span style={{fontSize:10,color:'rgba(255,255,255,0.4)'}}>⚠️ Watermarked</span>
+              </div>
             </div>
           </div>
           <button onClick={()=>setExpanded(false)}
-            style={{marginTop:20,padding:'9px 28px',background:'rgba(139,92,246,0.2)',color:'#fff',border:'1px solid rgba(139,92,246,0.4)',borderRadius:12,cursor:'pointer',fontSize:13,fontWeight:600,backdropFilter:'blur(8px)'}}>
+            style={{marginTop:18,padding:'9px 28px',background:'rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.8)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:12,cursor:'pointer',fontSize:13,fontWeight:600}}>
             ✕ Close
           </button>
         </div>
