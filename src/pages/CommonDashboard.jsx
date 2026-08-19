@@ -90,7 +90,7 @@ if (!document.getElementById('cb-anims')) {
     }
     @keyframes floatUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
     @keyframes glowPulse { 0%,100%{box-shadow:0 0 15px rgba(139,92,246,0.3)} 50%{box-shadow:0 0 30px rgba(139,92,246,0.7)} }
-    @keyframes slideIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
     @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
     .cb-card { transition: transform 0.2s ease, box-shadow 0.2s ease !important; }
     .cb-card:hover { transform: translateY(-4px) scale(1.01) !important; }
@@ -243,6 +243,7 @@ export default function CommonDashboard({ pendingProfile, onClearPending }) {
   const [talents,         setTalents]         = useState({singer:[],painter:[],actor:[],dancer:[]});
   const [allUsers,        setAllUsers]        = useState({});   // ← NEW
   const [expandedStory,   setExpandedStory]   = useState(null);
+  const [artExpand,setArtExpand] = useState(null);
   const [storyModal,      setStoryModal]      = useState(null);
   const [directorNote,    setDirectorNote]    = useState('');
   const [selectedGenre,   setSelectedGenre]   = useState('All');
@@ -739,7 +740,7 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
                       boxShadow: isHL ? '0 0 0 3px rgba(253,203,110,0.35)' : 'none',
                       transition:'all 0.2s',
                     }}>
-                     <ProtImg src={a.fileUrl} title={a.title} height={220} viewerName={user?.name} viewerEmail={user?.email}/>
+                     <ProtImg src={a.fileUrl} title={a.title} height={220} viewerName={user?.name} viewerEmail={user?.email} onExpand={setArtExpand}/>
                     </div>
                   );
                 })}
@@ -786,6 +787,7 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
 
   return(
     <div>
+      {artExpand&&(<div onClick={()=>setArtExpand(null)} style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:999999,background:'rgba(0,0,0,0.95)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,cursor:'zoom-out'}} onContextMenu={e=>e.preventDefault()}><div style={{position:'relative',display:'inline-block',maxWidth:'94vw',lineHeight:0}} onClick={e=>e.stopPropagation()}><img src={artExpand.blob} alt={artExpand.title} draggable={false} style={{display:'block',maxWidth:'94vw',maxHeight:'86vh',width:'auto',height:'auto',borderRadius:8,pointerEvents:'none',border:'2px solid rgba(245,158,11,0.3)'}}/><div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/></div><div style={{marginTop:10,textAlign:'center'}}><button onClick={()=>setArtExpand(null)} style={{padding:'7px 22px',background:'rgba(255,255,255,0.08)',color:'#fff',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,cursor:'pointer',fontSize:12}}>Close</button></div></div>)}
       {bidModal&&(
         <BidModal work={bidModal.work} category={bidModal.category} onClose={()=>setBidModal(null)}
           bids={bids} user={user} submitBid={submitBid}/>
@@ -972,7 +974,7 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
                       ? <video controls src={w.fileUrl} style={{width:'100%',borderRadius:10,maxHeight:200,marginBottom:8}}/>
                       : <audio controls src={w.fileUrl} style={{width:'100%',height:32,marginBottom:8}}/>
                   )}
-                  {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={200} viewerName={user?.name} viewerEmail={user?.email}/>}
+                  {activeTab==='painter'&&w.fileUrl&&<ProtImg src={w.fileUrl} title={w.title} height={200} viewerName={user?.name} viewerEmail={user?.email} onExpand={setArtExpand}/>}
                   {activeTab==='actor'&&w.fileUrl&&(
                     <div onClick={()=>w.talentProfile&&setSelectedProfile(w.talentProfile)} style={{cursor:'pointer',marginBottom:8}}>
                       {/* Film screen frame */}
@@ -1281,9 +1283,8 @@ const ContactModal=({talent,msg,setMsg,onSend,onClose})=>(
     </div>
   </div></div>
 );
-const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
+const ProtImg=({src,title,height=130,viewerName,viewerEmail,onExpand})=>{
   const [blob,setBlob]=React.useState(null);
-  const [expanded,setExpanded]=React.useState(false);
   React.useEffect(()=>{
     if(!src)return;
     fetch(src).then(r=>r.blob()).then(b=>setBlob(URL.createObjectURL(b))).catch(()=>setBlob(src));
@@ -1291,71 +1292,13 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
 
   return(
     <>
-      {/* ── Fullscreen modal ── */}
-      {expanded&&(
-        <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{
-            position:'fixed',top:0,left:0,right:0,bottom:0,
-            zIndex:99999,
-            background:'rgba(0,0,0,0.95)',
-            display:'flex',flexDirection:'column',
-            alignItems:'center',justifyContent:'center',
-            padding:'10px',
-            overflowY:'auto',
-            WebkitOverflowScrolling:'touch',
-          }}>
-          {/* inline-block container = wraps exactly to image size */}
-          <div style={{position:'relative',display:'inline-block',maxWidth:'96vw',lineHeight:0}}
-            onClick={e=>e.stopPropagation()}>
-            {blob&&<img src={blob} alt={title} draggable={false}
-              style={{
-                display:'block',
-                maxWidth:'96vw',
-                maxHeight:'85vh',
-                width:'auto',
-                height:'auto',
-                borderRadius:8,
-                pointerEvents:'none',
-                border:'2px solid rgba(245,158,11,0.3)',
-              }}/>}
-            {/* right-click block */}
-            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:1}}
-              onContextMenu={e=>e.preventDefault()}/>
-            {/* watermark */}
-            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:2,
-              display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',
-              overflow:'hidden',pointerEvents:'none',opacity:0.14}}>
-              {Array.from({length:20}).map((_,i)=>(
-                <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,
-                  fontFamily:'monospace',whiteSpace:'nowrap',
-                  transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
-                  {viewerName||'Viewer'} · {viewerEmail||'creative-bridge.vercel.app'}
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* label + close */}
-          <div style={{marginTop:10,textAlign:'center'}}>
-            <div style={{fontSize:10,color:'rgba(245,158,11,0.6)',marginBottom:8}}>
-              🔒 {title} — Copyright Protected · Watermarked
-            </div>
-            <button onClick={()=>setExpanded(false)}
-              style={{padding:'7px 24px',background:'rgba(255,255,255,0.08)',
-                color:'rgba(255,255,255,0.8)',border:'1px solid rgba(255,255,255,0.15)',
-                borderRadius:10,cursor:'pointer',fontSize:12,fontWeight:600}}>
-              ✕ Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Thumbnail with wooden frame ── */}
+            {/* ── Thumbnail with wooden frame ── */}
       <div style={{
         padding:8,
         background:'linear-gradient(135deg,#3a1e05,#1f0f00,#3a1e05)',
         boxShadow:'3px 3px 0 #0a0500,-2px -2px 0 #6b4210,0 4px 20px rgba(245,158,11,0.12)',
         borderRadius:4, cursor:'zoom-in', userSelect:'none',
-      }} onContextMenu={e=>e.preventDefault()} onClick={()=>setExpanded(true)}>
+      }} onContextMenu={e=>e.preventDefault()} onClick={()=>blob&&onExpand&&onExpand({blob,title,viewerName,viewerEmail})}>
         <div style={{border:'2px solid #6b4210'}}>
           <div style={{position:'relative'}}>
             {blob
