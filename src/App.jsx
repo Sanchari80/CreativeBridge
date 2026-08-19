@@ -1,18 +1,20 @@
 import React, { useContext, useState, useEffect, lazy, Suspense } from 'react';
 import { AppContext } from './context/AppContext';
-import AuthPage from './pages/AuthPage.jsx';
-import Navbar from './components/Navbar';
 
-// ── Lazy-load heavy pages for faster initial load ─────────────
-const CommonDashboard    = lazy(()=>import('./pages/CommonDashboard'));
-const PostForm           = lazy(()=>import('./pages/PostForm'));
-const ProfilePage        = lazy(()=>import('./pages/ProfilePage'));
-const SearchPage         = lazy(()=>import('./pages/SearchPage'));
-const ReleasePage        = lazy(()=>import('./pages/ReleasePage'));
-const NotificationSystem = lazy(()=>import('./components/NotificationSystem'));
-const HireDashboard      = lazy(()=>import('./pages/HireDashboard'));
-const TalentDashboard    = lazy(()=>import('./pages/TalentDashboard'));
-const AdminDashboard     = lazy(()=>import('./pages/AdminDashboard'));
+// ── Eager imports — instant load (main pages) ─────────────────
+import AuthPage           from './pages/AuthPage.jsx';
+import Navbar             from './components/Navbar';
+import CommonDashboard    from './pages/CommonDashboard';
+import HireDashboard      from './pages/HireDashboard';
+import TalentDashboard    from './pages/TalentDashboard';
+import PostForm           from './pages/PostForm';
+import NotificationSystem from './components/NotificationSystem';
+
+// ── Lazy imports — load on demand (secondary pages) ───────────
+const ProfilePage   = lazy(()=>import('./pages/ProfilePage'));
+const SearchPage    = lazy(()=>import('./pages/SearchPage'));
+const ReleasePage   = lazy(()=>import('./pages/ReleasePage'));
+const AdminDashboard = lazy(()=>import('./pages/AdminDashboard'));
 
 // ── Loader spinner ────────────────────────────────────────────
 const PageLoader = () => (
@@ -145,35 +147,35 @@ function App() {
             </span>
             <button onClick={() => setShowNotifications(false)} style={closeBtnStyle}>✕</button>
           </div>
-          <Suspense fallback={<div style={{padding:20,color:'rgba(147,197,253,0.5)',textAlign:'center',fontSize:13}}>Loading...</div>}>
-            <NotificationSystem
-              onBack={() => setShowNotifications(false)}
-              onViewProfile={(profile) => {
-                setShowNotifications(false);
-                setView('dashboard');
-                setPendingProfile(profile);
-              }}
-            />
-          </Suspense>
+          <NotificationSystem
+            onBack={() => setShowNotifications(false)}
+            onViewProfile={(profile) => {
+              setShowNotifications(false);
+              setView('dashboard');
+              setPendingProfile(profile);
+            }}
+          />
         </div>
       )}
 
       {/* ── Post / Upload Form ── */}
-      {showPostForm && (
-        <Suspense fallback={null}>
-          <PostForm closeForm={() => setShowPostForm(false)} />
-        </Suspense>
-      )}
+      {showPostForm && <PostForm closeForm={() => setShowPostForm(false)} />}
 
       {/* ── Main Content ── */}
       <main style={mainStyle}>
+
+        {/* Eager — no delay */}
+        {view === 'dashboard' && (
+          <CommonDashboard
+            pendingProfile={pendingProfile}
+            onClearPending={() => setPendingProfile(null)}
+          />
+        )}
+        {view === 'hire'    && isHirer  && <HireDashboard />}
+        {view === 'mywork'  && isTalent && <TalentDashboard />}
+
+        {/* Lazy — only when visited */}
         <Suspense fallback={<PageLoader/>}>
-          {view === 'dashboard' && (
-            <CommonDashboard
-              pendingProfile={pendingProfile}
-              onClearPending={() => setPendingProfile(null)}
-            />
-          )}
           {view === 'search'  && (
             <SearchPage
               onViewProfile={(profile) => {
@@ -182,8 +184,6 @@ function App() {
               }}
             />
           )}
-          {view === 'hire'     && isHirer  && <HireDashboard />}
-          {view === 'mywork'   && isTalent && <TalentDashboard />}
           {view === 'profile'  && <ProfilePage onBack={() => setView('dashboard')} />}
           {view === 'admin'    && isAdmin   && <AdminDashboard />}
           {view === 'releases' && <ReleasePage />}
@@ -244,7 +244,7 @@ const bgOverlay = {
 const notifPanel = {
   position: 'absolute',
   top: 72, right: '4%',
-  width: 330, maxWidth: '94vw',
+  width: 320, maxWidth: '94vw',
   background: 'rgba(8,10,42,0.97)',
   backdropFilter: 'blur(20px)',
   WebkitBackdropFilter: 'blur(20px)',
