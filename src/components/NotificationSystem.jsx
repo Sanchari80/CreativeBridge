@@ -159,13 +159,16 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
   const Card = ({children, accentColor, unread, style:extra, onClick}) => (
     <div onClick={onClick}
       style={{
-        background: unread ? `linear-gradient(135deg,${accentColor}12,rgba(5,8,35,0.8))` : 'rgba(5,8,35,0.6)',
-        backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',
-        border:`1px solid ${unread?accentColor+'33':N.border}`,
-        borderLeft:`3px solid ${accentColor}`,
-        borderRadius:16, padding:'14px 14px 12px',
+        background: unread
+          ? `linear-gradient(135deg,rgba(10,12,45,0.97),rgba(8,10,38,0.97))`
+          : 'rgba(8,10,40,0.95)',
+        border:`1px solid ${unread?accentColor+'55':'rgba(147,197,253,0.15)'}`,
+        borderLeft:`4px solid ${accentColor}`,
+        borderRadius:14, padding:'14px 14px 12px',
         position:'relative',
-        boxShadow: unread ? `0 4px 24px ${accentColor}22` : '0 2px 12px rgba(0,0,0,0.3)',
+        boxShadow: unread
+          ? `0 4px 24px ${accentColor}33, 0 2px 8px rgba(0,0,0,0.5)`
+          : '0 2px 8px rgba(0,0,0,0.4)',
         animation:'ns-slide 0.25s ease',
         cursor:onClick?'pointer':'default',
         ...extra,
@@ -177,11 +180,11 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
   // ── Clear note/message box ─────────────────────────────────
   const MsgBox = ({text}) => (
     <div style={{
-      background:'rgba(147,197,253,0.05)',
-      border:'1px solid rgba(147,197,253,0.1)',
+      background:'rgba(255,255,255,0.06)',
+      border:'1px solid rgba(255,255,255,0.12)',
       borderRadius:10,padding:'8px 12px',
       fontSize:12,fontStyle:'italic',
-      color:'rgba(147,197,253,0.6)',
+      color:'rgba(220,228,255,0.85)',
       margin:'10px 0 4px',lineHeight:1.5,
     }}>
       💬 "{text}"
@@ -223,11 +226,11 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
       {/* Header */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
         <button onClick={e=>withRipple(e,()=>onBack())}
-          style={{background:'none',border:'none',color:N.muted,cursor:'pointer',fontWeight:700,fontSize:13,padding:0,position:'relative'}}>
+          style={{background:'none',border:'none',color:'rgba(200,210,240,0.75)',cursor:'pointer',fontWeight:700,fontSize:13,padding:0,position:'relative'}}>
           ← Back
         </button>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:10,color:N.muted,letterSpacing:1,textTransform:'uppercase'}}>{allNotifs.length} notifications</span>
+          <span style={{fontSize:10,color:'rgba(200,210,240,0.75)',letterSpacing:1,textTransform:'uppercase'}}>{allNotifs.length} notifications</span>
           {allNotifs.length>0 && <div style={{width:5,height:5,borderRadius:'50%',background:'rgba(147,197,253,0.4)'}}/>}
         </div>
       </div>
@@ -248,7 +251,7 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
               padding:'8px 4px',borderRadius:12,cursor:'pointer',
               fontWeight:700,fontSize:10,whiteSpace:'nowrap',position:'relative',transition:'all 0.18s',
               background:activeTab===t.id?'linear-gradient(135deg,rgba(139,92,246,0.4),rgba(59,130,246,0.3))':'transparent',
-              color:activeTab===t.id?N.text:N.muted,
+              color:activeTab===t.id?'#fff':'rgba(200,210,240,0.7)',
               boxShadow:activeTab===t.id?'0 0 14px rgba(139,92,246,0.3)':'none',
               border:activeTab===t.id?'1px solid rgba(139,92,246,0.3)':'1px solid transparent',
             }}>
@@ -269,7 +272,7 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
         {display.length===0 ? (
           <div style={{textAlign:'center',padding:'50px 20px',background:'rgba(5,8,35,0.4)',backdropFilter:'blur(12px)',borderRadius:20,border:'1px solid rgba(147,197,253,0.08)'}}>
             <p style={{fontSize:44,margin:'0 0 10px'}}>🔔</p>
-            <p style={{fontSize:14,color:N.muted}}>No notifications yet.</p>
+            <p style={{fontSize:14,color:'rgba(200,210,240,0.85)'}}>No notifications yet.</p>
             <p style={{fontSize:11,color:'rgba(147,197,253,0.25)',marginTop:4}}>♪ Your creative journey begins here ♪</p>
           </div>
         ) : display.map((item,idx) => {
@@ -287,7 +290,7 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                     <p style={{margin:0,fontSize:14,fontWeight:800,color:scheme.text,fontFamily:'Georgia,serif'}}>
                       {ok?'🥳 Bid Approved!':'❌ Bid Not Approved'}
                     </p>
-                    <p style={{margin:'5px 0 0',fontSize:12,color:N.muted,lineHeight:1.5}}>{item.message}</p>
+                    <p style={{margin:'5px 0 0',fontSize:12,color:'rgba(200,210,240,0.75)',lineHeight:1.5}}>{item.message}</p>
                     <div style={{marginTop:8,display:'flex',gap:6,flexWrap:'wrap'}}>
                       <span style={{fontSize:10,background:scheme.bg,color:scheme.text,padding:'3px 10px',borderRadius:20,fontWeight:700,border:`1px solid ${scheme.border}`}}>{item.category}</span>
                       <span style={{fontSize:10,background:N.purple.bg,color:N.purple.text,padding:'3px 10px',borderRadius:20,fontWeight:700,border:`1px solid ${N.purple.border}`}}>
@@ -311,13 +314,13 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                   style={{width:42,height:42,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(244,114,182,0.4)',flexShrink:0,cursor:'pointer'}}
                   onClick={e=>{e.stopPropagation();goToProfile(item.followerEmail,item.followerName,item.followerPic,item.followerRole||'');}}/>
                 <div style={{flex:1}}>
-                  <p style={{margin:0,fontSize:13,color:N.text,lineHeight:1.4}}>
+                  <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,0.93)',lineHeight:1.4}}>
                     <strong style={{color:'#f472b6',cursor:'pointer'}}
                       onClick={e=>{e.stopPropagation();goToProfile(item.followerEmail,item.followerName,item.followerPic,item.followerRole||'');}}>
                       {item.followerName}
                     </strong>
-                    {item.followerProfession&&<span style={{color:N.muted,fontStyle:'italic'}}> · {item.followerProfession}</span>}
-                    <span style={{color:N.muted}}> started following you! ❤️</span>
+                    {item.followerProfession&&<span style={{color:'rgba(200,210,240,0.85)',fontStyle:'italic'}}> · {item.followerProfession}</span>}
+                    <span style={{color:'rgba(200,210,240,0.85)'}}> started following you! ❤️</span>
                   </p>
                   <div style={{fontSize:9,color:'rgba(147,197,253,0.3)',marginTop:4,letterSpacing:0.5}}>{fTime(item.timestamp)}</div>
                 </div>
@@ -350,17 +353,17 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                     onClick={e=>{e.stopPropagation();isIncoming?goToProfile(item.fromEmail,item.fromName,item.fromPic,item.fromProfession||''):goToProfile(item.talentEmail,item.talentName,item.talentPic,'');}}/>
                   <div style={{flex:1}}>
                     {isIncoming ? (
-                      <p style={{margin:0,fontSize:13,color:N.text,lineHeight:1.4}}>
+                      <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,0.93)',lineHeight:1.4}}>
                         <strong style={{color:'#60a5fa',cursor:'pointer'}}
                           onClick={e=>{e.stopPropagation();goToProfile(item.fromEmail,item.fromName,item.fromPic,item.fromProfession||'');}}>
                           {item.fromName}
                         </strong>
-                        {item.fromProfession&&<span style={{color:N.muted}}> · {item.fromProfession}</span>}
-                        <span style={{color:N.muted}}> wants to contact you 📩</span>
+                        {item.fromProfession&&<span style={{color:'rgba(200,210,240,0.85)'}}> · {item.fromProfession}</span>}
+                        <span style={{color:'rgba(200,210,240,0.85)'}}> wants to contact you 📩</span>
                         <span style={{display:'block',fontSize:10,fontWeight:700,color:scheme.text,textTransform:'capitalize',marginTop:3}}>{item.status}</span>
                       </p>
                     ) : (
-                      <p style={{margin:0,fontSize:13,color:N.text,lineHeight:1.4}}>
+                      <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,0.93)',lineHeight:1.4}}>
                         Your contact request to{' '}
                         <strong style={{color:'#60a5fa',cursor:'pointer'}}
                           onClick={e=>{e.stopPropagation();goToProfile(item.talentEmail,item.talentName,item.talentPic,'');}}>
@@ -413,23 +416,23 @@ const NotificationSystem = ({ onBack, onViewProfile }) => {
                     onClick={()=>{ if(isWriter) goToProfile(item.fromEmail,item.fromName,item.fromPic,''); }}/>
                   <div style={{flex:1}}>
                     {isWriter ? (
-                      <p style={{margin:0,fontSize:13,color:N.text,lineHeight:1.4}}>
+                      <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,0.93)',lineHeight:1.4}}>
                         <strong style={{color:'#a78bfa',cursor:'pointer',fontFamily:'Georgia,serif'}}
                           onClick={()=>goToProfile(item.fromEmail,item.fromName,item.fromPic,'')}>
                           {item.fromName}
                         </strong>
-                        <span style={{color:N.muted}}> requested </span>
-                        <strong style={{color:N.text}}>{getTypeText(item)}</strong>
-                        <span style={{color:N.muted}}> of </span>
+                        <span style={{color:'rgba(200,210,240,0.85)'}}> requested </span>
+                        <strong style={{color:'rgba(255,255,255,0.93)'}}>{getTypeText(item)}</strong>
+                        <span style={{color:'rgba(200,210,240,0.85)'}}> of </span>
                         <strong style={{color:'#a78bfa',fontStyle:'italic',fontFamily:'Georgia,serif'}}>"{item.storyTitle}"</strong>
                         <span style={{display:'block',fontSize:10,fontWeight:700,color:scheme.text,textTransform:'capitalize',marginTop:3}}>{item.status}</span>
                       </p>
                     ) : (
-                      <p style={{margin:0,fontSize:13,color:N.text,lineHeight:1.4}}>
+                      <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,0.93)',lineHeight:1.4}}>
                         <strong style={{color:'#a78bfa',fontStyle:'italic',fontFamily:'Georgia,serif'}}>"{item.storyTitle}"</strong>
-                        <span style={{color:N.muted}}> — </span>
-                        <strong style={{color:N.text}}>{getTypeText(item)}</strong>
-                        <span style={{color:N.muted}}> is </span>
+                        <span style={{color:'rgba(200,210,240,0.85)'}}> — </span>
+                        <strong style={{color:'rgba(255,255,255,0.93)'}}>{getTypeText(item)}</strong>
+                        <span style={{color:'rgba(200,210,240,0.85)'}}> is </span>
                         <strong style={{color:scheme.text}}>{item.status}</strong>!
                       </p>
                     )}

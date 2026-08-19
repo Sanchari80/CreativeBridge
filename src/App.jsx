@@ -1,20 +1,31 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, lazy, Suspense } from 'react';
 import { AppContext } from './context/AppContext';
 import AuthPage from './pages/AuthPage.jsx';
-import CommonDashboard from './pages/CommonDashboard';
-import PostForm from './pages/PostForm';
-import ProfilePage from './pages/ProfilePage';
-import SearchPage from './pages/SearchPage';
-import NotificationSystem from './components/NotificationSystem';
 import Navbar from './components/Navbar';
-import HireDashboard from './pages/HireDashboard';
-import TalentDashboard from './pages/TalentDashboard';
-import AdminDashboard from './pages/AdminDashboard';
+
+// ── Lazy-load heavy pages for faster initial load ─────────────
+const CommonDashboard    = lazy(()=>import('./pages/CommonDashboard'));
+const PostForm           = lazy(()=>import('./pages/PostForm'));
+const ProfilePage        = lazy(()=>import('./pages/ProfilePage'));
+const SearchPage         = lazy(()=>import('./pages/SearchPage'));
+const ReleasePage        = lazy(()=>import('./pages/ReleasePage'));
+const NotificationSystem = lazy(()=>import('./components/NotificationSystem'));
+const HireDashboard      = lazy(()=>import('./pages/HireDashboard'));
+const TalentDashboard    = lazy(()=>import('./pages/TalentDashboard'));
+const AdminDashboard     = lazy(()=>import('./pages/AdminDashboard'));
+
+// ── Loader spinner ────────────────────────────────────────────
+const PageLoader = () => (
+  <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'60vh',flexDirection:'column',gap:12}}>
+    <div style={{width:44,height:44,borderRadius:'50%',border:'3px solid rgba(139,92,246,0.2)',borderTop:'3px solid #8b5cf6',animation:'spin 0.8s linear infinite'}}/>
+    <p style={{color:'rgba(147,197,253,0.5)',fontSize:13,margin:0}}>Loading...</p>
+    <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+  </div>
+);
 
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 import { getStorage } from "firebase/storage";
-import ReleasePage from './pages/ReleasePage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4z9lc0igmGliK4qhwT7p5VcPp5ZHG0VM",
@@ -46,10 +57,10 @@ function App() {
 
   // ── Read shareable work-link query params (?profile=&role=&work=) ──
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params       = new URLSearchParams(window.location.search);
     const profileEmail = params.get('profile');
-    const profileRole   = params.get('role');
-    const workId         = params.get('work');
+    const profileRole  = params.get('role');
+    const workId       = params.get('work');
 
     if (profileEmail) {
       setView('dashboard');
@@ -84,7 +95,7 @@ function App() {
   }, [user, setRequests]);
 
   useEffect(() => {
-    const visitorId = Math.random().toString(36).substr(2, 9);
+    const visitorId   = Math.random().toString(36).substr(2, 9);
     const myStatusRef = ref(db, 'status/' + visitorId);
     set(myStatusRef, { online: true, lastChanged: serverTimestamp() });
     onDisconnect(myStatusRef).remove();
@@ -129,46 +140,54 @@ function App() {
       {showNotifications && (
         <div style={notifPanel}>
           <div style={notifHeader}>
-            <span style={{ fontWeight: 800, fontFamily: "'DM Sans',sans-serif" }}>
+            <span style={{ fontWeight:800, fontFamily:"'DM Sans',sans-serif", color:'rgba(255,255,255,0.9)' }}>
               🔔 Notifications
             </span>
             <button onClick={() => setShowNotifications(false)} style={closeBtnStyle}>✕</button>
           </div>
-          <NotificationSystem
-            onBack={() => setShowNotifications(false)}
-            onViewProfile={(profile) => {
-              setShowNotifications(false);
-              setView('dashboard');
-              setPendingProfile(profile);
-            }}
-          />
+          <Suspense fallback={<div style={{padding:20,color:'rgba(147,197,253,0.5)',textAlign:'center',fontSize:13}}>Loading...</div>}>
+            <NotificationSystem
+              onBack={() => setShowNotifications(false)}
+              onViewProfile={(profile) => {
+                setShowNotifications(false);
+                setView('dashboard');
+                setPendingProfile(profile);
+              }}
+            />
+          </Suspense>
         </div>
       )}
 
       {/* ── Post / Upload Form ── */}
-      {showPostForm && <PostForm closeForm={() => setShowPostForm(false)} />}
+      {showPostForm && (
+        <Suspense fallback={null}>
+          <PostForm closeForm={() => setShowPostForm(false)} />
+        </Suspense>
+      )}
 
       {/* ── Main Content ── */}
       <main style={mainStyle}>
-        {view === 'dashboard' && (
-          <CommonDashboard
-            pendingProfile={pendingProfile}
-            onClearPending={() => setPendingProfile(null)}
-          />
-        )}
-        {view === 'search'  && (
-          <SearchPage
-            onViewProfile={(profile) => {
-              setView('dashboard');
-              setPendingProfile(profile);
-            }}
-          />
-        )}
-        {view === 'hire'    && isHirer && <HireDashboard />}
-        {view === 'mywork'  && isTalent && <TalentDashboard />}
-        {view === 'profile' && <ProfilePage onBack={() => setView('dashboard')} />}
-        {view === 'admin'   && isAdmin  && <AdminDashboard />}
-        {view === 'releases' && <ReleasePage />}
+        <Suspense fallback={<PageLoader/>}>
+          {view === 'dashboard' && (
+            <CommonDashboard
+              pendingProfile={pendingProfile}
+              onClearPending={() => setPendingProfile(null)}
+            />
+          )}
+          {view === 'search'  && (
+            <SearchPage
+              onViewProfile={(profile) => {
+                setView('dashboard');
+                setPendingProfile(profile);
+              }}
+            />
+          )}
+          {view === 'hire'     && isHirer  && <HireDashboard />}
+          {view === 'mywork'   && isTalent && <TalentDashboard />}
+          {view === 'profile'  && <ProfilePage onBack={() => setView('dashboard')} />}
+          {view === 'admin'    && isAdmin   && <AdminDashboard />}
+          {view === 'releases' && <ReleasePage />}
+        </Suspense>
       </main>
 
       {/* ── Footer ── */}
@@ -221,18 +240,22 @@ const bgOverlay = {
   `,
 };
 
+// ── Dark notification panel (text clearly visible) ────────────
 const notifPanel = {
   position: 'absolute',
   top: 72, right: '4%',
-  width: 320,
-  background: 'rgba(255,255,255,0.96)',
+  width: 330, maxWidth: '94vw',
+  background: 'rgba(8,10,42,0.97)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
   borderRadius: 20,
-  boxShadow: '0 30px 80px rgba(0,0,0,0.22)',
+  boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
   zIndex: 1001,
   padding: 16,
-  border: '1px solid rgba(255,255,255,0.8)',
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
+  border: '1px solid rgba(139,92,246,0.25)',
+  maxHeight: '80vh',
+  overflowY: 'auto',
+  WebkitOverflowScrolling: 'touch',
 };
 
 const notifHeader = {
@@ -240,19 +263,19 @@ const notifHeader = {
   justifyContent: 'space-between',
   alignItems: 'center',
   paddingBottom: 10,
-  borderBottom: '1px solid rgba(0,0,0,0.06)',
+  borderBottom: '1px solid rgba(147,197,253,0.12)',
   marginBottom: 10,
 };
 
 const closeBtnStyle = {
-  background: '#f1f2f6',
-  border: 'none',
+  background: 'rgba(255,255,255,0.08)',
+  border: '1px solid rgba(255,255,255,0.12)',
   cursor: 'pointer',
   fontSize: 14,
   width: 28, height: 28,
   borderRadius: '50%',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  color: '#636e72',
+  color: 'rgba(255,255,255,0.6)',
   fontWeight: 700,
 };
 
@@ -263,6 +286,16 @@ const mainStyle = {
   zIndex: 1,
 };
 
-const footerStyle = { textAlign:'center', padding:'16px 20px', background:'rgba(255,255,255,0.93)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderTop:'1px solid rgba(201,168,76,0.18)', marginTop:20, position:'relative', zIndex:1 };
+const footerStyle = {
+  textAlign: 'center',
+  padding: '16px 20px',
+  background: 'rgba(255,255,255,0.93)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  borderTop: '1px solid rgba(201,168,76,0.18)',
+  marginTop: 20,
+  position: 'relative',
+  zIndex: 1,
+};
 
 export default App;

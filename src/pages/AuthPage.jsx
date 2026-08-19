@@ -206,7 +206,8 @@ const AuthPage = () => {
   const [view,    setView]    = useState('login');
   const [form,    setForm]    = useState({...EMPTY_FORM});
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [mounted,  setMounted]  = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const set_ = (key, val) => setForm(f=>({...f,[key]:val}));
 
@@ -417,7 +418,34 @@ const AuthPage = () => {
 
           {/* ── COMMON FIELDS ── */}
           <StripInput placeholder="Email *" type="email"    value={form.email}    onChange={e=>set_('email',e.target.value)}    onKeyDown={handleKeyDown} autoFocus={view==='login'}/>
-          <StripInput placeholder="Password *" type="password" value={form.password} onChange={e=>set_('password',e.target.value)} onKeyDown={handleKeyDown}/>
+          {/* Password field with show/hide */}
+          <div style={{position:'relative',marginBottom:10}}>
+            {/* Left perforations */}
+            <div style={{position:'absolute',left:0,top:0,bottom:0,width:22,background:'#060c18',display:'flex',flexDirection:'column',justifyContent:'space-around',padding:'5px 0',borderRadius:'10px 0 0 10px',zIndex:1}}>
+              {[...Array(4)].map((_,i)=><div key={i} style={{width:9,height:9,borderRadius:2,background:'rgba(147,197,253,0.15)',margin:'0 auto',border:'1px solid rgba(147,197,253,0.1)'}}/>)}
+            </div>
+            {/* Right perforations */}
+            <div style={{position:'absolute',right:0,top:0,bottom:0,width:22,background:'#060c18',display:'flex',flexDirection:'column',justifyContent:'space-around',padding:'5px 0',borderRadius:'0 10px 10px 0',zIndex:1}}>
+              {[...Array(4)].map((_,i)=><div key={i} style={{width:9,height:9,borderRadius:2,background:'rgba(147,197,253,0.15)',margin:'0 auto',border:'1px solid rgba(147,197,253,0.1)'}}/>)}
+            </div>
+            <input
+              className="strip-input"
+              type={showPass?'text':'password'}
+              placeholder="Password *"
+              value={form.password}
+              onChange={e=>set_('password',e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={{width:'100%',padding:'12px 52px 12px 28px',background:'rgba(4,8,28,0.85)',border:'1px solid rgba(147,197,253,0.15)',borderRadius:10,boxSizing:'border-box',fontSize:14,color:'rgba(255,255,255,0.9)',outline:'none',transition:'all 0.2s',fontFamily:'inherit',letterSpacing:showPass?0:2}}
+            />
+            {/* Eye toggle button */}
+            <button
+              type="button"
+              onClick={()=>setShowPass(v=>!v)}
+              style={{position:'absolute',right:28,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'rgba(147,197,253,0.5)',zIndex:2,padding:4,lineHeight:1,transition:'color 0.2s'}}
+              title={showPass?'Hide password':'Show password'}>
+              {showPass?'🙈':'👁'}
+            </button>
+          </div>
 
           {/* Forgot password */}
           {view==='login' && (
