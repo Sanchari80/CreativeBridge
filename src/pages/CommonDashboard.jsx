@@ -90,7 +90,7 @@ if (!document.getElementById('cb-anims')) {
     }
     @keyframes floatUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
     @keyframes glowPulse { 0%,100%{box-shadow:0 0 15px rgba(139,92,246,0.3)} 50%{box-shadow:0 0 30px rgba(139,92,246,0.7)} }
-    @keyframes slideIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideIn { from{opacity:0} to{opacity:1} }
     @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
     .cb-card { transition: transform 0.2s ease, box-shadow 0.2s ease !important; }
     .cb-card:hover { transform: translateY(-4px) scale(1.01) !important; }
@@ -1292,35 +1292,14 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
   return(
     <>
       {/* ── Fullscreen modal ── */}
-      {expanded && ReactDOM.createPortal(
+      {expanded&&(
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{
-            position:'fixed',inset:0,zIndex:99999,
-            background:'rgba(0,0,0,0.95)',
-            display:'flex',flexDirection:'column',
-            alignItems:'center',justifyContent:'flex-start',
-            backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',
-            padding:'20px 8px 50px',
-            cursor:'zoom-out',
-            overflowY:'auto',WebkitOverflowScrolling:'touch',
-          }}>
-          {/* Image — rendered via Portal so no parent transform traps it */}
-          <div style={{position:'relative',width:'90vw',maxWidth:900}}
-            onClick={e=>e.stopPropagation()}>
+          style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:99999,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',padding:'20px 8px 50px',cursor:'zoom-out',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+          <div style={{position:'relative',width:'90vw',maxWidth:900}} onClick={e=>e.stopPropagation()}>
             {blob&&<img src={blob} alt={title} draggable={false}
-              style={{
-                display:'block',
-                width:'100%',
-                height:'auto',
-                borderRadius:12,
-                pointerEvents:'none',
-                border:'2px solid rgba(245,158,11,0.35)',
-                boxShadow:'0 0 40px rgba(245,158,11,0.1),0 20px 60px rgba(0,0,0,0.7)',
-              }}/>}
-            {/* Block right-click */}
-            <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
-            {/* Watermark */}
-            <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.14}}>
+              style={{display:'block',width:'100%',height:'auto',borderRadius:12,pointerEvents:'none',border:'2px solid rgba(245,158,11,0.35)',boxShadow:'0 0 40px rgba(245,158,11,0.1),0 20px 60px rgba(0,0,0,0.7)'}}/>}
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.14}}>
               {Array.from({length:20}).map((_,i)=>(
                 <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,fontFamily:'monospace',whiteSpace:'nowrap',transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
                   {viewerName||'Viewer'} · {viewerEmail||'creative-bridge.vercel.app'}
@@ -1335,8 +1314,7 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
               ✕ Close
             </button>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* ── Thumbnail with wooden frame ── */}
