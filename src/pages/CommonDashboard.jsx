@@ -1294,15 +1294,33 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
       {/* ── Fullscreen modal ── */}
       {expanded&&(
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',padding:'20px 10px 50px',cursor:'zoom-out',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-
-          {/* Image directly — no overflow-cutting wrapper */}
-          <div style={{position:'relative',display:'inline-block'}} onClick={e=>e.stopPropagation()}>
+          style={{
+            position:'fixed',inset:0,zIndex:99999,
+            background:'rgba(0,0,0,0.95)',
+            display:'flex',flexDirection:'column',
+            alignItems:'center',justifyContent:'flex-start',
+            backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',
+            padding:'16px 8px 48px',
+            cursor:'zoom-out',
+            overflowY:'auto',WebkitOverflowScrolling:'touch',
+          }}>
+          {/* Full image — no width constraint, just max */}
+          <div style={{position:'relative',display:'block',maxWidth:'96vw',margin:'0 auto'}}
+            onClick={e=>e.stopPropagation()}>
             {blob&&<img src={blob} alt={title} draggable={false}
-              style={{display:'block',maxWidth:'92vw',width:'auto',height:'auto',maxHeight:'82vh',objectFit:'contain',borderRadius:12,pointerEvents:'none',border:'2px solid rgba(245,158,11,0.4)',boxShadow:'0 0 40px rgba(245,158,11,0.12),0 20px 60px rgba(0,0,0,0.7)'}}/>}
+              style={{
+                display:'block',
+                maxWidth:'96vw',
+                width:'96vw',
+                height:'auto',
+                borderRadius:10,
+                pointerEvents:'none',
+                border:'2px solid rgba(245,158,11,0.35)',
+                boxShadow:'0 0 40px rgba(245,158,11,0.1),0 20px 60px rgba(0,0,0,0.7)',
+              }}/>}
             {/* Block right-click */}
             <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
-            {/* Watermark grid */}
+            {/* Watermark */}
             <div style={{position:'absolute',inset:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.13}}>
               {Array.from({length:20}).map((_,i)=>(
                 <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,fontFamily:'monospace',whiteSpace:'nowrap',transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
@@ -1311,8 +1329,6 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
               ))}
             </div>
           </div>
-
-          {/* Label + close button */}
           <div style={{marginTop:12,display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
             <span style={{fontSize:11,color:'rgba(245,158,11,0.7)',fontWeight:700}}>🔒 {title} — Copyright Protected · Watermarked</span>
             <button onClick={()=>setExpanded(false)}
