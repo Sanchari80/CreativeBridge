@@ -1294,23 +1294,55 @@ const ProtImg=({src,title,height=130,viewerName,viewerEmail})=>{
       {/* ── Fullscreen modal ── */}
       {expanded&&(
         <div onClick={()=>setExpanded(false)} onContextMenu={e=>e.preventDefault()}
-          style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:99999,background:'rgba(0,0,0,0.95)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',padding:'20px 8px 50px',cursor:'zoom-out',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-          <div style={{position:'relative',width:'90vw',maxWidth:900}} onClick={e=>e.stopPropagation()}>
+          style={{
+            position:'fixed',top:0,left:0,right:0,bottom:0,
+            zIndex:99999,
+            background:'rgba(0,0,0,0.95)',
+            display:'flex',flexDirection:'column',
+            alignItems:'center',justifyContent:'center',
+            padding:'10px',
+            overflowY:'auto',
+            WebkitOverflowScrolling:'touch',
+          }}>
+          {/* inline-block container = wraps exactly to image size */}
+          <div style={{position:'relative',display:'inline-block',maxWidth:'96vw',lineHeight:0}}
+            onClick={e=>e.stopPropagation()}>
             {blob&&<img src={blob} alt={title} draggable={false}
-              style={{display:'block',width:'100%',height:'auto',borderRadius:12,pointerEvents:'none',border:'2px solid rgba(245,158,11,0.35)',boxShadow:'0 0 40px rgba(245,158,11,0.1),0 20px 60px rgba(0,0,0,0.7)'}}/>}
-            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
-            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:2,display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',overflow:'hidden',pointerEvents:'none',opacity:0.14}}>
+              style={{
+                display:'block',
+                maxWidth:'96vw',
+                maxHeight:'85vh',
+                width:'auto',
+                height:'auto',
+                borderRadius:8,
+                pointerEvents:'none',
+                border:'2px solid rgba(245,158,11,0.3)',
+              }}/>}
+            {/* right-click block */}
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:1}}
+              onContextMenu={e=>e.preventDefault()}/>
+            {/* watermark */}
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:2,
+              display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',
+              overflow:'hidden',pointerEvents:'none',opacity:0.14}}>
               {Array.from({length:20}).map((_,i)=>(
-                <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,fontFamily:'monospace',whiteSpace:'nowrap',transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
+                <div key={i} style={{color:'#fff',fontSize:11,fontWeight:700,
+                  fontFamily:'monospace',whiteSpace:'nowrap',
+                  transform:'rotate(-30deg)',padding:'18px 24px',userSelect:'none'}}>
                   {viewerName||'Viewer'} · {viewerEmail||'creative-bridge.vercel.app'}
                 </div>
               ))}
             </div>
           </div>
-          <div style={{marginTop:14,display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
-            <span style={{fontSize:11,color:'rgba(245,158,11,0.7)',fontWeight:700}}>🔒 {title} — Copyright Protected · Watermarked</span>
+          {/* label + close */}
+          <div style={{marginTop:10,textAlign:'center'}}>
+            <div style={{fontSize:10,color:'rgba(245,158,11,0.6)',marginBottom:8}}>
+              🔒 {title} — Copyright Protected · Watermarked
+            </div>
             <button onClick={()=>setExpanded(false)}
-              style={{padding:'8px 26px',background:'rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.8)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:12,cursor:'pointer',fontSize:13,fontWeight:600}}>
+              style={{padding:'7px 24px',background:'rgba(255,255,255,0.08)',
+                color:'rgba(255,255,255,0.8)',border:'1px solid rgba(255,255,255,0.15)',
+                borderRadius:10,cursor:'pointer',fontSize:12,fontWeight:600}}>
               ✕ Close
             </button>
           </div>
