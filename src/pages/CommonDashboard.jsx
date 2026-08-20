@@ -518,51 +518,71 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
     const wProfile=writerProfiles.find(p=>p.email===writerEmail);
 
     return(
-      <div style={{padding:16,maxWidth:800,margin:'0 auto'}}>
+      <div style={{padding:'12px 16px',maxWidth:780,margin:'0 auto'}}>
         {storyModal&&<StoryModal modal={storyModal} note={directorNote} setNote={setDirectorNote} onSend={handleStoryRequest} onClose={()=>{setStoryModal(null);setDirectorNote('');}}/>}
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
           <button onClick={e=>withRipple(e,()=>{playClick();setExpandedStory(null);})} className='cb-btn' style={backBtn}>← Back</button>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {promoT>0&&<span style={promoT===5?goldBadge:silverBadge}>{promoT===5?'◆ FEATURED':'▪ PROMOTED'}</span>}
-            {!isOwner&&wProfile&&(
-              <button onClick={()=>{setExpandedStory(null);setSelectedProfile(wProfile);}} style={{...followBtn,background:'#4834d4',color:'#fff'}}>👤 View Profile</button>
-            )}
-            {!isOwner&&<button onClick={()=>iFollow?unfollowTalent(writerEmail):followTalent(writerEmail,s.writerName,s.writerPic||'/icon.png')} style={{...followBtn,background:iFollow?'#f1f2f6':'#fdcb6e'}}>{iFollow?'✓ Following':'+ Follow'}</button>}
-            {isOwner&&<button onClick={()=>setBidModal({work:{...s},category:'writer'})} style={{...followBtn,background:'#a29bfe',color:'#fff'}}>💰 Promote</button>}
-            {isOwner&&<button onClick={()=>{deleteStory(s.id);setExpandedStory(null);}} style={{...followBtn,background:'#ff4757',color:'#fff'}}>Delete</button>}
+            {!isOwner&&wProfile&&<button onClick={()=>{setExpandedStory(null);setSelectedProfile(wProfile);}} style={{...followBtn,background:'#4834d4',color:'#fff'}}>👤 View Profile</button>}
+            {!isOwner&&<button onClick={()=>iFollow?unfollowTalent(writerEmail):followTalent(writerEmail,s.writerName,s.writerPic||'/icon.png')} style={{...followBtn,background:iFollow?'rgba(255,255,255,0.1)':'rgba(196,134,10,0.2)',color:iFollow?'#aaa':'#c4860a'}}>{iFollow?'✓ Following':'+ Follow'}</button>}
+            {isOwner&&<button onClick={()=>setBidModal({work:{...s},category:'writer'})} style={{...followBtn,background:'rgba(162,155,254,0.2)',color:'#a29bfe'}}>💰 Promote</button>}
+            {isOwner&&<button onClick={()=>{deleteStory(s.id);setExpandedStory(null);}} style={{...followBtn,background:'rgba(255,71,87,0.2)',color:'#ff4757'}}>Delete</button>}
           </div>
         </div>
-        <div style={{...card,animation:'slideIn 0.3s ease'}}>
-          <div style={{display:'flex',alignItems:'center',marginBottom:12}}>
-            <img src={isOwner?(user?.profilePic||'/icon.png'):(s.writerPic||'/icon.png')} alt="" style={av45}/>
-            <div style={{marginLeft:12,flex:1}}>
-              <strong style={{cursor:wProfile&&!isOwner?'pointer':'default',color:wProfile&&!isOwner?'#4834d4':'#2d3436'}}
+
+        <div style={{
+          position:'relative',
+          backgroundImage:[
+            'linear-gradient(to bottom,#fdf8ee,#f6edda)',
+            'repeating-linear-gradient(transparent,transparent 27px,rgba(100,120,200,0.09) 27px,rgba(100,120,200,0.09) 28px)',
+          ].join(','),
+          borderLeft:'4px solid rgba(210,60,60,0.18)',
+          borderRadius:'0 6px 6px 0',
+          boxShadow:'4px 4px 20px rgba(0,0,0,0.28),-1px -1px 0 rgba(0,0,0,0.04)',
+          padding:'28px 22px 32px',
+          overflow:'hidden',
+        }}>
+          <div style={{position:'absolute',top:-10,left:'50%',transform:'translateX(-50%)',width:20,height:26,background:'linear-gradient(135deg,#c0c0c0,#e8e8e8,#a8a8a8)',borderRadius:'0 0 4px 4px',boxShadow:'0 2px 4px rgba(0,0,0,0.18)',zIndex:2}}/>
+          <div style={{position:'absolute',bottom:0,right:0,width:26,height:26,background:'linear-gradient(225deg,rgba(200,170,100,0.5) 50%,transparent 50%)'}}/>
+
+          <div style={{display:'flex',alignItems:'center',marginBottom:16,paddingTop:8}}>
+            <img src={isOwner?(user?.profilePic||'/icon.png'):(s.writerPic||'/icon.png')} alt=""
+              style={{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0,border:'1.5px solid rgba(150,130,90,0.35)',cursor:wProfile&&!isOwner?'pointer':'default'}}
+              onClick={()=>{if(wProfile&&!isOwner){setExpandedStory(null);setSelectedProfile(wProfile);}}}/>
+            <div style={{marginLeft:10,flex:1}}>
+              <strong style={{fontSize:13,color:'#3a2010',cursor:wProfile&&!isOwner?'pointer':'default'}}
                 onClick={()=>{if(wProfile&&!isOwner){setExpandedStory(null);setSelectedProfile(wProfile);}}}>
                 {s.writerName||'Unknown Writer'}
               </strong>
-              <div style={chip}>{s.genre}</div>
+              <span style={{display:'inline-block',marginLeft:8,fontSize:10,background:'rgba(100,80,50,0.1)',color:'#6a4820',padding:'1px 8px',borderRadius:20,border:'1px solid rgba(100,80,50,0.18)',fontWeight:600}}>{s.genre}</span>
             </div>
-            <button onClick={()=>toggleSave(s.id)} style={iconBtn}>{savedStories.includes(s.id)?'❤️':'🤍'}</button>
+            <button onClick={()=>toggleSave(s.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:18,padding:2,lineHeight:1}}>{savedStories.includes(s.id)?'❤️':'🤍'}</button>
           </div>
-          <h2 style={{color:'#a78bfa',margin:'0 0 6px',fontFamily:'Georgia,serif'}}>{s.Name}</h2>
-          <p style={{fontWeight:600,color:'rgba(255,255,255,0.7)',marginBottom:12,fontStyle:'italic'}}>{s.logline}</p>
-          <div style={{marginTop:16,padding:14,background:'rgba(139,92,246,0.08)',borderRadius:12,border:'1px solid rgba(139,92,246,0.15)'}}>
-            <LS label="Synopsis / Outline" locked={!hasSyn} onReq={()=>setStoryModal({story:s,type:'synopsis'})} reqLabel="Request Access">
-              <p style={{fontSize:14,whiteSpace:'pre-wrap',margin:0}}>{s.synopsis||'No synopsis provided.'}</p>
+
+          <h2 style={{color:'#1a0e00',margin:'0 0 6px',fontFamily:'Georgia,serif',fontSize:22,lineHeight:1.3}}>{s.Name}</h2>
+          <div style={{height:1,background:'rgba(150,120,60,0.2)',margin:'8px 0 12px'}}/>
+          <p style={{fontWeight:600,color:'#3a2a10',marginBottom:16,fontStyle:'italic',fontFamily:'Georgia,serif',fontSize:14,lineHeight:1.7}}>{s.logline}</p>
+
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <LS label="SYNOPSIS / OUTLINE" locked={!hasSyn} onReq={()=>setStoryModal({story:s,type:'synopsis'})} reqLabel="Request Access">
+              <p style={{fontSize:14,whiteSpace:'pre-wrap',margin:0,color:'#2a1a08',lineHeight:1.9,fontFamily:'Georgia,serif'}}>{s.synopsis||'No synopsis provided.'}</p>
             </LS>
-            <LS label="Full Story / Script" locked={!hasFull} onReq={()=>setStoryModal({story:s,type:'fullStory'})} reqLabel="Request Script" div>
-              {s.fullStoryFile?<a href={s.fullStoryFile.startsWith('http')?s.fullStoryFile:`https://${s.fullStoryFile}`} target="_blank" rel="noreferrer" style={linkS}>🔗 View Full Story</a>:<span style={{color:'#aaa',fontSize:13}}>No link provided</span>}
+            <LS label="FULL STORY / SCRIPT" locked={!hasFull} onReq={()=>setStoryModal({story:s,type:'fullStory'})} reqLabel="Request Script" div>
+              {s.fullStoryFile
+                ?<a href={s.fullStoryFile.startsWith('http')?s.fullStoryFile:`https://${s.fullStoryFile}`} target="_blank" rel="noreferrer" style={{color:'#5a2d82',fontWeight:700,fontFamily:'Georgia,serif'}}>🔗 View Full Story / Script</a>
+                :<span style={{color:'#888',fontSize:13}}>No link provided</span>}
             </LS>
-            <LS label="Writer's Info & Portfolio" locked={!hasCon} onReq={()=>setStoryModal({story:s,type:'contact'})} reqLabel="Request Contact" div>
-              <div style={{fontSize:13,display:'flex',flexDirection:'column',gap:4}}>
+            <LS label="WRITER CONTACT & PORTFOLIO" locked={!hasCon} onReq={()=>setStoryModal({story:s,type:'contact'})} reqLabel="Request Contact" div>
+              <div style={{fontSize:13,display:'flex',flexDirection:'column',gap:4,color:'#2a1a08'}}>
                 <p style={{margin:0}}>📧 {s.contactEmail||s.writerEmail||s.email}</p>
                 {s.contactPhone&&<p style={{margin:0}}>📞 {s.contactPhone}</p>}
-                {s.portfolio&&<p style={{margin:0}}>🌐 <a href={s.portfolio.startsWith('http')?s.portfolio:`https://${s.portfolio}`} target="_blank" rel="noreferrer" style={{color:'#6c5ce7'}}>{s.portfolio}</a></p>}
+                {s.portfolio&&<p style={{margin:0}}>🌐 <a href={s.portfolio.startsWith('http')?s.portfolio:`https://${s.portfolio}`} target="_blank" rel="noreferrer" style={{color:'#5a2d82'}}>{s.portfolio}</a></p>}
               </div>
             </LS>
           </div>
         </div>
-        <div style={{textAlign:'center'}}><BackToDashboardBtn onClick={()=>setExpandedStory(null)}/></div>
+        <div style={{textAlign:'center',marginTop:14}}><BackToDashboardBtn onClick={()=>setExpandedStory(null)}/></div>
       </div>
     );
   }
