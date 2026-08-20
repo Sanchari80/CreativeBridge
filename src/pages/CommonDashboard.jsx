@@ -912,7 +912,7 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
                       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
                         <img src={pic} alt="" style={{...av45,width:52,height:52,border:`2px solid ${roleCfgItem.color}33`}}/>
                         <div style={{flex:1,overflow:'hidden'}}>
-                          <strong style={{fontSize:15,color:'#2d3436',display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</strong>
+                          <strong style={{fontSize:15,color:'rgba(255,255,255,0.92)',display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</strong>
                           {addr&&<p style={{margin:'2px 0 0',fontSize:11,color:'#636e72'}}>📍 {addr}</p>}
                           {fCount>0&&<p style={{margin:'2px 0 0',fontSize:11,color:'#fdcb6e',fontWeight:700}}>⭐ {fCount} follower{fCount>1?'s':''}</p>}
                         </div>
@@ -997,13 +997,13 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
                     onClick={()=>{playClick();w.talentProfile&&setSelectedProfile(w.talentProfile);}}>
                     <img src={w.uploaderPic||'/icon.png'} alt="" style={av45}/>
                     <div style={{flex:1}}>
-                      <strong style={{fontSize:14,color:'#2d3436'}}>{w.uploaderName}</strong>
-                      {w.talentProfile?.profile?.address&&<p style={{margin:'2px 0 0',fontSize:11,color:'#636e72'}}>📍 {w.talentProfile.profile.address.split(',')[0]}</p>}
+                      <strong style={{fontSize:14,color:'rgba(255,255,255,0.92)'}}>{w.uploaderName}</strong>
+                      {w.talentProfile?.profile?.address&&<p style={{margin:'2px 0 0',fontSize:11,color:'rgba(147,197,253,0.5)'}}>📍 {w.talentProfile.profile.address.split(',')[0]}</p>}
                       {fCount>0&&<p style={{margin:'2px 0 0',fontSize:11,color:'#fdcb6e',fontWeight:700}}>⭐ {fCount} follower{fCount>1?'s':''}</p>}
                     </div>
                   </div>
-                  <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{w.title}</div>
-                  <div style={{fontSize:12,color:'#636e72',marginBottom:8}}>{w.genre||w.style||w.type||''}</div>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:4,color:'rgba(255,255,255,0.88)'}}>{w.title}</div>
+                  <div style={{fontSize:12,color:'rgba(147,197,253,0.55)',marginBottom:8}}>{w.genre||w.style||w.type||''}</div>
                   {activeTab==='singer'&&w.fileUrl&&(
                     fromDrive ? (
                       <iframe src={driveEmbedUrl(w.fileUrl)} style={{width:'100%',height:w.mediaType==='video'?200:80,border:'none',borderRadius:10,marginBottom:8}} allow="autoplay" title={w.title}/>
@@ -1253,7 +1253,7 @@ const TCard=({p,user,TABS,getReqStatus,isFollowing,onView,onContact,onFollow,onU
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10,cursor:'pointer'}} onClick={onView}>
         <img src={pic} alt="" style={{...av45,width:50,height:50}}/>
         <div style={{flex:1}}>
-          <strong style={{fontSize:15,color:'#2d3436'}}>{name}</strong>
+          <strong style={{fontSize:15,color:'rgba(255,255,255,0.92)'}}>{name}</strong>
           {addr&&<p style={{margin:'2px 0 0',fontSize:12,color:'#636e72'}}>📍 {addr}</p>}
           {followerCount>0&&<p style={{margin:'2px 0 0',fontSize:11,color:'#fdcb6e',fontWeight:700}}>⭐ {followerCount} follower{followerCount>1?'s':''}</p>}
         </div>
