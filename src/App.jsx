@@ -192,18 +192,13 @@ function App() {
 
       {/* ── Footer ── */}
       <footer style={footerStyle}>
-        <img src="/SKT logo.jpg" alt="SKT Logo" style={{ width:30, borderRadius:6, marginBottom:4, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}/>
-        <div style={{
-          fontFamily: "'Playfair Display',serif",
-          fontWeight: 800, fontSize: 12,
-          letterSpacing: 2,
-          background: 'linear-gradient(135deg,#2d3436,#5846E4)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}>
-          CREATIVE BRIDGE • SKT
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <img src="/SKT logo.jpg" alt="SKT Logo" style={{ width:20, borderRadius:5, opacity:0.85 }}/>
+          <span style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:'rgba(147,197,253,0.65)' }}>
+            CREATIVE BRIDGE • SKT
+          </span>
         </div>
-        <div style={{ fontSize: '0.72rem', color: '#636e72', marginTop: 2 }}>
+        <div style={{ fontSize:'0.62rem', color:'rgba(147,197,253,0.3)', marginTop:2 }}>
           © {new Date().getFullYear()} | Connecting Creative Minds
         </div>
       </footer>
@@ -288,12 +283,12 @@ const mainStyle = {
 
 const footerStyle = {
   textAlign: 'center',
-  padding: '8px 12px',
-  background: 'rgba(255,255,255,0.93)',
+  padding: '7px 12px',
+  background: 'rgba(5,8,35,0.55)',
   backdropFilter: 'blur(20px)',
   WebkitBackdropFilter: 'blur(20px)',
-  borderTop: '1px solid rgba(201,168,76,0.18)',
-  marginTop: 16,
+  borderTop: '1px solid rgba(147,197,253,0.08)',
+  marginTop: 12,
   position: 'relative',
   zIndex: 1,
 };
