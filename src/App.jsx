@@ -288,7 +288,7 @@ const mainStyle = {
 
 const footerStyle = {
   textAlign: 'center',
-  padding: '10px 16px',
+  padding: '8px 12px',
   background: 'rgba(255,255,255,0.93)',
   backdropFilter: 'blur(20px)',
   WebkitBackdropFilter: 'blur(20px)',
