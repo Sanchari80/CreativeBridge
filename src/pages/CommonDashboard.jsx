@@ -787,7 +787,44 @@ const sortWithPromo=(list,category)=>[...list].sort((a,b)=>{
 
   return(
     <div>
-      {artExpand&&(<div onClick={()=>setArtExpand(null)} style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:999999,background:'rgba(0,0,0,0.95)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,cursor:'zoom-out'}} onContextMenu={e=>e.preventDefault()}><div style={{position:'relative',display:'inline-block',maxWidth:'94vw',lineHeight:0}} onClick={e=>e.stopPropagation()}><img src={artExpand.blob} alt={artExpand.title} draggable={false} style={{display:'block',maxWidth:'94vw',maxHeight:'86vh',width:'auto',height:'auto',borderRadius:8,pointerEvents:'none',border:'2px solid rgba(245,158,11,0.3)'}}/><div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/></div><div style={{marginTop:10,textAlign:'center'}}><button onClick={()=>setArtExpand(null)} style={{padding:'7px 22px',background:'rgba(255,255,255,0.08)',color:'#fff',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,cursor:'pointer',fontSize:12}}>Close</button></div></div>)}
+      {artExpand&&(
+        <div onClick={()=>setArtExpand(null)} onContextMenu={e=>e.preventDefault()}
+          style={{
+            position:'fixed',
+            top:62,        /* below navbar */
+            left:0,right:0,
+            bottom:60,     /* above footer */
+            zIndex:999999,
+            background:'rgba(0,0,0,0.95)',
+            display:'flex',flexDirection:'column',
+            alignItems:'center',justifyContent:'center',
+            padding:'10px 12px',
+            cursor:'zoom-out',
+            overflowY:'auto',
+            WebkitOverflowScrolling:'touch',
+          }}>
+          <div style={{position:'relative',display:'inline-block',maxWidth:'90vw',lineHeight:0}}
+            onClick={e=>e.stopPropagation()}>
+            <img src={artExpand.blob} alt={artExpand.title} draggable={false}
+              style={{
+                display:'block',
+                maxWidth:'90vw',
+                maxHeight:'calc(100vh - 200px)',
+                width:'auto',height:'auto',
+                borderRadius:8,pointerEvents:'none',
+                border:'2px solid rgba(245,158,11,0.3)',
+                boxShadow:'0 0 30px rgba(245,158,11,0.1)',
+              }}/>
+            <div style={{position:'absolute',inset:0,zIndex:1}} onContextMenu={e=>e.preventDefault()}/>
+          </div>
+          <button onClick={()=>setArtExpand(null)}
+            style={{marginTop:10,padding:'6px 20px',background:'rgba(255,255,255,0.1)',
+              color:'#fff',border:'1px solid rgba(255,255,255,0.15)',
+              borderRadius:10,cursor:'pointer',fontSize:12,fontWeight:600,flexShrink:0}}>
+            ✕ Close
+          </button>
+        </div>
+      )}
       {bidModal&&(
         <BidModal work={bidModal.work} category={bidModal.category} onClose={()=>setBidModal(null)}
           bids={bids} user={user} submitBid={submitBid}/>
